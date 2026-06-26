@@ -137,4 +137,5 @@ pub enum Instruction {
     ExportDefault,
     StoreModuleExport(String),
     PopModuleExports,
+    Await,
 }

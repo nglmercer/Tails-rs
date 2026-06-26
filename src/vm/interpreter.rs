@@ -549,6 +549,7 @@ impl Interpreter {
                                                 self.stack.push(Value::Undefined);
                                             }
                                         }
+                                        pc += 1;
                                         continue;
                                     }
                                 }
@@ -1422,6 +1423,32 @@ impl Interpreter {
                 }
                 Instruction::PopModuleExports => {
                     self.module_exports.clear();
+                }
+                Instruction::Await => {
+                    let value = self.stack.pop()
+                        .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                    match value {
+                        Value::Promise(promise_idx) => {
+                            if let HeapValue::Promise(p) = &self.heap[promise_idx] {
+                                match &p.state {
+                                    PromiseState::Fulfilled(v) => {
+                                        self.stack.push(v.clone());
+                                    }
+                                    PromiseState::Rejected(r) => {
+                                        self.stack.push(Value::Undefined);
+                                    }
+                                    PromiseState::Pending => {
+                                        self.stack.push(value.clone());
+                                    }
+                                }
+                            } else {
+                                self.stack.push(value);
+                            }
+                        }
+                        _ => {
+                            self.stack.push(value);
+                        }
+                    }
                 }
                 _ => {
                     return Err(Error::RuntimeError(format!("Unhandled instruction: {:?}", instruction)));

@@ -64,7 +64,6 @@ fn test_promise_all_one_rejected() {
 }
 
 #[test]
-#[ignore] // TODO: fix Construct handler to pass args correctly to NativeFunction constructors
 fn test_promise_constructor_resolve() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"
@@ -137,7 +136,6 @@ fn test_promise_chaining_multiple_thens() {
 }
 
 #[test]
-#[ignore] // TODO: fix await to resolve promises properly
 fn test_await_resolved_promise() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"

@@ -15,6 +15,7 @@ fn module_dir() -> std::path::PathBuf {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_named_exports() {
     let mut runtime = TailsRuntime::default();
     let source = fixture("math.ts");
@@ -33,6 +34,7 @@ fn test_named_exports() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_default_export_function() {
     let mut runtime = TailsRuntime::default();
     let source = fixture("greeter.ts");
@@ -44,6 +46,7 @@ fn test_default_export_function() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_multiple_named_exports() {
     let mut runtime = TailsRuntime::default();
@@ -63,6 +66,7 @@ fn test_multiple_named_exports() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_module_state_isolation() {
     let mut runtime = TailsRuntime::default();
     let source = fixture("counter.ts");
@@ -81,6 +85,7 @@ fn test_module_state_isolation() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_import_named_from_module() {
     let mut runtime = TailsRuntime::default();
     let source = r#"
@@ -92,6 +97,7 @@ fn test_import_named_from_module() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_import_default_from_module() {
     let mut runtime = TailsRuntime::default();
@@ -105,6 +111,7 @@ fn test_import_default_from_module() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_import_star_from_module() {
     let mut runtime = TailsRuntime::default();
     let source = r#"
@@ -116,6 +123,7 @@ fn test_import_star_from_module() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_import_with_local_alias() {
     let mut runtime = TailsRuntime::default();
@@ -129,6 +137,7 @@ fn test_import_with_local_alias() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_cross_module_function_call() {
     let mut runtime = TailsRuntime::default();
     let source = r#"
@@ -140,6 +149,7 @@ fn test_cross_module_function_call() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_import_from_chain() {
     let mut runtime = TailsRuntime::default();
@@ -153,6 +163,7 @@ fn test_import_from_chain() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_export_default_class() {
     let mut runtime = TailsRuntime::default();
     let source = r#"
@@ -165,6 +176,7 @@ fn test_export_default_class() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_exported_values_visible() {
     let mut runtime = TailsRuntime::default();
@@ -181,6 +193,7 @@ fn test_exported_values_visible() {
 
 #[test]
 #[ignore]
+#[ignore]
 fn test_module_does_not_pollute_global() {
     let mut runtime = TailsRuntime::default();
     let source = fixture("has_own_global.ts");
@@ -192,6 +205,7 @@ fn test_module_does_not_pollute_global() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_import_multiple_modules_same_runtime() {
     let mut runtime = TailsRuntime::default();
@@ -208,6 +222,7 @@ fn test_import_multiple_modules_same_runtime() {
 }
 
 #[test]
+#[ignore]
 #[ignore]
 fn test_missing_module_is_undefined() {
     let mut runtime = TailsRuntime::default();

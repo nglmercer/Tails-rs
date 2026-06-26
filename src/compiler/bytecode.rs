@@ -1149,6 +1149,7 @@ impl CodeGenerator {
             }
             Expression::AwaitExpression { argument } => {
                 self.generate_expression(argument)?;
+                self.instructions.push(Instruction::Await);
                 Ok(())
             }
             Expression::SuperCall { args } => {

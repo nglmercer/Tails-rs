@@ -267,7 +267,6 @@ fn test_boolean_valueof() {
 
 // Combined features
 #[test]
-#[ignore] // TODO: fix prototype method lookup via Getter pattern
 fn test_new_with_this_and_method() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"
