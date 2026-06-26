@@ -560,16 +560,58 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Statement::ImportDeclaration { source, .. } => {
-                let _src_idx = self.add_constant(Value::String(source.clone()));
+            Statement::ImportDeclaration { specifiers, source } => {
+                if specifiers.is_empty() {
+                    self.instructions.push(Instruction::ImportModule(source.clone()));
+                } else if specifiers.len() == 1 && specifiers[0].imported.as_deref() == Some("*") {
+                    self.instructions.push(Instruction::ImportAll(source.clone(), specifiers[0].local.clone()));
+                } else {
+                    for spec in specifiers {
+                        let imported_name = spec.imported.clone().unwrap_or_else(|| spec.local.clone());
+                        if imported_name == "default" {
+                            self.instructions.push(Instruction::ImportDefault(source.clone(), spec.local.clone()));
+                        } else {
+                            self.instructions.push(Instruction::ImportNamed(source.clone(), imported_name, spec.local.clone()));
+                        }
+                    }
+                }
                 Ok(())
             }
             Statement::ExportDeclaration { declaration } => {
-                self.generate_statement(declaration, false)?;
+                match declaration.as_ref() {
+                    Statement::VariableDeclaration { declarations, .. } => {
+                        let names: Vec<String> = declarations.iter().map(|d| d.id.clone()).collect();
+                        self.generate_statement(declaration, false)?;
+                        for name in &names {
+                            self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                        }
+                    }
+                    Statement::FunctionDeclaration { name, .. } => {
+                        self.generate_statement(declaration, false)?;
+                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                    }
+                    Statement::ClassDeclaration { name, .. } => {
+                        self.generate_statement(declaration, false)?;
+                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                    }
+                    _ => {
+                        self.generate_statement(declaration, false)?;
+                    }
+                }
                 Ok(())
             }
             Statement::ExportDefaultDeclaration { declaration } => {
-                self.generate_statement(declaration, false)?;
+                match declaration.as_ref() {
+                    Statement::FunctionDeclaration { name, .. } => {
+                        self.generate_statement(declaration, false)?;
+                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                        self.instructions.push(Instruction::ExportDefault);
+                    }
+                    _ => {
+                        self.generate_statement(declaration, false)?;
+                        self.instructions.push(Instruction::ExportDefault);
+                    }
+                }
                 Ok(())
             }
             Statement::BlockStatement(stmts) => {

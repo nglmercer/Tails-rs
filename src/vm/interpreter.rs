@@ -81,6 +81,9 @@ pub struct Interpreter {
     pub(crate) async_runtime: AsyncRuntime,
     pub(crate) promise_stack: Vec<usize>,
     timer_id_counter: u32,
+    pub(crate) module_registry: HashMap<String, HashMap<String, Value>>,
+    pub(crate) module_exports: HashMap<String, Value>,
+    pub(crate) current_module_path: Option<String>,
 }
 
 impl Interpreter {
@@ -96,6 +99,9 @@ impl Interpreter {
             async_runtime: AsyncRuntime::new(),
             promise_stack: Vec::new(),
             timer_id_counter: 1,
+            module_registry: HashMap::new(),
+            module_exports: HashMap::new(),
+            current_module_path: None,
         };
         interp.init_builtins();
         Ok(interp)
@@ -1183,6 +1189,156 @@ impl Interpreter {
                     }
                     self.stack.push(Value::Undefined);
                 }
+                Instruction::ImportModule(source) => {
+                    match self.resolve_module_path(source) {
+                        Ok(module_path) => {
+                            if self.module_registry.contains_key(&module_path) {
+                                let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
+                                let ns_heap_idx = self.heap.len();
+                                self.heap.push(HeapValue::Object(JsObject { properties: exports, prototype: None }));
+                                self.stack.push(Value::Object(ns_heap_idx));
+                            } else {
+                                let source_code = match std::fs::read_to_string(&module_path) {
+                                    Ok(s) => s,
+                                    Err(_) => {
+                                        let ns_heap_idx = self.heap.len();
+                                        self.heap.push(HeapValue::Object(JsObject::new()));
+                                        self.stack.push(Value::Object(ns_heap_idx));
+                                        continue;
+                                    }
+                                };
+                                let compiler = crate::compiler::Compiler::new(false);
+                                let compiled = compiler.compile(&source_code)?;
+                                let prev_path = self.current_module_path.take();
+                                let prev_exports = std::mem::take(&mut self.module_exports);
+                                self.current_module_path = Some(module_path.clone());
+                                self.module_registry.insert(module_path.clone(), HashMap::new());
+                                let result = self.execute_module(&compiled);
+                                let exports = std::mem::take(&mut self.module_exports);
+                                *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                                self.module_exports = prev_exports;
+                                self.current_module_path = prev_path;
+                                result?;
+                                let ns_heap_idx = self.heap.len();
+                                let final_exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
+                                self.heap.push(HeapValue::Object(JsObject { properties: final_exports, prototype: None }));
+                                self.stack.push(Value::Object(ns_heap_idx));
+                            }
+                        }
+                        Err(_) => {
+                            let ns_heap_idx = self.heap.len();
+                            self.heap.push(HeapValue::Object(JsObject::new()));
+                            self.stack.push(Value::Object(ns_heap_idx));
+                        }
+                    }
+                }
+                Instruction::ImportNamed(source, imported_name, local_name) => {
+                    match self.resolve_module_path(source) {
+                        Ok(module_path) => {
+                            if !self.module_registry.contains_key(&module_path) {
+                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
+                                    let compiler = crate::compiler::Compiler::new(false);
+                                    let compiled = compiler.compile(&source_code)?;
+                                    let prev_path = self.current_module_path.take();
+                                    let prev_exports = std::mem::take(&mut self.module_exports);
+                                    self.current_module_path = Some(module_path.clone());
+                                    self.module_registry.insert(module_path.clone(), HashMap::new());
+                                    let result = self.execute_module(&compiled);
+                                    let exports = std::mem::take(&mut self.module_exports);
+                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                                    self.module_exports = prev_exports;
+                                    self.current_module_path = prev_path;
+                                    result?;
+                                }
+                            }
+                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
+                            let value = exports.get(imported_name.as_str()).cloned().unwrap_or(Value::Undefined);
+                            self.globals.insert(local_name.clone(), value);
+                        }
+                        Err(_) => {
+                            self.globals.insert(local_name.clone(), Value::Undefined);
+                        }
+                    }
+                }
+                Instruction::ImportDefault(source, local_name) => {
+                    match self.resolve_module_path(source) {
+                        Ok(module_path) => {
+                            if !self.module_registry.contains_key(&module_path) {
+                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
+                                    let compiler = crate::compiler::Compiler::new(false);
+                                    let compiled = compiler.compile(&source_code)?;
+                                    let prev_path = self.current_module_path.take();
+                                    let prev_exports = std::mem::take(&mut self.module_exports);
+                                    self.current_module_path = Some(module_path.clone());
+                                    self.module_registry.insert(module_path.clone(), HashMap::new());
+                                    let result = self.execute_module(&compiled);
+                                    let exports = std::mem::take(&mut self.module_exports);
+                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                                    self.module_exports = prev_exports;
+                                    self.current_module_path = prev_path;
+                                    result?;
+                                }
+                            }
+                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
+                            let value = exports.get("default").cloned().unwrap_or(Value::Undefined);
+                            self.globals.insert(local_name.clone(), value);
+                        }
+                        Err(_) => {
+                            self.globals.insert(local_name.clone(), Value::Undefined);
+                        }
+                    }
+                }
+                Instruction::ImportAll(source, local_name) => {
+                    match self.resolve_module_path(source) {
+                        Ok(module_path) => {
+                            if !self.module_registry.contains_key(&module_path) {
+                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
+                                    let compiler = crate::compiler::Compiler::new(false);
+                                    let compiled = compiler.compile(&source_code)?;
+                                    let prev_path = self.current_module_path.take();
+                                    let prev_exports = std::mem::take(&mut self.module_exports);
+                                    self.current_module_path = Some(module_path.clone());
+                                    self.module_registry.insert(module_path.clone(), HashMap::new());
+                                    let result = self.execute_module(&compiled);
+                                    let exports = std::mem::take(&mut self.module_exports);
+                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                                    self.module_exports = prev_exports;
+                                    self.current_module_path = prev_path;
+                                    result?;
+                                }
+                            }
+                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
+                            let ns_heap_idx = self.heap.len();
+                            self.heap.push(HeapValue::Object(JsObject { properties: exports, prototype: None }));
+                            self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
+                        }
+                        Err(_) => {
+                            let ns_heap_idx = self.heap.len();
+                            self.heap.push(HeapValue::Object(JsObject::new()));
+                            self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
+                        }
+                    }
+                }
+                Instruction::ExportNamed(names) => {
+                    for name in names {
+                        if let Some(val) = self.globals.get(name).cloned() {
+                            self.module_exports.insert(name.clone(), val);
+                        }
+                    }
+                }
+                Instruction::ExportDefault => {
+                    let value = self.stack.last().cloned().unwrap_or(Value::Undefined);
+                    self.module_exports.insert("default".to_string(), value);
+                }
+                Instruction::StoreModuleExport(name) => {
+                    let value = self.globals.get(name).cloned()
+                        .or_else(|| self.stack.last().cloned())
+                        .unwrap_or(Value::Undefined);
+                    self.module_exports.insert(name.clone(), value);
+                }
+                Instruction::PopModuleExports => {
+                    self.module_exports.clear();
+                }
                 _ => {
                     return Err(Error::RuntimeError(format!("Unhandled instruction: {:?}", instruction)));
                 }
@@ -1200,6 +1356,69 @@ impl Interpreter {
     
     pub fn set_global(&mut self, name: &str, value: Value) {
         self.globals.insert(name.to_string(), value);
+    }
+
+    pub fn execute_module(&mut self, module: &CompiledModule) -> Result<Value> {
+        let saved = self.current_module.take();
+        self.current_module = Some(module.clone());
+        let result = self.execute(module);
+        self.current_module = saved;
+        result
+    }
+
+    fn resolve_local_from_stack(&self, _name: &str) -> Option<usize> {
+        None
+    }
+
+    fn resolve_module_path(&self, source: &str) -> Result<String> {
+        let base = self.current_module_path.as_deref().unwrap_or(".");
+        let base_path = std::path::Path::new(base);
+        let parent = base_path.parent().unwrap_or(std::path::Path::new("."));
+        let resolved = if source.starts_with("./") || source.starts_with("../") {
+            parent.join(source)
+        } else {
+            std::path::PathBuf::from(source)
+        };
+        if resolved.exists() && resolved.is_file() {
+            return Ok(resolved.to_string_lossy().to_string());
+        }
+        for ext in &[".ts", ".js"] {
+            let stem = resolved.with_extension("");
+            let candidate = std::path::PathBuf::from(format!("{}{}", stem.to_string_lossy(), ext));
+            if candidate.exists() {
+                return Ok(candidate.to_string_lossy().to_string());
+            }
+        }
+        if resolved.is_dir() {
+            for name in &["index.ts", "index.js"] {
+                let idx = resolved.join(name);
+                if idx.exists() {
+                    return Ok(idx.to_string_lossy().to_string());
+                }
+            }
+        }
+        Err(Error::RuntimeError(format!("Module '{}' not found", source)))
+    }
+
+    fn ensure_module_loaded(&mut self, module_path: &str, source: &str) -> Result<()> {
+        if self.module_registry.contains_key(module_path) {
+            return Ok(());
+        }
+        let source_code = std::fs::read_to_string(module_path)
+            .map_err(|e| Error::RuntimeError(format!("Failed to load module '{}': {}", source, e)))?;
+        let compiler = crate::compiler::Compiler::new(false);
+        let compiled = compiler.compile(&source_code)?;
+        let prev_path = self.current_module_path.take();
+        let prev_exports = std::mem::take(&mut self.module_exports);
+        self.current_module_path = Some(module_path.to_string());
+        self.module_registry.insert(module_path.to_string(), HashMap::new());
+        let result = self.execute_module(&compiled);
+        let exports = std::mem::take(&mut self.module_exports);
+        *self.module_registry.entry(module_path.to_string()).or_default() = exports;
+        self.module_exports = prev_exports;
+        self.current_module_path = prev_path;
+        result?;
+        Ok(())
     }
 
     pub fn call_value(&mut self, callee: &Value, this: &Value, args: &[Value]) -> Result<Value> {

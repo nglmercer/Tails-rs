@@ -129,4 +129,12 @@ pub enum Instruction {
     LoadException,
     ReThrowIfPending,
     NotImplementedError(String),
+    ImportModule(String),
+    ImportNamed(String, String, String),
+    ImportDefault(String, String),
+    ImportAll(String, String),
+    ExportNamed(Vec<String>),
+    ExportDefault,
+    StoreModuleExport(String),
+    PopModuleExports,
 }
