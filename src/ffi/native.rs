@@ -1,5 +1,3 @@
-use std::os::raw::c_char;
-use std::ffi::CStr;
 use crate::objects::Value;
 
 pub type NativeFunction = fn(args: &[Value]) -> Result<Value, String>;
@@ -39,6 +37,7 @@ impl Default for NativeRegistry {
 }
 
 #[no_mangle]
+#[allow(improper_ctypes_definitions)]
 pub extern "C" fn tails_register_native(
     registry: *mut NativeRegistry,
     func: NativeFunction,
@@ -53,7 +52,7 @@ pub extern "C" fn tails_register_native(
 
 #[no_mangle]
 pub extern "C" fn tails_call_native(
-    registry: *NativeRegistry,
+    registry: *const NativeRegistry,
     id: usize,
     args: *const TailsValue,
     args_len: usize,

@@ -155,6 +155,17 @@ impl TypeChecker {
                 self.check_expression(object)?;
                 Ok(Type::Any)
             }
+            Expression::FunctionExpression { params, body, .. } => {
+                self.enter_scope();
+                for param in params {
+                    self.define_variable(param, Type::Any);
+                }
+                for stmt in body {
+                    self.check_statement(stmt)?;
+                }
+                self.exit_scope();
+                Ok(Type::Any)
+            }
         }
     }
     

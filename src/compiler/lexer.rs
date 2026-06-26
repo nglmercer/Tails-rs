@@ -113,7 +113,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::new();
     let mut chars = source.char_indices().peekable();
     
-    while let Some(&(pos, ch)) = chars.peek() {
+    while let Some(&(_pos, ch)) = chars.peek() {
         match ch {
             ' ' | '\t' | '\r' => { chars.next(); }
             '\n' => { chars.next(); }

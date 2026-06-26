@@ -1,5 +1,5 @@
 use crate::compiler::Compiler;
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::objects::Value;
 use crate::vm::Interpreter;
 

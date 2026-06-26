@@ -23,13 +23,13 @@ impl AsyncRuntime {
     }
     
     pub fn run_microtasks(&mut self) {
-        while let Some(task) = self.microtask_queue.pop_front() {
+        while let Some(_task) = self.microtask_queue.pop_front() {
             // TODO: Execute microtask
         }
     }
     
     pub fn run_macrotasks(&mut self) {
-        while let Some(task) = self.macrotask_queue.pop_front() {
+        while let Some(_task) = self.macrotask_queue.pop_front() {
             // TODO: Execute macrotask
         }
     }

@@ -77,6 +77,11 @@ pub enum Expression {
         property: Box<Expression>,
         computed: bool,
     },
+    FunctionExpression {
+        name: Option<String>,
+        params: Vec<String>,
+        body: Vec<Statement>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -587,6 +592,31 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expression()?;
                 self.expect(&Token::RightParen)?;
                 Ok(expr)
+            }
+            Token::Function => {
+                self.advance();
+                
+                let name = if let Token::Identifier(name) = self.peek() {
+                    let name = name.clone();
+                    self.advance();
+                    Some(name)
+                } else {
+                    None
+                };
+                
+                self.expect(&Token::LeftParen)?;
+                let params = self.parse_params()?;
+                self.expect(&Token::RightParen)?;
+                
+                self.expect(&Token::LeftBrace)?;
+                let body = self.parse_block_body()?;
+                self.expect(&Token::RightBrace)?;
+                
+                Ok(Expression::FunctionExpression {
+                    name,
+                    params,
+                    body,
+                })
             }
             token => Err(Error::ParseError(format!("Unexpected token {:?}", token))),
         }

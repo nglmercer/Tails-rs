@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     
     let source = std::fs::read_to_string(path)?;
     
-    let mut runtime = TailsRuntime::default()?;
+    let mut runtime = TailsRuntime::default();
     let result = runtime.eval(&source)?;
     
     println!("{:?}", result);
