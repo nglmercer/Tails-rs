@@ -51,16 +51,23 @@ pub enum HeapValue {
     Array(JsArray),
     Function(JsFunction),
     Promise(JsPromise),
+    Proxy(JsProxyData),
 }
 
 #[derive(Debug, Clone)]
-struct CallFrame {
-    return_address: usize,
-    base_pointer: usize,
-    closure_var_count: usize,
-    func_heap_idx: Option<usize>,
-    this_value: Option<Value>,
-    is_construct: bool,
+pub struct JsProxyData {
+    pub target: Value,
+    pub handler: Value,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CallFrame {
+    pub(crate) return_address: usize,
+    pub(crate) base_pointer: usize,
+    pub(crate) closure_var_count: usize,
+    pub(crate) func_heap_idx: Option<usize>,
+    pub(crate) this_value: Option<Value>,
+    pub(crate) is_construct: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -74,8 +81,8 @@ pub struct Interpreter {
     pub(crate) globals: HashMap<String, Value>,
     pub(crate) stack: Vec<Value>,
     pub(crate) heap: Vec<HeapValue>,
-    call_stack: Vec<CallFrame>,
-    current_module: Option<CompiledModule>,
+    pub(crate) call_stack: Vec<CallFrame>,
+    pub(crate) current_module: Option<CompiledModule>,
     exception_handlers: Vec<ExceptionHandler>,
     pending_exception: Option<Value>,
     pub(crate) async_runtime: AsyncRuntime,
@@ -137,8 +144,33 @@ impl Interpreter {
         object_props.insert("values".into(), Value::NativeFunction(5));
         object_props.insert("entries".into(), Value::NativeFunction(6));
         object_props.insert("assign".into(), Value::NativeFunction(7));
+        object_props.insert("defineProperty".into(), Value::NativeFunction(99));
+        object_props.insert("getOwnPropertyDescriptor".into(), Value::NativeFunction(100));
+        object_props.insert("freeze".into(), Value::NativeFunction(101));
         self.heap.push(HeapValue::Object(JsObject { properties: object_props, prototype: None }));
         self.globals.insert("Object".into(), Value::Object(object_obj_idx));
+
+        // Proxy
+        self.globals.insert("Proxy".into(), Value::NativeFunction(85));
+
+        // Reflect
+        let reflect_obj_idx = self.heap.len();
+        let mut reflect_props = HashMap::new();
+        reflect_props.insert("get".into(), Value::NativeFunction(86));
+        reflect_props.insert("set".into(), Value::NativeFunction(87));
+        reflect_props.insert("has".into(), Value::NativeFunction(88));
+        reflect_props.insert("deleteProperty".into(), Value::NativeFunction(89));
+        reflect_props.insert("apply".into(), Value::NativeFunction(90));
+        reflect_props.insert("construct".into(), Value::NativeFunction(91));
+        reflect_props.insert("ownKeys".into(), Value::NativeFunction(92));
+        reflect_props.insert("getOwnPropertyDescriptor".into(), Value::NativeFunction(93));
+        reflect_props.insert("defineProperty".into(), Value::NativeFunction(94));
+        reflect_props.insert("getPrototypeOf".into(), Value::NativeFunction(95));
+        reflect_props.insert("setPrototypeOf".into(), Value::NativeFunction(96));
+        reflect_props.insert("isExtensible".into(), Value::NativeFunction(97));
+        reflect_props.insert("preventExtensions".into(), Value::NativeFunction(98));
+        self.heap.push(HeapValue::Object(JsObject { properties: reflect_props, prototype: None }));
+        self.globals.insert("Reflect".into(), Value::Object(reflect_obj_idx));
 
         // JSON
         let json_obj_idx = self.heap.len();
@@ -262,7 +294,7 @@ impl Interpreter {
         result
     }
     
-    fn execute_from(&mut self, module: &CompiledModule, start_pc: usize) -> Result<Value> {
+    pub(crate) fn execute_from(&mut self, module: &CompiledModule, start_pc: usize) -> Result<Value> {
         let mut pc = start_pc;
 
         'main: loop {
@@ -554,6 +586,21 @@ impl Interpreter {
                             let result = self.call_native(native_idx, &Value::Undefined, &args)?;
                             self.stack.push(result);
                         }
+                        Value::Proxy(proxy_idx) => {
+                            if let HeapValue::Proxy(proxy) = &self.heap[proxy_idx] {
+                                let handler = proxy.handler.clone();
+                                let target = proxy.target.clone();
+                                let arr_idx = self.heap.len();
+                                self.heap.push(HeapValue::Array(JsArray { elements: args }));
+                                let trap_result = self.call_proxy_trap(&handler, "apply", &[target, Value::Undefined, Value::Array(arr_idx)]);
+                                match trap_result {
+                                    Ok(v) => self.stack.push(v),
+                                    Err(e) => return Err(e),
+                                }
+                            } else {
+                                return Err(Error::TypeError(format!("{} is not a function", self.value_to_string(&callee))));
+                            }
+                        }
                         _ => {
                             return Err(Error::TypeError(format!("{} is not a function", self.value_to_string(&callee))));
                         }
@@ -673,12 +720,27 @@ impl Interpreter {
                             let this_val = Value::Object(new_obj_heap_idx);
                             let result = self.call_native(*native_idx, &this_val, &args)?;
                             match result {
-                                Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Promise(_) => {
+                                Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Promise(_) | Value::Proxy(_) => {
                                     self.stack.push(result);
                                 }
                                 _ => {
                                     self.stack.push(this_val);
                                 }
+                            }
+                        }
+                        Value::Proxy(proxy_idx) => {
+                            if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                                let handler = proxy.handler.clone();
+                                let target = proxy.target.clone();
+                                let args_arr_idx = self.heap.len();
+                                self.heap.push(HeapValue::Array(JsArray { elements: args }));
+                                let trap_result = self.call_proxy_trap(&handler, "construct", &[target, Value::Array(args_arr_idx), constructor.clone()]);
+                                match trap_result {
+                                    Ok(v) => self.stack.push(v),
+                                    Err(e) => return Err(e),
+                                }
+                            } else {
+                                return Err(Error::TypeError(format!("{} is not a constructor", self.value_to_string(&constructor))));
                             }
                         }
                         _ => {
@@ -796,18 +858,43 @@ impl Interpreter {
                     let object = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
 
-                    if let Value::Object(obj_idx) = &object {
-                        if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
-                            if let Value::String(key_str) = &key {
-                                obj.properties.insert(key_str.clone(), value);
+                    match &object {
+                        Value::Proxy(proxy_idx) => {
+                            if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                                let handler = proxy.handler.clone();
+                                let target = proxy.target.clone();
+                                let trap = self.get_property(&handler, &Value::String("set".to_string()));
+                                if let Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) = &trap {
+                                    let trap_result = self.call_value(&trap?, &handler, &[target, key.clone(), value, object.clone()]);
+                                    if let Err(e) = trap_result {
+                                        return Err(e);
+                                    }
+                                } else {
+                                    if let Value::Object(target_obj_idx) = &target {
+                                        if let HeapValue::Object(obj) = &mut self.heap[*target_obj_idx] {
+                                            if let Value::String(key_str) = &key {
+                                                obj.properties.insert(key_str.clone(), value);
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                    } else if let Value::Function(func_idx) = &object {
-                        if let HeapValue::Function(f) = &mut self.heap[*func_idx] {
-                            if let Value::String(key_str) = &key {
-                                f.properties.insert(key_str.clone(), value);
+                        Value::Object(obj_idx) => {
+                            if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
+                                if let Value::String(key_str) = &key {
+                                    obj.properties.insert(key_str.clone(), value);
+                                }
                             }
                         }
+                        Value::Function(func_idx) => {
+                            if let HeapValue::Function(f) = &mut self.heap[*func_idx] {
+                                if let Value::String(key_str) = &key {
+                                    f.properties.insert(key_str.clone(), value);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                     self.stack.push(object);
                 }
@@ -840,7 +927,7 @@ impl Interpreter {
                         Value::String(_) => "string",
                         Value::BigInt(_) => "bigint",
                     Value::Function(_) | Value::NativeFunction(_) => "function",
-                    Value::Object(_) | Value::Array(_) | Value::Promise(_) => "object",
+                    Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) => "object",
                     };
                     self.stack.push(Value::String(type_str.to_string()));
                 }
@@ -861,8 +948,32 @@ impl Interpreter {
                     let object = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
 
-                    let result = self.delete_property(&object, &key);
-                    self.stack.push(result);
+                    match &object {
+                        Value::Proxy(proxy_idx) => {
+                            if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                                let handler = proxy.handler.clone();
+                                let target = proxy.target.clone();
+                                let trap = self.get_property(&handler, &Value::String("deleteProperty".to_string()));
+                                if let Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) = &trap {
+                                    let trap_result = self.call_value(&trap?, &handler, &[target, key.clone()]);
+                                    match trap_result {
+                                        Ok(v) => self.stack.push(v),
+                                        Err(e) => return Err(e),
+                                    }
+                                } else {
+                                    let result = self.delete_property(&target, &key);
+                                    self.stack.push(result);
+                                }
+                            } else {
+                                let result = self.delete_property(&object, &key);
+                                self.stack.push(result);
+                            }
+                        }
+                        _ => {
+                            let result = self.delete_property(&object, &key);
+                            self.stack.push(result);
+                        }
+                    }
                 }
                 Instruction::InstanceOf => {
                     let right = self.stack.pop()
@@ -879,7 +990,7 @@ impl Interpreter {
                     let left = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
 
-                    let result = self.in_check(&left, &right)?;
+                    let result = self.in_check_mut(&left, &right)?;
                     self.stack.push(result);
                 }
                 Instruction::Throw => {
@@ -1463,11 +1574,22 @@ impl Interpreter {
             Value::NativeFunction(native_idx) => {
                 self.call_native(*native_idx, this, args)
             }
+            Value::Proxy(proxy_idx) => {
+                if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                    let handler = proxy.handler.clone();
+                    let target = proxy.target.clone();
+                    let arr_idx = self.heap.len();
+                    self.heap.push(HeapValue::Array(JsArray { elements: args.to_vec() }));
+                    self.call_proxy_trap(&handler, "apply", &[target, this.clone(), Value::Array(arr_idx)])
+                } else {
+                    Err(Error::TypeError(format!("{} is not a function", self.value_to_string(callee))))
+                }
+            }
             _ => Err(Error::TypeError(format!("{} is not a function", self.value_to_string(callee)))),
         }
     }
 
-    fn call_native(&mut self, idx: usize, this: &Value, args: &[Value]) -> Result<Value> {
+    pub(crate) fn call_native(&mut self, idx: usize, this: &Value, args: &[Value]) -> Result<Value> {
         if idx < NATIVE_TABLE.len() {
             NATIVE_TABLE[idx](self, this, args)
         } else {
@@ -1475,7 +1597,7 @@ impl Interpreter {
         }
     }
 
-    fn find_native_prototype(&self, native_idx: usize) -> Option<usize> {
+    pub(crate) fn find_native_prototype(&self, native_idx: usize) -> Option<usize> {
         let ctor_name = match native_idx {
             72 => "Error",
             73 => "TypeError",
@@ -1500,7 +1622,7 @@ impl Interpreter {
         self.get_property_with_this(object, key, object)
     }
 
-    fn get_property_with_this(&mut self, object: &Value, key: &Value, this: &Value) -> Result<Value> {
+    pub(crate) fn get_property_with_this(&mut self, object: &Value, key: &Value, this: &Value) -> Result<Value> {
         match object {
             Value::Null | Value::Undefined => {
                 return Err(Error::TypeError(format!(
@@ -1617,6 +1739,26 @@ impl Interpreter {
                     }
                 }
             }
+            Value::Proxy(proxy_idx) => {
+                if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                    let handler = proxy.handler.clone();
+                    let target = proxy.target.clone();
+                    let trap = self.get_property(&handler, &Value::String("get".to_string()));
+                    match &trap {
+                        Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) => {
+                            let trap_val = trap.unwrap();
+                            let trap_result = self.call_value(&trap_val, &handler, &[target, key.clone(), this.clone()]);
+                            match trap_result {
+                                Ok(v) => return Ok(v),
+                                Err(_) => {}
+                            }
+                        }
+                        _ => {
+                            return self.get_property_with_this(&target, key, this);
+                        }
+                    }
+                }
+            }
             _ => {}
         }
         Ok(Value::Undefined)
@@ -1716,7 +1858,7 @@ impl Interpreter {
         Value::NativeFunction(0)
     }
 
-    fn delete_property(&mut self, object: &Value, key: &Value) -> Value {
+    pub(crate) fn delete_property(&mut self, object: &Value, key: &Value) -> Value {
         match object {
             Value::Object(obj_idx) => {
                 if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
@@ -1783,7 +1925,7 @@ impl Interpreter {
         Ok(Value::Boolean(false))
     }
 
-    fn in_check(&self, key: &Value, object: &Value) -> Result<Value> {
+    pub(crate) fn in_check_mut(&mut self, key: &Value, object: &Value) -> Result<Value> {
         match object {
             Value::Object(obj_idx) => {
                 if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
@@ -1793,7 +1935,7 @@ impl Interpreter {
                         }
                         if let Some(proto_idx) = obj.prototype {
                             let proto_val = Value::Object(proto_idx);
-                            return self.in_check(key, &proto_val);
+                            return self.in_check_mut(key, &proto_val);
                         }
                     }
                 }
@@ -1823,8 +1965,33 @@ impl Interpreter {
                 }
                 Ok(Value::Boolean(false))
             }
+            Value::Proxy(proxy_idx) => {
+                if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
+                    let handler = proxy.handler.clone();
+                    let target = proxy.target.clone();
+                    let trap = self.get_property(&handler, &Value::String("has".to_string()));
+                    if let Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) = &trap {
+                        let trap_result = self.call_value(&trap?, &handler, &[target, key.clone()]);
+                        match trap_result {
+                            Ok(v) => return Ok(v),
+                            Err(_) => {}
+                        }
+                    } else {
+                        return self.in_check_mut(key, &target);
+                    }
+                }
+                Ok(Value::Boolean(false))
+            }
             _ => Ok(Value::Boolean(false)),
         }
+    }
+
+    pub(crate) fn call_proxy_trap(&mut self, handler: &Value, trap_name: &str, args: &[Value]) -> Result<Value> {
+        let trap = self.get_property(handler, &Value::String(trap_name.to_string()))?;
+        if matches!(trap, Value::Undefined) {
+            return Err(Error::RuntimeError(format!("Proxy has no '{}' trap", trap_name)));
+        }
+        self.call_value(&trap, handler, args)
     }
     
     fn add(&self, left: Value, right: Value) -> Result<Value> {
@@ -2064,6 +2231,7 @@ impl Interpreter {
             Value::Object(_) => "[Object]".to_string(),
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),
+            Value::Proxy(_) => "[Proxy]".to_string(),
         }
     }
 
@@ -2081,6 +2249,7 @@ impl Interpreter {
             Value::Object(_) => "[Object]".to_string(),
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),
+            Value::Proxy(_) => "[Proxy]".to_string(),
         }
     }
 

@@ -795,6 +795,102 @@ impl<'a> Parser<'a> {
         Ok(Expression::NewExpression { callee: Box::new(callee), args })
     }
 
+    fn token_to_key_string(&mut self) -> Result<String> {
+        match self.advance() {
+            Token::Identifier(n) => Ok(n),
+            Token::String(s) => Ok(s),
+            Token::Number(n) => Ok(n.to_string()),
+            Token::Catch => Ok("catch".to_string()),
+            Token::Finally => Ok("finally".to_string()),
+            Token::Throw => Ok("throw".to_string()),
+            Token::Get => Ok("get".to_string()),
+            Token::Set => Ok("set".to_string()),
+            Token::Delete => Ok("delete".to_string()),
+            Token::New => Ok("new".to_string()),
+            Token::This => Ok("this".to_string()),
+            Token::Return => Ok("return".to_string()),
+            Token::If => Ok("if".to_string()),
+            Token::Else => Ok("else".to_string()),
+            Token::While => Ok("while".to_string()),
+            Token::For => Ok("for".to_string()),
+            Token::Do => Ok("do".to_string()),
+            Token::Function => Ok("function".to_string()),
+            Token::Class => Ok("class".to_string()),
+            Token::Switch => Ok("switch".to_string()),
+            Token::Case => Ok("case".to_string()),
+            Token::Break => Ok("break".to_string()),
+            Token::Continue => Ok("continue".to_string()),
+            Token::Typeof => Ok("typeof".to_string()),
+            Token::Instanceof => Ok("instanceof".to_string()),
+            Token::In => Ok("in".to_string()),
+            Token::Void => Ok("void".to_string()),
+            Token::Const => Ok("const".to_string()),
+            Token::Let => Ok("let".to_string()),
+            Token::Var => Ok("var".to_string()),
+            Token::Super => Ok("super".to_string()),
+            Token::Extends => Ok("extends".to_string()),
+            Token::Static => Ok("static".to_string()),
+            Token::Import => Ok("import".to_string()),
+            Token::Export => Ok("export".to_string()),
+            Token::Default => Ok("default".to_string()),
+            Token::From => Ok("from".to_string()),
+            Token::As => Ok("as".to_string()),
+            Token::Async => Ok("async".to_string()),
+            Token::Await => Ok("await".to_string()),
+            Token::Try => Ok("try".to_string()),
+            Token::Constructor => Ok("constructor".to_string()),
+            Token::Of => Ok("of".to_string()),
+            t => Err(Error::ParseError(format!("Expected property key, got {:?}", t))),
+        }
+    }
+
+    fn token_to_property_name(&mut self) -> Result<Expression> {
+        match self.advance() {
+            Token::Identifier(n) => Ok(Expression::Identifier(n)),
+            Token::Catch => Ok(Expression::Identifier("catch".to_string())),
+            Token::Finally => Ok(Expression::Identifier("finally".to_string())),
+            Token::Throw => Ok(Expression::Identifier("throw".to_string())),
+            Token::Get => Ok(Expression::Identifier("get".to_string())),
+            Token::Set => Ok(Expression::Identifier("set".to_string())),
+            Token::Delete => Ok(Expression::Identifier("delete".to_string())),
+            Token::New => Ok(Expression::Identifier("new".to_string())),
+            Token::This => Ok(Expression::Identifier("this".to_string())),
+            Token::Return => Ok(Expression::Identifier("return".to_string())),
+            Token::If => Ok(Expression::Identifier("if".to_string())),
+            Token::Else => Ok(Expression::Identifier("else".to_string())),
+            Token::While => Ok(Expression::Identifier("while".to_string())),
+            Token::For => Ok(Expression::Identifier("for".to_string())),
+            Token::Do => Ok(Expression::Identifier("do".to_string())),
+            Token::Function => Ok(Expression::Identifier("function".to_string())),
+            Token::Class => Ok(Expression::Identifier("class".to_string())),
+            Token::Switch => Ok(Expression::Identifier("switch".to_string())),
+            Token::Case => Ok(Expression::Identifier("case".to_string())),
+            Token::Break => Ok(Expression::Identifier("break".to_string())),
+            Token::Continue => Ok(Expression::Identifier("continue".to_string())),
+            Token::Typeof => Ok(Expression::Identifier("typeof".to_string())),
+            Token::Instanceof => Ok(Expression::Identifier("instanceof".to_string())),
+            Token::In => Ok(Expression::Identifier("in".to_string())),
+            Token::Void => Ok(Expression::Identifier("void".to_string())),
+            Token::Const => Ok(Expression::Identifier("const".to_string())),
+            Token::Let => Ok(Expression::Identifier("let".to_string())),
+            Token::Var => Ok(Expression::Identifier("var".to_string())),
+            Token::Super => Ok(Expression::Identifier("super".to_string())),
+            Token::Extends => Ok(Expression::Identifier("extends".to_string())),
+            Token::Static => Ok(Expression::Identifier("static".to_string())),
+            Token::Import => Ok(Expression::Identifier("import".to_string())),
+            Token::Export => Ok(Expression::Identifier("export".to_string())),
+            Token::Default => Ok(Expression::Identifier("default".to_string())),
+            Token::From => Ok(Expression::Identifier("from".to_string())),
+            Token::As => Ok(Expression::Identifier("as".to_string())),
+            Token::Async => Ok(Expression::Identifier("async".to_string())),
+            Token::Await => Ok(Expression::Identifier("await".to_string())),
+            Token::Try => Ok(Expression::Identifier("try".to_string())),
+            Token::Constructor => Ok(Expression::Identifier("constructor".to_string())),
+            Token::Of => Ok(Expression::Identifier("of".to_string())),
+            t => Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
+        }
+    }
+
     fn parse_new_target(&mut self) -> Result<Expression> {
         match self.peek().clone() {
             Token::Identifier(name) => {
@@ -802,14 +898,8 @@ impl<'a> Parser<'a> {
                 let mut expr = Expression::Identifier(name);
                 while self.peek() == &Token::Dot {
                     self.advance();
-                    let prop = match self.advance() {
-                        Token::Identifier(n) => Expression::Identifier(n),
-                        Token::Catch => Expression::Identifier("catch".to_string()),
-                        Token::Finally => Expression::Identifier("finally".to_string()),
-                        Token::Throw => Expression::Identifier("throw".to_string()),
-                        t => return Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
-                    };
-                    expr = Expression::Member { object: Box::new(expr), property: Box::new(prop), computed: false };
+                    let prop_name = self.token_to_property_name()?;
+                    expr = Expression::Member { object: Box::new(expr), property: Box::new(prop_name), computed: false };
                 }
                 Ok(expr)
             }
@@ -827,13 +917,7 @@ impl<'a> Parser<'a> {
                 expr = Expression::Call { callee: Box::new(expr), args };
             } else if self.peek() == &Token::Dot {
                 self.advance();
-                let property = match self.advance() {
-                    Token::Identifier(name) => Expression::Identifier(name),
-                    Token::Catch => Expression::Identifier("catch".to_string()),
-                    Token::Finally => Expression::Identifier("finally".to_string()),
-                    Token::Throw => Expression::Identifier("throw".to_string()),
-                    token => return Err(Error::ParseError(format!("Expected property name, got {:?}", token))),
-                };
+                let property = self.token_to_property_name()?;
                 expr = Expression::Member { object: Box::new(expr), property: Box::new(property), computed: false };
             } else if self.peek() == &Token::LeftBracket {
                 self.advance();
@@ -1050,11 +1134,7 @@ impl<'a> Parser<'a> {
                 let mut properties = Vec::new();
                 if self.peek() != &Token::RightBrace {
                     loop {
-                        let key = match self.advance() {
-                            Token::Identifier(n) => n,
-                            Token::String(s) => s,
-                            t => return Err(Error::ParseError(format!("Expected property key, got {:?}", t))),
-                        };
+                        let key = self.token_to_key_string()?;
                         self.expect(&Token::Colon)?;
                         let value = self.parse_expression()?;
                         properties.push((key, value));

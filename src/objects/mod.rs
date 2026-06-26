@@ -1,4 +1,5 @@
 pub mod js_promise;
+pub mod js_proxy;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -15,6 +16,7 @@ pub enum Value {
     Object(usize),
     Array(usize),
     Promise(usize),
+    Proxy(usize),
 }
 
 impl PartialEq for Value {
@@ -32,6 +34,7 @@ impl PartialEq for Value {
             (Value::Object(a), Value::Object(b)) => a == b,
             (Value::Array(a), Value::Array(b)) => a == b,
             (Value::Promise(a), Value::Promise(b)) => a == b,
+            (Value::Proxy(a), Value::Proxy(b)) => a == b,
             _ => false,
         }
     }
@@ -52,6 +55,7 @@ impl fmt::Display for Value {
             Value::Object(_) => write!(f, "[Object]"),
             Value::Array(_) => write!(f, "[Array]"),
             Value::Promise(_) => write!(f, "[Promise]"),
+            Value::Proxy(_) => write!(f, "[Proxy]"),
         }
     }
 }
