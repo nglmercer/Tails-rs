@@ -123,7 +123,7 @@ impl TypeChecker {
             BindingPattern::Array(elements) => {
                 for element in elements {
                     match element {
-                        crate::compiler::parser::ArrayBindingElement::Pattern(pat) => {
+                        crate::compiler::parser::ArrayBindingElement::Pattern(pat, _) => {
                             self.define_pattern_variables(pat, type_);
                         }
                         crate::compiler::parser::ArrayBindingElement::Rest(pat) => {

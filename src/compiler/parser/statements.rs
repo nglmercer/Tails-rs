@@ -75,7 +75,13 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let pattern = self.parse_binding_pattern()?;
-                elements.push(ArrayBindingElement::Pattern(pattern));
+                let default = if self.peek() == &Token::Assign {
+                    self.advance();
+                    Some(self.parse_expression()?)
+                } else {
+                    None
+                };
+                elements.push(ArrayBindingElement::Pattern(pattern, default));
                 if self.peek() == &Token::Comma {
                     self.advance();
                 } else {
@@ -102,6 +108,7 @@ impl<'a> Parser<'a> {
                         },
                         value: rest,
                         shorthand: true,
+                        default_value: None,
                     });
                     break;
                 }
@@ -117,16 +124,33 @@ impl<'a> Parser<'a> {
                 if self.peek() == &Token::Colon {
                     self.advance();
                     let value = self.parse_binding_pattern()?;
+                    let default = if self.peek() == &Token::Assign {
+                        self.advance();
+                        Some(self.parse_expression()?)
+                    } else {
+                        None
+                    };
                     elements.push(ObjectBindingElement {
                         key: key.clone(),
                         value,
                         shorthand: false,
+                        default_value: default,
+                    });
+                } else if self.peek() == &Token::Assign {
+                    self.advance();
+                    let default_value = self.parse_expression()?;
+                    elements.push(ObjectBindingElement {
+                        key: key.clone(),
+                        value: BindingPattern::Identifier(key),
+                        shorthand: true,
+                        default_value: Some(default_value),
                     });
                 } else {
                     elements.push(ObjectBindingElement {
                         key: key.clone(),
                         value: BindingPattern::Identifier(key),
                         shorthand: true,
+                        default_value: None,
                     });
                 }
                 if self.peek() == &Token::Comma {

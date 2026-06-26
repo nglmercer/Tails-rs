@@ -232,7 +232,7 @@ pub enum BindingPattern {
 
 #[derive(Debug, Clone)]
 pub enum ArrayBindingElement {
-    Pattern(BindingPattern),
+    Pattern(BindingPattern, Option<Expression>),
     Rest(Box<BindingPattern>),
     Skip,
 }
@@ -242,6 +242,7 @@ pub struct ObjectBindingElement {
     pub key: String,
     pub value: BindingPattern,
     pub shorthand: bool,
+    pub default_value: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]

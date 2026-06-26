@@ -821,11 +821,18 @@ impl CodeGenerator {
             BindingPattern::Array(elements) => {
                 for (i, element) in elements.iter().enumerate() {
                     match element {
-                        ArrayBindingElement::Pattern(pat) => {
+                        ArrayBindingElement::Pattern(pat, default) => {
                             self.instructions.push(Instruction::Dup);
                             let idx = self.add_constant(Value::Integer(i as i64));
                             self.instructions.push(Instruction::LoadConst(idx));
                             self.instructions.push(Instruction::GetProperty);
+                            if let Some(default_expr) = default {
+                                let skip_default = self.instructions.len();
+                                self.instructions.push(Instruction::JumpIfNotUndefined(0));
+                                self.instructions.push(Instruction::Pop);
+                                self.generate_expression(default_expr)?;
+                                self.patch_jump(skip_default, self.instructions.len());
+                            }
                             self.generate_destructuring_pattern(pat)?;
                         }
                         ArrayBindingElement::Rest(pat) => {
@@ -839,10 +846,11 @@ impl CodeGenerator {
                             self.generate_destructuring_pattern(pat)?;
                         }
                         ArrayBindingElement::Skip => {
-                            // Skip element, do nothing
+                            // Skip element
                         }
                     }
                 }
+                self.instructions.push(Instruction::Pop);
             }
             BindingPattern::Object(elements) => {
                 for element in elements {
@@ -850,8 +858,16 @@ impl CodeGenerator {
                     let key_idx = self.add_constant(Value::String(element.key.clone()));
                     self.instructions.push(Instruction::LoadConst(key_idx));
                     self.instructions.push(Instruction::GetProperty);
+                    if let Some(default_expr) = &element.default_value {
+                        let skip_default = self.instructions.len();
+                        self.instructions.push(Instruction::JumpIfNotUndefined(0));
+                        self.instructions.push(Instruction::Pop);
+                        self.generate_expression(default_expr)?;
+                        self.patch_jump(skip_default, self.instructions.len());
+                    }
                     self.generate_destructuring_pattern(&element.value)?;
                 }
+                self.instructions.push(Instruction::Pop);
             }
         }
         Ok(())
@@ -909,6 +925,8 @@ impl CodeGenerator {
         match &mut self.instructions[offset] {
             Instruction::JumpIfNot(addr) => *addr = target_u32,
             Instruction::JumpIf(addr) => *addr = target_u32,
+            Instruction::JumpIfUndefined(addr) => *addr = target_u32,
+            Instruction::JumpIfNotUndefined(addr) => *addr = target_u32,
             Instruction::Jump(addr) => *addr = target_u32,
             _ => {}
         }

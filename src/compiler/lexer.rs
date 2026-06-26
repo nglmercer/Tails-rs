@@ -426,7 +426,18 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
             '.' => {
                 chars.next();
-                tokens.push(Token::Dot);
+                if let Some(&(_, '.')) = chars.peek() {
+                    chars.next();
+                    if let Some(&(_, '.')) = chars.peek() {
+                        chars.next();
+                        tokens.push(Token::Ellipsis);
+                    } else {
+                        tokens.push(Token::Dot);
+                        tokens.push(Token::Dot);
+                    }
+                } else {
+                    tokens.push(Token::Dot);
+                }
             }
             '?' => {
                 chars.next();

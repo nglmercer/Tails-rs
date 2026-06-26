@@ -452,10 +452,74 @@ impl Interpreter {
                 for _ in 0..*size {
                     elements.push(self.stack.pop().unwrap_or(Value::Undefined));
                 }
+                elements.reverse();
                 let heap_idx = self
                     .gc
                     .allocate(&mut self.heap, HeapValue::Array(JsArray { elements }));
                 self.stack.push(Value::Array(heap_idx));
+            }
+            Instruction::SpreadArray => {
+                let source = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let target = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if let Value::Array(target_idx) = target {
+                    if let Value::Array(source_idx) = source {
+                        if let HeapValue::Array(source_arr) = &self.heap[source_idx] {
+                            let elements: Vec<Value> = source_arr.elements.clone();
+                            if let HeapValue::Array(target_arr) = &mut self.heap[target_idx] {
+                                for elem in elements {
+                                    target_arr.elements.push(elem);
+                                }
+                            }
+                        }
+                    }
+                }
+                self.stack.push(target);
+            }
+            Instruction::SpreadObject => {
+                let source = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let target = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if let Value::Object(target_idx) = target {
+                    if let Value::Object(source_idx) = source {
+                        if let HeapValue::Object(source_obj) = &self.heap[source_idx] {
+                            let props: Vec<(String, Value)> =
+                                source_obj.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                            if let HeapValue::Object(target_obj) = &mut self.heap[target_idx] {
+                                for (k, v) in props {
+                                    target_obj.properties.insert(k, v);
+                                }
+                            }
+                        }
+                    }
+                }
+                self.stack.push(target);
+            }
+            Instruction::ArrayPush => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let array = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if let Value::Array(arr_idx) = array {
+                    if let HeapValue::Array(arr) = &mut self.heap[arr_idx] {
+                        arr.elements.push(value.clone());
+                    }
+                }
+                self.stack.push(array);
             }
             Instruction::Delete => {
                 let key = self

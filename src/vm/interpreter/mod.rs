@@ -126,6 +126,26 @@ impl Interpreter {
                         continue;
                     }
                 }
+                Instruction::JumpIfUndefined(target) => {
+                    let value = self
+                        .stack
+                        .last()
+                        .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                    if matches!(value, Value::Undefined) {
+                        pc = *target as usize;
+                        continue;
+                    }
+                }
+                Instruction::JumpIfNotUndefined(target) => {
+                    let value = self
+                        .stack
+                        .last()
+                        .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                    if !matches!(value, Value::Undefined) {
+                        pc = *target as usize;
+                        continue;
+                    }
+                }
                 Instruction::Return => {
                     let return_value = self.stack.pop().unwrap_or(Value::Undefined);
                     if let Some(frame) = self.call_stack.pop() {

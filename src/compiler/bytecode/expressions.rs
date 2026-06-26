@@ -585,10 +585,7 @@ impl CodeGenerator {
                             Expression::SpreadElement { argument } => {
                                 self.instructions.push(Instruction::Dup);
                                 self.generate_expression(argument)?;
-                                let key = self.add_constant(Value::String("push".to_string()));
-                                self.instructions.push(Instruction::LoadConst(key));
-                                self.instructions.push(Instruction::CallMethod(1));
-                                self.instructions.push(Instruction::Pop);
+                                self.instructions.push(Instruction::SpreadArray);
                             }
                             _ => {
                                 self.instructions.push(Instruction::Dup);
@@ -615,13 +612,7 @@ impl CodeGenerator {
                             if let Expression::SpreadElement { argument } = &prop.value {
                                 self.instructions.push(Instruction::Dup);
                                 self.generate_expression(argument)?;
-                                let key = self.add_constant(Value::String("Object".to_string()));
-                                self.instructions.push(Instruction::LoadConst(key));
-                                self.instructions.push(Instruction::LoadGlobal("Object".to_string()));
-                                let assign_key = self.add_constant(Value::String("assign".to_string()));
-                                self.instructions.push(Instruction::LoadConst(assign_key));
-                                self.instructions.push(Instruction::CallMethod(2));
-                                self.instructions.push(Instruction::Pop);
+                                self.instructions.push(Instruction::SpreadObject);
                             }
                         } else {
                             let key_idx = self.add_constant(Value::String(prop.key.clone()));
