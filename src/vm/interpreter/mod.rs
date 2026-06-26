@@ -1,3 +1,13 @@
+mod heap_types;
+mod call_frame;
+mod builtins;
+mod property_access;
+mod value_ops;
+mod promise_runtime;
+
+pub use heap_types::{JsObject, JsArray, JsFunction, HeapValue, JsProxyData};
+pub(crate) use call_frame::{CallFrame, ExceptionHandler};
+
 use std::collections::HashMap;
 use crate::compiler::{CompiledModule, Instruction};
 use crate::errors::{Error, Result};
@@ -5,77 +15,6 @@ use crate::objects::Value;
 use crate::runtime_env::native_fns::NATIVE_TABLE;
 use crate::runtime_env::async_runtime::AsyncRuntime;
 use crate::objects::js_promise::{JsPromise, PromiseState};
-
-#[derive(Debug, Clone)]
-pub struct JsObject {
-    pub properties: HashMap<String, Value>,
-    pub prototype: Option<usize>,
-}
-
-impl JsObject {
-    pub fn new() -> Self {
-        Self {
-            properties: HashMap::new(),
-            prototype: None,
-        }
-    }
-
-    pub fn with_prototype(prototype: Option<usize>) -> Self {
-        Self {
-            properties: HashMap::new(),
-            prototype,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct JsArray {
-    pub elements: Vec<Value>,
-}
-
-#[derive(Debug, Clone)]
-pub struct JsFunction {
-    pub name: Option<String>,
-    pub params: Vec<String>,
-    pub bytecode_index: usize,
-    pub closure: Vec<Value>,
-    pub prototype: Option<usize>,
-    pub super_class: Option<Value>,
-    pub properties: HashMap<String, Value>,
-}
-
-#[derive(Debug, Clone)]
-pub enum HeapValue {
-    String(String),
-    Object(JsObject),
-    Array(JsArray),
-    Function(JsFunction),
-    Promise(JsPromise),
-    Proxy(JsProxyData),
-}
-
-#[derive(Debug, Clone)]
-pub struct JsProxyData {
-    pub target: Value,
-    pub handler: Value,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct CallFrame {
-    pub(crate) return_address: usize,
-    pub(crate) base_pointer: usize,
-    pub(crate) closure_var_count: usize,
-    pub(crate) func_heap_idx: Option<usize>,
-    pub(crate) this_value: Option<Value>,
-    pub(crate) is_construct: bool,
-}
-
-#[derive(Debug, Clone)]
-struct ExceptionHandler {
-    catch_pc: u32,
-    finally_pc: u32,
-    stack_depth: usize,
-}
 
 pub struct Interpreter {
     pub(crate) globals: HashMap<String, Value>,
@@ -116,157 +55,6 @@ impl Interpreter {
         Ok(interp)
     }
 
-    fn init_builtins(&mut self) {
-        // Global functions
-        self.globals.insert("parseInt".into(), Value::NativeFunction(10));
-        self.globals.insert("parseFloat".into(), Value::NativeFunction(11));
-        self.globals.insert("isNaN".into(), Value::NativeFunction(12));
-        self.globals.insert("isFinite".into(), Value::NativeFunction(13));
-
-        // Timer stubs
-        self.globals.insert("setTimeout".into(), Value::NativeFunction(14));
-        self.globals.insert("setInterval".into(), Value::NativeFunction(15));
-        self.globals.insert("clearTimeout".into(), Value::NativeFunction(16));
-        self.globals.insert("clearInterval".into(), Value::NativeFunction(17));
-
-        // console object
-        let mut console_props = HashMap::new();
-        console_props.insert("log".into(), Value::NativeFunction(0));
-        console_props.insert("warn".into(), Value::NativeFunction(1));
-        console_props.insert("error".into(), Value::NativeFunction(2));
-        console_props.insert("info".into(), Value::NativeFunction(3));
-        let console_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: console_props, prototype: None }));
-        self.globals.insert("console".into(), Value::Object(console_obj_idx));
-
-        // Object
-        let mut object_props = HashMap::new();
-        object_props.insert("keys".into(), Value::NativeFunction(4));
-        object_props.insert("values".into(), Value::NativeFunction(5));
-        object_props.insert("entries".into(), Value::NativeFunction(6));
-        object_props.insert("assign".into(), Value::NativeFunction(7));
-        object_props.insert("defineProperty".into(), Value::NativeFunction(99));
-        object_props.insert("getOwnPropertyDescriptor".into(), Value::NativeFunction(100));
-        object_props.insert("freeze".into(), Value::NativeFunction(101));
-        let object_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: object_props, prototype: None }));
-        self.globals.insert("Object".into(), Value::Object(object_obj_idx));
-
-        // Proxy
-        self.globals.insert("Proxy".into(), Value::NativeFunction(85));
-
-        // Reflect
-        let mut reflect_props = HashMap::new();
-        reflect_props.insert("get".into(), Value::NativeFunction(86));
-        reflect_props.insert("set".into(), Value::NativeFunction(87));
-        reflect_props.insert("has".into(), Value::NativeFunction(88));
-        reflect_props.insert("deleteProperty".into(), Value::NativeFunction(89));
-        reflect_props.insert("apply".into(), Value::NativeFunction(90));
-        reflect_props.insert("construct".into(), Value::NativeFunction(91));
-        reflect_props.insert("ownKeys".into(), Value::NativeFunction(92));
-        reflect_props.insert("getOwnPropertyDescriptor".into(), Value::NativeFunction(93));
-        reflect_props.insert("defineProperty".into(), Value::NativeFunction(94));
-        reflect_props.insert("getPrototypeOf".into(), Value::NativeFunction(95));
-        reflect_props.insert("setPrototypeOf".into(), Value::NativeFunction(96));
-        reflect_props.insert("isExtensible".into(), Value::NativeFunction(97));
-        reflect_props.insert("preventExtensions".into(), Value::NativeFunction(98));
-        let reflect_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: reflect_props, prototype: None }));
-        self.globals.insert("Reflect".into(), Value::Object(reflect_obj_idx));
-
-        // JSON
-        let mut json_props = HashMap::new();
-        json_props.insert("parse".into(), Value::NativeFunction(8));
-        json_props.insert("stringify".into(), Value::NativeFunction(9));
-        let json_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: json_props, prototype: None }));
-        self.globals.insert("JSON".into(), Value::Object(json_obj_idx));
-
-        // Math
-        let mut math_props = HashMap::new();
-        math_props.insert("PI".into(), Value::Float(std::f64::consts::PI));
-        math_props.insert("E".into(), Value::Float(std::f64::consts::E));
-        math_props.insert("abs".into(), Value::NativeFunction(18));
-        math_props.insert("floor".into(), Value::NativeFunction(19));
-        math_props.insert("ceil".into(), Value::NativeFunction(20));
-        math_props.insert("round".into(), Value::NativeFunction(21));
-        math_props.insert("min".into(), Value::NativeFunction(22));
-        math_props.insert("max".into(), Value::NativeFunction(23));
-        math_props.insert("random".into(), Value::NativeFunction(24));
-        math_props.insert("pow".into(), Value::NativeFunction(25));
-        math_props.insert("sqrt".into(), Value::NativeFunction(26));
-        math_props.insert("log".into(), Value::NativeFunction(27));
-        math_props.insert("sin".into(), Value::NativeFunction(28));
-        math_props.insert("cos".into(), Value::NativeFunction(29));
-        math_props.insert("tan".into(), Value::NativeFunction(30));
-        let math_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: math_props, prototype: None }));
-        self.globals.insert("Math".into(), Value::Object(math_obj_idx));
-
-        // Number constructor
-        let mut number_props = HashMap::new();
-        number_props.insert("isFinite".into(), Value::NativeFunction(13));
-        number_props.insert("isNaN".into(), Value::NativeFunction(12));
-        number_props.insert("parseFloat".into(), Value::NativeFunction(11));
-        number_props.insert("parseInt".into(), Value::NativeFunction(10));
-        let number_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: number_props, prototype: None }));
-        self.globals.insert("Number".into(), Value::Object(number_obj_idx));
-
-        // Promise constructor and prototype
-        let mut promise_proto_props = HashMap::new();
-        promise_proto_props.insert("then".into(), Value::NativeFunction(78));
-        promise_proto_props.insert("catch".into(), Value::NativeFunction(79));
-        promise_proto_props.insert("finally".into(), Value::NativeFunction(80));
-        let promise_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: promise_proto_props, prototype: None }));
-
-        let mut promise_ctor_props = HashMap::new();
-        promise_ctor_props.insert("prototype".into(), Value::Object(promise_proto_idx));
-        promise_ctor_props.insert("resolve".into(), Value::NativeFunction(81));
-        promise_ctor_props.insert("reject".into(), Value::NativeFunction(82));
-        promise_ctor_props.insert("all".into(), Value::NativeFunction(83));
-        promise_ctor_props.insert("race".into(), Value::NativeFunction(84));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: promise_ctor_props, prototype: None }));
-        self.globals.insert("Promise".into(), Value::NativeFunction(77));
-
-        // Error constructor
-        let error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-        let mut error_ctor_props = HashMap::new();
-        error_ctor_props.insert("prototype".into(), Value::Object(error_proto_idx));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: error_ctor_props, prototype: None }));
-        self.globals.insert("Error".into(), Value::NativeFunction(72));
-
-        // TypeError constructor
-        let mut type_error_proto_props = HashMap::new();
-        type_error_proto_props.insert("name".into(), Value::String("TypeError".into()));
-        let type_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: type_error_proto_props, prototype: Some(error_proto_idx) }));
-        let mut type_error_ctor_props = HashMap::new();
-        type_error_ctor_props.insert("prototype".into(), Value::Object(type_error_proto_idx));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: type_error_ctor_props, prototype: None }));
-        self.globals.insert("TypeError".into(), Value::NativeFunction(73));
-
-        // ReferenceError constructor
-        let mut ref_error_proto_props = HashMap::new();
-        ref_error_proto_props.insert("name".into(), Value::String("ReferenceError".into()));
-        let ref_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: ref_error_proto_props, prototype: Some(error_proto_idx) }));
-        let mut ref_error_ctor_props = HashMap::new();
-        ref_error_ctor_props.insert("prototype".into(), Value::Object(ref_error_proto_idx));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: ref_error_ctor_props, prototype: None }));
-        self.globals.insert("ReferenceError".into(), Value::NativeFunction(74));
-
-        // SyntaxError constructor
-        let mut syntax_error_proto_props = HashMap::new();
-        syntax_error_proto_props.insert("name".into(), Value::String("SyntaxError".into()));
-        let syntax_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: syntax_error_proto_props, prototype: Some(error_proto_idx) }));
-        let mut syntax_error_ctor_props = HashMap::new();
-        syntax_error_ctor_props.insert("prototype".into(), Value::Object(syntax_error_proto_idx));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: syntax_error_ctor_props, prototype: None }));
-        self.globals.insert("SyntaxError".into(), Value::NativeFunction(75));
-
-        // RangeError constructor
-        let mut range_error_proto_props = HashMap::new();
-        range_error_proto_props.insert("name".into(), Value::String("RangeError".into()));
-        let range_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: range_error_proto_props, prototype: Some(error_proto_idx) }));
-        let mut range_error_ctor_props = HashMap::new();
-        range_error_ctor_props.insert("prototype".into(), Value::Object(range_error_proto_idx));
-        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: range_error_ctor_props, prototype: None }));
-        self.globals.insert("RangeError".into(), Value::NativeFunction(76));
-    }
-
     pub fn execute(&mut self, module: &CompiledModule) -> Result<Value> {
         self.current_module = Some(module.clone());
         let result = self.execute_from(module, 0);
@@ -277,7 +65,7 @@ impl Interpreter {
         }
         result
     }
-    
+
     pub(crate) fn collect_garbage(&mut self) {
         let globals_snapshot = self.globals.clone();
         let stack_snapshot = self.stack.clone();
@@ -298,7 +86,7 @@ impl Interpreter {
             }
 
             let instruction = module.instructions[pc].clone();
-            
+
             match &instruction {
                 Instruction::LoadConst(idx) => {
                     let value = module.constants[*idx as usize].clone();
@@ -335,9 +123,6 @@ impl Interpreter {
                     let value = self.stack.get(idx)
                         .cloned()
                         .unwrap_or(Value::Undefined);
-                    if self.call_stack.len() >= 1 {
-                        eprintln!("  LoadLocal(slot={} base={} idx={} stack_len={}) → {:?}", slot, base, idx, self.stack.len(), value);
-                    }
                     self.stack.push(value);
                 }
                 Instruction::StoreLocal(slot) => {
@@ -519,14 +304,6 @@ impl Interpreter {
                             .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?);
                     }
                     args.reverse();
-
-                    if let Value::Function(func_idx) = &callee {
-                        if let HeapValue::Function(f) = &self.heap[*func_idx] {
-                            if f.bytecode_index == usize::MAX {
-                                eprintln!("Call: resolve/reject func idx={} name={:?} closure_len={}", func_idx, f.name, f.closure.len());
-                            }
-                        }
-                    }
 
                     match callee {
                         Value::Function(func_idx) => {
@@ -890,7 +667,7 @@ impl Interpreter {
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
                     let object = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    
+
                     let result = self.get_property(&object, &key)?;
                     self.stack.push(result);
                 }
@@ -912,8 +689,8 @@ impl Interpreter {
                         Value::Integer(_) | Value::Float(_) => "number",
                         Value::String(_) => "string",
                         Value::BigInt(_) => "bigint",
-                    Value::Function(_) | Value::NativeFunction(_) => "function",
-                    Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) => "object",
+                        Value::Function(_) | Value::NativeFunction(_) => "function",
+                        Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) => "object",
                     };
                     self.stack.push(Value::String(type_str.to_string()));
                 }
@@ -1212,7 +989,7 @@ impl Interpreter {
                                 let proto_idx = if let Value::Object(pi) = proto_val { Some(pi) } else { None };
                                 let new_obj_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::with_prototype(proto_idx)));
 
-                                let constructed = Value::Object(new_obj_heap_idx);
+                                let _constructed = Value::Object(new_obj_heap_idx);
 
                                 let return_address = pc + 1;
                                 let base_pointer = self.stack.len();
@@ -1250,176 +1027,149 @@ impl Interpreter {
                 Instruction::SuperGet => {
                     let key = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    let _this = self.stack.pop()
+                    let this = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
 
-                    let mut super_val = Value::Undefined;
-                    for frame in self.call_stack.iter().rev() {
-                        if let Some(func_idx) = frame.func_heap_idx {
-                            if let HeapValue::Function(f) = &self.heap[func_idx] {
-                                if let Some(ref sc) = f.super_class {
-                                    super_val = sc.clone();
-                                    break;
+                    let super_class = {
+                        let mut found = Value::Undefined;
+                        for frame in self.call_stack.iter().rev() {
+                            if let Some(func_idx) = frame.func_heap_idx {
+                                if let HeapValue::Function(f) = &self.heap[func_idx] {
+                                    if let Some(ref sc) = f.super_class {
+                                        found = sc.clone();
+                                        break;
+                                    }
                                 }
                             }
                         }
-                    }
+                        found
+                    };
 
-                    match &super_val {
-                        Value::Function(func_idx) => {
-                            if let HeapValue::Function(f) = &self.heap[*func_idx] {
-                                if let Some(proto_idx) = f.prototype {
-                                    let proto_val = Value::Object(proto_idx);
-                                    let result = self.get_property(&proto_val, &key)?;
-                                    self.stack.push(result);
-                                    continue;
-                                }
+                    if let Value::Function(func_idx) = &super_class {
+                        if let HeapValue::Function(f) = &self.heap[*func_idx] {
+                            if let Some(proto_idx) = f.prototype {
+                                let proto_val = Value::Object(proto_idx);
+                                let result = self.get_property(&proto_val, &key)?;
+                                self.stack.push(result);
+                                continue;
                             }
                         }
-                        _ => {}
                     }
                     self.stack.push(Value::Undefined);
                 }
                 Instruction::ImportModule(source) => {
-                    match self.resolve_module_path(source) {
-                        Ok(module_path) => {
-                            if self.module_registry.contains_key(&module_path) {
-                                let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                                let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: exports, prototype: None }));
-                                self.stack.push(Value::Object(ns_heap_idx));
-                            } else {
-                                let source_code = match std::fs::read_to_string(&module_path) {
-                                    Ok(s) => s,
-                                    Err(_) => {
-                                        let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-                                        self.stack.push(Value::Object(ns_heap_idx));
-                                        continue;
-                                    }
-                                };
-                                let compiler = crate::compiler::Compiler::new(false);
-                                let compiled = compiler.compile(&source_code)?;
-                                let prev_path = self.current_module_path.take();
-                                let prev_exports = std::mem::take(&mut self.module_exports);
-                                self.current_module_path = Some(module_path.clone());
-                                self.module_registry.insert(module_path.clone(), HashMap::new());
-                                let result = self.execute_module(&compiled);
-                                let exports = std::mem::take(&mut self.module_exports);
-                                *self.module_registry.entry(module_path.clone()).or_default() = exports;
-                                self.module_exports = prev_exports;
-                                self.current_module_path = prev_path;
-                                result?;
-                                let final_exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                                let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: final_exports, prototype: None }));
-                                self.stack.push(Value::Object(ns_heap_idx));
+                    let module_path = self.resolve_module_path(source)?;
+                    if let Some(exports) = self.module_registry.get(&module_path).cloned() {
+                        let heap_idx = self.heap.len();
+                        let mut props = HashMap::new();
+                        for (k, v) in &exports {
+                            props.insert(k.clone(), v.clone());
+                        }
+                        self.heap.push(HeapValue::Object(JsObject { properties: props, prototype: None }));
+                        self.stack.push(Value::Object(heap_idx));
+                    } else {
+                        let source_code = std::fs::read_to_string(&module_path)
+                            .map_err(|e| Error::RuntimeError(format!("Cannot read module '{}': {}", source, e)))?;
+                        let compiler = crate::compiler::Compiler::new(false);
+                        let compiled = compiler.compile(&source_code)?;
+                        let prev_path = self.current_module_path.take();
+                        self.current_module_path = Some(module_path.clone());
+                        self.module_registry.insert(module_path.clone(), HashMap::new());
+                        let _result = self.execute_module(&compiled)?;
+                        let exports = std::mem::take(&mut self.module_exports);
+                        *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                        self.current_module_path = prev_path;
+                        let heap_idx = self.heap.len();
+                        let mut props = HashMap::new();
+                        if let Some(registry_exports) = self.module_registry.get(&module_path) {
+                            for (k, v) in registry_exports {
+                                props.insert(k.clone(), v.clone());
                             }
                         }
-                        Err(_) => {
-                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-                            self.stack.push(Value::Object(ns_heap_idx));
-                        }
+                        self.heap.push(HeapValue::Object(JsObject { properties: props, prototype: None }));
+                        self.stack.push(Value::Object(heap_idx));
                     }
                 }
                 Instruction::ImportNamed(source, imported_name, local_name) => {
-                    match self.resolve_module_path(source) {
-                        Ok(module_path) => {
-                            if !self.module_registry.contains_key(&module_path) {
-                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
-                                    let compiler = crate::compiler::Compiler::new(false);
-                                    let compiled = compiler.compile(&source_code)?;
-                                    let prev_path = self.current_module_path.take();
-                                    let prev_exports = std::mem::take(&mut self.module_exports);
-                                    self.current_module_path = Some(module_path.clone());
-                                    self.module_registry.insert(module_path.clone(), HashMap::new());
-                                    let result = self.execute_module(&compiled);
-                                    let exports = std::mem::take(&mut self.module_exports);
-                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
-                                    self.module_exports = prev_exports;
-                                    self.current_module_path = prev_path;
-                                    result?;
-                                }
-                            }
-                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                            let value = exports.get(imported_name.as_str()).cloned().unwrap_or(Value::Undefined);
-                            self.globals.insert(local_name.clone(), value);
-                        }
-                        Err(_) => {
-                            self.globals.insert(local_name.clone(), Value::Undefined);
-                        }
+                    let module_path = self.resolve_module_path(source)?;
+                    if !self.module_registry.contains_key(&module_path) {
+                        let source_code = std::fs::read_to_string(&module_path)
+                            .map_err(|e| Error::RuntimeError(format!("Cannot read module '{}': {}", source, e)))?;
+                        let compiler = crate::compiler::Compiler::new(false);
+                        let compiled = compiler.compile(&source_code)?;
+                        let prev_path = self.current_module_path.take();
+                        self.current_module_path = Some(module_path.clone());
+                        self.module_registry.insert(module_path.clone(), HashMap::new());
+                        let _result = self.execute_module(&compiled)?;
+                        let exports = std::mem::take(&mut self.module_exports);
+                        *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                        self.current_module_path = prev_path;
+                    }
+                    if let Some(exports) = self.module_registry.get(&module_path) {
+                        let val = exports.get(imported_name).cloned().unwrap_or(Value::Undefined);
+                        self.globals.insert(local_name.clone(), val);
                     }
                 }
                 Instruction::ImportDefault(source, local_name) => {
-                    match self.resolve_module_path(source) {
-                        Ok(module_path) => {
-                            if !self.module_registry.contains_key(&module_path) {
-                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
-                                    let compiler = crate::compiler::Compiler::new(false);
-                                    let compiled = compiler.compile(&source_code)?;
-                                    let prev_path = self.current_module_path.take();
-                                    let prev_exports = std::mem::take(&mut self.module_exports);
-                                    self.current_module_path = Some(module_path.clone());
-                                    self.module_registry.insert(module_path.clone(), HashMap::new());
-                                    let result = self.execute_module(&compiled);
-                                    let exports = std::mem::take(&mut self.module_exports);
-                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
-                                    self.module_exports = prev_exports;
-                                    self.current_module_path = prev_path;
-                                    result?;
-                                }
-                            }
-                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                            let value = exports.get("default").cloned().unwrap_or(Value::Undefined);
-                            self.globals.insert(local_name.clone(), value);
-                        }
-                        Err(_) => {
-                            self.globals.insert(local_name.clone(), Value::Undefined);
-                        }
+                    let module_path = self.resolve_module_path(source)?;
+                    if !self.module_registry.contains_key(&module_path) {
+                        let source_code = std::fs::read_to_string(&module_path)
+                            .map_err(|e| Error::RuntimeError(format!("Cannot read module '{}': {}", source, e)))?;
+                        let compiler = crate::compiler::Compiler::new(false);
+                        let compiled = compiler.compile(&source_code)?;
+                        let prev_path = self.current_module_path.take();
+                        self.current_module_path = Some(module_path.clone());
+                        self.module_registry.insert(module_path.clone(), HashMap::new());
+                        let _result = self.execute_module(&compiled)?;
+                        let exports = std::mem::take(&mut self.module_exports);
+                        *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                        self.current_module_path = prev_path;
+                    }
+                    if let Some(exports) = self.module_registry.get(&module_path) {
+                        let val = exports.get("default").cloned().unwrap_or(Value::Undefined);
+                        self.globals.insert(local_name.clone(), val);
                     }
                 }
                 Instruction::ImportAll(source, local_name) => {
-                    match self.resolve_module_path(source) {
-                        Ok(module_path) => {
-                            if !self.module_registry.contains_key(&module_path) {
-                                if let Ok(source_code) = std::fs::read_to_string(&module_path) {
-                                    let compiler = crate::compiler::Compiler::new(false);
-                                    let compiled = compiler.compile(&source_code)?;
-                                    let prev_path = self.current_module_path.take();
-                                    let prev_exports = std::mem::take(&mut self.module_exports);
-                                    self.current_module_path = Some(module_path.clone());
-                                    self.module_registry.insert(module_path.clone(), HashMap::new());
-                                    let result = self.execute_module(&compiled);
-                                    let exports = std::mem::take(&mut self.module_exports);
-                                    *self.module_registry.entry(module_path.clone()).or_default() = exports;
-                                    self.module_exports = prev_exports;
-                                    self.current_module_path = prev_path;
-                                    result?;
-                                }
-                            }
-                            let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: exports, prototype: None }));
-                            self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
+                    let module_path = self.resolve_module_path(source)?;
+                    if !self.module_registry.contains_key(&module_path) {
+                        let source_code = std::fs::read_to_string(&module_path)
+                            .map_err(|e| Error::RuntimeError(format!("Cannot read module '{}': {}", source, e)))?;
+                        let compiler = crate::compiler::Compiler::new(false);
+                        let compiled = compiler.compile(&source_code)?;
+                        let prev_path = self.current_module_path.take();
+                        self.current_module_path = Some(module_path.clone());
+                        self.module_registry.insert(module_path.clone(), HashMap::new());
+                        let _result = self.execute_module(&compiled)?;
+                        let exports = std::mem::take(&mut self.module_exports);
+                        *self.module_registry.entry(module_path.clone()).or_default() = exports;
+                        self.current_module_path = prev_path;
+                    }
+                    if let Some(exports) = self.module_registry.get(&module_path) {
+                        let heap_idx = self.heap.len();
+                        let mut props = HashMap::new();
+                        for (k, v) in exports {
+                            props.insert(k.clone(), v.clone());
                         }
-                        Err(_) => {
-                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-                            self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
-                        }
+                        self.heap.push(HeapValue::Object(JsObject { properties: props, prototype: None }));
+                        self.globals.insert(local_name.clone(), Value::Object(heap_idx));
                     }
                 }
                 Instruction::ExportNamed(names) => {
                     for name in names {
-                        if let Some(val) = self.globals.get(name).cloned() {
-                            self.module_exports.insert(name.clone(), val);
+                        if let Some(val) = self.globals.get(name) {
+                            self.module_exports.insert(name.clone(), val.clone());
                         }
                     }
                 }
                 Instruction::ExportDefault => {
-                    let value = self.stack.last().cloned().unwrap_or(Value::Undefined);
-                    self.module_exports.insert("default".to_string(), value);
+                    let val = self.stack.last().cloned().unwrap_or(Value::Undefined);
+                    self.module_exports.insert("default".to_string(), val);
                 }
                 Instruction::StoreModuleExport(name) => {
-                    let value = self.globals.get(name).cloned()
-                        .or_else(|| self.stack.last().cloned())
-                        .unwrap_or(Value::Undefined);
-                    self.module_exports.insert(name.clone(), value);
+                    if let Some(val) = self.globals.get(name) {
+                        self.module_exports.insert(name.clone(), val.clone());
+                    }
                 }
                 Instruction::PopModuleExports => {
                     self.module_exports.clear();
@@ -1427,58 +1177,93 @@ impl Interpreter {
                 Instruction::Await => {
                     let value = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    match value {
-                        Value::Promise(promise_idx) => {
-                            if let HeapValue::Promise(p) = &self.heap[promise_idx] {
-                                match &p.state {
-                                    PromiseState::Fulfilled(v) => {
-                                        self.stack.push(v.clone());
-                                    }
-                                    PromiseState::Rejected(r) => {
-                                        self.stack.push(Value::Undefined);
-                                    }
-                                    PromiseState::Pending => {
-                                        self.stack.push(value.clone());
-                                    }
+                    if let Value::Promise(promise_idx) = &value {
+                        if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
+                            match &p.state {
+                                PromiseState::Fulfilled(v) => {
+                                    self.stack.push(v.clone());
                                 }
-                            } else {
-                                self.stack.push(value);
+                                PromiseState::Rejected(_r) => {
+                                    self.stack.push(Value::Undefined);
+                                }
+                                PromiseState::Pending => {
+                                    self.stack.push(value);
+                                }
                             }
-                        }
-                        _ => {
+                        } else {
                             self.stack.push(value);
                         }
+                    } else {
+                        self.stack.push(value);
                     }
                 }
                 _ => {
                     return Err(Error::RuntimeError(format!("Unhandled instruction: {:?}", instruction)));
                 }
             }
-            
+
             pc += 1;
         }
-        
+
         Ok(self.stack.pop().unwrap_or(Value::Undefined))
     }
-    
+
     pub fn get_global(&self, name: &str) -> Option<Value> {
         self.globals.get(name).cloned()
     }
-    
+
     pub fn set_global(&mut self, name: &str, value: Value) {
         self.globals.insert(name.to_string(), value);
     }
 
     pub fn execute_module(&mut self, module: &CompiledModule) -> Result<Value> {
-        let saved = self.current_module.take();
+        let saved_module = self.current_module.take();
         self.current_module = Some(module.clone());
+        let prev_exports = std::mem::take(&mut self.module_exports);
+        let pre_keys: std::collections::HashSet<String> = self.globals.keys().cloned().collect();
         let result = self.execute(module);
-        self.current_module = saved;
+        let post_keys: std::collections::HashSet<String> = self.globals.keys().cloned().collect();
+        let export_keys: std::collections::HashSet<String> = self.module_exports.keys().cloned().collect();
+        for key in post_keys.difference(&pre_keys) {
+            if !export_keys.contains(key) {
+                self.globals.remove(key);
+            }
+        }
+        let exec_exports = std::mem::replace(&mut self.module_exports, prev_exports);
+        for (k, v) in exec_exports {
+            self.module_exports.insert(k, v);
+        }
+        self.current_module = saved_module;
         result
     }
 
     fn resolve_local_from_stack(&self, _name: &str) -> Option<usize> {
         None
+    }
+
+    fn load_and_run_module(&mut self, source: &str) -> Result<Option<String>> {
+        let module_path = match self.resolve_module_path(source) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        if self.module_registry.contains_key(&module_path) {
+            return Ok(Some(module_path));
+        }
+        let source_code = match std::fs::read_to_string(&module_path) {
+            Ok(s) => s,
+            Err(_) => return Ok(None),
+        };
+        let compiler = crate::compiler::Compiler::new(false);
+        let compiled = compiler.compile(&source_code)?;
+        let prev_path = self.current_module_path.take();
+        self.current_module_path = Some(module_path.clone());
+        self.module_registry.insert(module_path.clone(), HashMap::new());
+        let result = self.execute_module(&compiled);
+        let exports = std::mem::take(&mut self.module_exports);
+        *self.module_registry.entry(module_path.clone()).or_default() = exports;
+        self.current_module_path = prev_path;
+        result?;
+        Ok(Some(module_path))
     }
 
     fn resolve_module_path(&self, source: &str) -> Result<String> {
@@ -1511,27 +1296,6 @@ impl Interpreter {
         Err(Error::RuntimeError(format!("Module '{}' not found", source)))
     }
 
-    fn ensure_module_loaded(&mut self, module_path: &str, source: &str) -> Result<()> {
-        if self.module_registry.contains_key(module_path) {
-            return Ok(());
-        }
-        let source_code = std::fs::read_to_string(module_path)
-            .map_err(|e| Error::RuntimeError(format!("Failed to load module '{}': {}", source, e)))?;
-        let compiler = crate::compiler::Compiler::new(false);
-        let compiled = compiler.compile(&source_code)?;
-        let prev_path = self.current_module_path.take();
-        let prev_exports = std::mem::take(&mut self.module_exports);
-        self.current_module_path = Some(module_path.to_string());
-        self.module_registry.insert(module_path.to_string(), HashMap::new());
-        let result = self.execute_module(&compiled);
-        let exports = std::mem::take(&mut self.module_exports);
-        *self.module_registry.entry(module_path.to_string()).or_default() = exports;
-        self.module_exports = prev_exports;
-        self.current_module_path = prev_path;
-        result?;
-        Ok(())
-    }
-
     pub fn call_value(&mut self, callee: &Value, this: &Value, args: &[Value]) -> Result<Value> {
         match callee {
             Value::Function(func_idx) => {
@@ -1542,9 +1306,6 @@ impl Interpreter {
                         .unwrap_or(0);
                     let base_pointer = self.stack.len();
                     let closure_count = f_clone.closure.len();
-
-                    eprintln!("call_value: func={:?} base={} closures={} args={} bytecode={}",
-                        f_clone.name, base_pointer, closure_count, args.len(), f_clone.bytecode_index);
 
                     self.call_stack.push(CallFrame {
                         return_address,
@@ -1615,719 +1376,6 @@ impl Interpreter {
             }
         }
         None
-    }
-    
-    fn get_property(&mut self, object: &Value, key: &Value) -> Result<Value> {
-        self.get_property_with_this(object, key, object)
-    }
-
-    pub(crate) fn get_property_with_this(&mut self, object: &Value, key: &Value, this: &Value) -> Result<Value> {
-        match object {
-            Value::Null | Value::Undefined => {
-                return Err(Error::TypeError(format!(
-                    "Cannot read properties of {} (reading '{}')",
-                    self.value_to_string(object),
-                    self.value_to_string(key)
-                )));
-            }
-            Value::Object(obj_idx) => {
-                if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
-                    if let Value::String(key_str) = key {
-                        if let Some(val) = obj.properties.get(key_str) {
-                            return Ok(val.clone());
-                        }
-                        let getter_key = format!("__getter_{}", key_str);
-                        if let Some(getter_val) = obj.properties.get(&getter_key).cloned() {
-                            return self.call_value(&getter_val, this, &[]);
-                        }
-                        if let Some(proto_idx) = obj.prototype {
-                            let proto_val = Value::Object(proto_idx);
-                            return self.get_property_with_this(&proto_val, key, this);
-                        }
-                    }
-                }
-            }
-            Value::Array(arr_idx) => {
-                if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
-                    match key {
-                        Value::String(key_str) => {
-                            if key_str == "length" {
-                                return Ok(Value::Float(arr.elements.len() as f64));
-                            }
-                            if let Ok(index) = key_str.parse::<usize>() {
-                                return Ok(arr.elements.get(index).cloned().unwrap_or(Value::Undefined));
-                            }
-                            return self.get_array_method(key_str);
-                        }
-                        Value::Integer(index) => {
-                            let idx = *index as usize;
-                            return Ok(arr.elements.get(idx).cloned().unwrap_or(Value::Undefined));
-                        }
-                        Value::Float(f) => {
-                            let idx = *f as usize;
-                            return Ok(arr.elements.get(idx).cloned().unwrap_or(Value::Undefined));
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Value::String(s) => {
-                return self.get_property_from_primitive_string(s, key);
-            }
-            Value::Integer(_) | Value::Float(_) => {
-                return self.get_property_from_primitive_number(object, key);
-            }
-            Value::Boolean(_) => {
-                return self.get_property_from_primitive_boolean(object, key);
-            }
-            Value::Function(func_idx) => {
-                if let Value::String(key_str) = key {
-                    if key_str == "prototype" {
-                        if let HeapValue::Function(f) = &self.heap[*func_idx] {
-                            if let Some(proto_idx) = f.prototype {
-                                return Ok(Value::Object(proto_idx));
-                            }
-                        }
-                    }
-                    if let HeapValue::Function(f) = &self.heap[*func_idx] {
-                        if let Some(val) = f.properties.get(key_str) {
-                            return Ok(val.clone());
-                        }
-                    }
-                }
-            }
-            Value::Promise(promise_idx) => {
-                if let Value::String(key_str) = key {
-                    match key_str.as_str() {
-                        "then" => return Ok(Value::NativeFunction(78)),
-                        "catch" => return Ok(Value::NativeFunction(79)),
-                        "finally" => return Ok(Value::NativeFunction(80)),
-                        "state" => {
-                            if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
-                                return Ok(Value::String(format!("{:?}", p.state)));
-                            }
-                        }
-                        "value" => {
-                            if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
-                                if let PromiseState::Fulfilled(v) = &p.state {
-                                    return Ok(v.clone());
-                                }
-                            }
-                        }
-                        "reason" => {
-                            if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
-                                if let PromiseState::Rejected(r) = &p.state {
-                                    return Ok(r.clone());
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Value::NativeFunction(idx) => {
-                if let Value::String(key_str) = key {
-                    if *idx == 77 {
-                        match key_str.as_str() {
-                            "resolve" => return Ok(Value::NativeFunction(81)),
-                            "reject" => return Ok(Value::NativeFunction(82)),
-                            "all" => return Ok(Value::NativeFunction(83)),
-                            "race" => return Ok(Value::NativeFunction(84)),
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            Value::Proxy(proxy_idx) => {
-                if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
-                    let handler = proxy.handler.clone();
-                    let target = proxy.target.clone();
-                    let trap = self.get_property(&handler, &Value::String("get".to_string()));
-                    match &trap {
-                        Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) => {
-                            let trap_val = trap.unwrap();
-                            let trap_result = self.call_value(&trap_val, &handler, &[target, key.clone(), this.clone()]);
-                            match trap_result {
-                                Ok(v) => return Ok(v),
-                                Err(_) => {}
-                            }
-                        }
-                        _ => {
-                            return self.get_property_with_this(&target, key, this);
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(Value::Undefined)
-    }
-
-    fn get_array_method(&self, name: &str) -> Result<Value> {
-        let idx = match name {
-            "push" => 31,
-            "pop" => 32,
-            "shift" => 33,
-            "unshift" => 34,
-            "slice" => 35,
-            "splice" => 36,
-            "indexOf" => 37,
-            "includes" => 38,
-            "find" => 39,
-            "findIndex" => 40,
-            "map" => 41,
-            "filter" => 42,
-            "reduce" => 43,
-            "forEach" => 44,
-            "some" => 45,
-            "every" => 46,
-            "join" => 47,
-            "reverse" => 48,
-            "sort" => 49,
-            "concat" => 50,
-            "flat" => 51,
-            _ => return Ok(Value::Undefined),
-        };
-        Ok(Value::NativeFunction(idx))
-    }
-
-    fn get_property_from_primitive_string(&self, s: &str, key: &Value) -> Result<Value> {
-        if let Value::String(key_str) = key {
-            match key_str.as_str() {
-                "length" => return Ok(Value::Float(s.len() as f64)),
-                _ => {}
-            }
-            return self.get_string_method(key_str);
-        }
-        Ok(Value::Undefined)
-    }
-
-    fn get_string_method(&self, name: &str) -> Result<Value> {
-        let idx = match name {
-            "charAt" => 52,
-            "charCodeAt" => 53,
-            "slice" => 54,
-            "substring" => 55,
-            "indexOf" => 56,
-            "includes" => 57,
-            "replace" => 58,
-            "split" => 59,
-            "trim" => 60,
-            "toLowerCase" => 61,
-            "toUpperCase" => 62,
-            "startsWith" => 63,
-            "endsWith" => 64,
-            "repeat" => 65,
-            "padStart" => 66,
-            "padEnd" => 67,
-            _ => return Ok(Value::Undefined),
-        };
-        Ok(Value::NativeFunction(idx))
-    }
-
-    fn get_property_from_primitive_number(&self, n: &Value, key: &Value) -> Result<Value> {
-        if let Value::String(key_str) = key {
-            match key_str.as_str() {
-                "toString" | "toFixed" | "valueOf" => {
-                    return Ok(self.make_native_number_method(key_str));
-                }
-                _ => {}
-            }
-        }
-        Ok(Value::Undefined)
-    }
-
-    fn get_property_from_primitive_boolean(&self, b: &Value, key: &Value) -> Result<Value> {
-        if let Value::String(key_str) = key {
-            match key_str.as_str() {
-                "toString" | "valueOf" => {
-                    return Ok(self.make_native_boolean_method(key_str));
-                }
-                _ => {}
-            }
-        }
-        Ok(Value::Undefined)
-    }
-
-    fn make_native_number_method(&self, _name: &str) -> Value {
-        Value::NativeFunction(0)
-    }
-
-    fn make_native_boolean_method(&self, _name: &str) -> Value {
-        Value::NativeFunction(0)
-    }
-
-    pub(crate) fn delete_property(&mut self, object: &Value, key: &Value) -> Value {
-        match object {
-            Value::Object(obj_idx) => {
-                if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
-                    if let Value::String(key_str) = key {
-                        if obj.properties.remove(key_str).is_some() {
-                            return Value::Boolean(true);
-                        }
-                    }
-                }
-                Value::Boolean(false)
-            }
-            Value::Array(arr_idx) => {
-                if let Value::String(key_str) = key {
-                    if let Ok(index) = key_str.parse::<usize>() {
-                        if let HeapValue::Array(arr) = &mut self.heap[*arr_idx] {
-                            if index < arr.elements.len() {
-                                arr.elements[index] = Value::Undefined;
-                                return Value::Boolean(true);
-                            }
-                        }
-                    }
-                }
-                Value::Boolean(false)
-            }
-            _ => Value::Boolean(true),
-        }
-    }
-
-    fn instanceof_check(&mut self, left: &Value, right: &Value) -> Result<Value> {
-        let proto_key = Value::String("prototype".to_string());
-        let right_proto = match self.get_property(right, &proto_key) {
-            Ok(val) => val,
-            Err(_) => return Ok(Value::Boolean(false)),
-        };
-
-        let proto_idx = match &right_proto {
-            Value::Object(idx) => *idx,
-            _ => return Ok(Value::Boolean(false)),
-        };
-
-        let mut current = left.clone();
-        loop {
-            match &current {
-                Value::Object(obj_idx) => {
-                    if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
-                        if obj.prototype == Some(proto_idx) {
-                            return Ok(Value::Boolean(true));
-                        }
-                        if let Some(parent_idx) = obj.prototype {
-                            current = Value::Object(parent_idx);
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                Value::Array(arr_idx) => {
-                    break;
-                }
-                _ => break,
-            }
-        }
-        Ok(Value::Boolean(false))
-    }
-
-    pub(crate) fn in_check_mut(&mut self, key: &Value, object: &Value) -> Result<Value> {
-        match object {
-            Value::Object(obj_idx) => {
-                if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
-                    if let Value::String(key_str) = key {
-                        if obj.properties.contains_key(key_str) {
-                            return Ok(Value::Boolean(true));
-                        }
-                        if let Some(proto_idx) = obj.prototype {
-                            let proto_val = Value::Object(proto_idx);
-                            return self.in_check_mut(key, &proto_val);
-                        }
-                    }
-                }
-                Ok(Value::Boolean(false))
-            }
-            Value::Array(arr_idx) => {
-                if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
-                    if let Value::String(key_str) = key {
-                        if key_str == "length" {
-                            return Ok(Value::Boolean(true));
-                        }
-                        if let Ok(index) = key_str.parse::<usize>() {
-                            return Ok(Value::Boolean(index < arr.elements.len()));
-                        }
-                    }
-                }
-                Ok(Value::Boolean(false))
-            }
-            Value::String(s) => {
-                if let Value::String(key_str) = key {
-                    if key_str == "length" {
-                        return Ok(Value::Boolean(true));
-                    }
-                    if let Ok(index) = key_str.parse::<usize>() {
-                        return Ok(Value::Boolean(index < s.len()));
-                    }
-                }
-                Ok(Value::Boolean(false))
-            }
-            Value::Proxy(proxy_idx) => {
-                if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
-                    let handler = proxy.handler.clone();
-                    let target = proxy.target.clone();
-                    let trap = self.get_property(&handler, &Value::String("has".to_string()));
-                    if let Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) = &trap {
-                        let trap_result = self.call_value(&trap?, &handler, &[target, key.clone()]);
-                        match trap_result {
-                            Ok(v) => return Ok(v),
-                            Err(_) => {}
-                        }
-                    } else {
-                        return self.in_check_mut(key, &target);
-                    }
-                }
-                Ok(Value::Boolean(false))
-            }
-            _ => Ok(Value::Boolean(false)),
-        }
-    }
-
-    pub(crate) fn call_proxy_trap(&mut self, handler: &Value, trap_name: &str, args: &[Value]) -> Result<Value> {
-        let trap = self.get_property(handler, &Value::String(trap_name.to_string()))?;
-        if matches!(trap, Value::Undefined) {
-            return Err(Error::RuntimeError(format!("Proxy has no '{}' trap", trap_name)));
-        }
-        self.call_value(&trap, handler, args)
-    }
-    
-    fn add(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a + b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a + b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 + b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a + *b as f64)),
-            (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
-            _ => Err(Error::TypeError(format!(
-                "Cannot add {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
-    }
-    
-    fn sub(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a - b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a - b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 - b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a - *b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot subtract {} from {}",
-                self.value_to_string(&right),
-                self.value_to_string(&left)
-            ))),
-        }
-    }
-    
-    fn mul(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a * b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a * b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 * b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a * *b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot multiply {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
-    }
-    
-    fn div(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(*a as f64 / *b as f64))
-            }
-            (Value::Float(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a / b))
-            }
-            (Value::Integer(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(*a as f64 / b))
-            }
-            (Value::Float(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a / *b as f64))
-            }
-            _ => Err(Error::TypeError(format!(
-                "Cannot divide {} by {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
-    }
-    
-    fn modulo(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Integer(a % b))
-            }
-            (Value::Float(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a % b))
-            }
-            _ => Err(Error::TypeError(format!(
-                "Cannot apply modulo to {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
-    }
-    
-    fn power(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a.powf(*b))),
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Float((*a as f64).powf(*b as f64))),
-            _ => Err(Error::TypeError(format!(
-                "Cannot raise {} to the power of {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
-    }
-    
-    fn negate(&self, value: Value) -> Result<Value> {
-        match value {
-            Value::Integer(n) => Ok(Value::Integer(-n)),
-            Value::Float(n) => Ok(Value::Float(-n)),
-            _ => Err(Error::TypeError(format!("Cannot negate {}", self.value_to_string(&value)))),
-        }
-    }
-    
-    pub(crate) fn is_truthy(&self, value: &Value) -> bool {
-        match value {
-            Value::Undefined => false,
-            Value::Null => false,
-            Value::Boolean(b) => *b,
-            Value::Integer(n) => *n != 0,
-            Value::Float(n) => *n != 0.0,
-            Value::String(s) => !s.is_empty(),
-            Value::BigInt(n) => *n != 0,
-            _ => true,
-        }
-    }
-    
-    fn is_equal(&self, left: &Value, right: &Value) -> bool {
-        match (left, right) {
-            (Value::Undefined, Value::Undefined) => true,
-            (Value::Null, Value::Null) => true,
-            (Value::Boolean(a), Value::Boolean(b)) => a == b,
-            (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Integer(a), Value::Float(b)) => *a as f64 == *b,
-            (Value::Float(a), Value::Integer(b)) => *a == *b as f64,
-            (Value::String(a), Value::String(b)) => a == b,
-            _ => false,
-        }
-    }
-    
-    fn less_than(&self, left: &Value, right: &Value) -> Result<bool> {
-        match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a < b),
-            (Value::Float(a), Value::Float(b)) => Ok(a < b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) < *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a < (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
-        }
-    }
-    
-    fn greater_than(&self, left: &Value, right: &Value) -> Result<bool> {
-        match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a > b),
-            (Value::Float(a), Value::Float(b)) => Ok(a > b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) > *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a > (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
-        }
-    }
-    
-    fn less_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
-        match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a <= b),
-            (Value::Float(a), Value::Float(b)) => Ok(a <= b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) <= *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a <= (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
-        }
-    }
-    
-    fn greater_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
-        match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a >= b),
-            (Value::Float(a), Value::Float(b)) => Ok(a >= b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) >= *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a >= (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
-        }
-    }
-    
-    fn to_number(&self, value: &Value) -> Result<f64> {
-        match value {
-            Value::Integer(n) => Ok(*n as f64),
-            Value::Float(n) => Ok(*n),
-            Value::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-            Value::Null => Ok(0.0),
-            Value::Undefined => Ok(f64::NAN),
-            Value::String(s) => {
-                if s.is_empty() { Ok(0.0) }
-                else { Ok(s.parse::<f64>().unwrap_or(f64::NAN)) }
-            }
-            _ => Ok(f64::NAN),
-        }
-    }
-
-    fn value_to_string_raw(&self, value: &Value) -> String {
-        match value {
-            Value::Undefined => "undefined".to_string(),
-            Value::Null => "null".to_string(),
-            Value::Boolean(b) => b.to_string(),
-            Value::Integer(n) => n.to_string(),
-            Value::Float(n) => {
-                if *n == (*n as i64) as f64 {
-                    (*n as i64).to_string()
-                } else {
-                    n.to_string()
-                }
-            }
-            Value::String(s) => s.clone(),
-            Value::BigInt(n) => format!("{}n", n),
-            Value::Function(_) => "[Function]".to_string(),
-            Value::NativeFunction(_) => "[Native Function]".to_string(),
-            Value::Object(_) => "[Object]".to_string(),
-            Value::Array(_) => "[Array]".to_string(),
-            Value::Promise(_) => "[Promise]".to_string(),
-            Value::Proxy(_) => "[Proxy]".to_string(),
-        }
-    }
-
-    fn value_to_string(&self, value: &Value) -> String {
-        match value {
-            Value::Undefined => "undefined".to_string(),
-            Value::Null => "null".to_string(),
-            Value::Boolean(b) => b.to_string(),
-            Value::Integer(n) => n.to_string(),
-            Value::Float(n) => n.to_string(),
-            Value::String(s) => format!("\"{}\"", s),
-            Value::BigInt(n) => format!("{}n", n),
-            Value::Function(_) => "[Function]".to_string(),
-            Value::NativeFunction(_) => "[Native Function]".to_string(),
-            Value::Object(_) => "[Object]".to_string(),
-            Value::Array(_) => "[Array]".to_string(),
-            Value::Promise(_) => "[Promise]".to_string(),
-            Value::Proxy(_) => "[Proxy]".to_string(),
-        }
-    }
-
-    pub(crate) fn drain_microtasks(&mut self) {
-        while let Some(task) = self.async_runtime.dequeue_microtask() {
-            let _ = self.call_value(&task.callback, &Value::Undefined, &[task.arg]);
-        }
-    }
-
-    pub(crate) fn create_resolve_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
-            name: Some("resolve".into()),
-            params: vec!["value".into()],
-            bytecode_index: usize::MAX,
-            closure: vec![Value::Promise(promise_idx)],
-            prototype: Some(proto_idx),
-            super_class: None,
-            properties: HashMap::new(),
-        }));
-        Value::Function(heap_idx)
-    }
-
-    pub(crate) fn create_reject_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
-            name: Some("reject".into()),
-            params: vec!["reason".into()],
-            bytecode_index: usize::MAX,
-            closure: vec![Value::Promise(promise_idx)],
-            prototype: Some(proto_idx),
-            super_class: None,
-            properties: HashMap::new(),
-        }));
-        Value::Function(heap_idx)
-    }
-
-    pub(crate) fn resolve_promise(&mut self, promise_idx: usize, value: Value) {
-        if let HeapValue::Promise(promise) = &mut self.heap[promise_idx] {
-            if promise.state == PromiseState::Pending {
-                promise.state = PromiseState::Fulfilled(value.clone());
-                let handlers: Vec<Value> = promise.then_handlers.iter()
-                    .map(|h| Value::Function(h.callback))
-                    .collect();
-                promise.then_handlers.clear();
-                for handler in handlers {
-                    self.async_runtime.enqueue_microtask_with_arg(handler, value.clone());
-                }
-                let finally_handlers: Vec<Value> = promise.finally_handlers.iter()
-                    .map(|h| Value::Function(h.callback))
-                    .collect();
-                promise.finally_handlers.clear();
-                for handler in finally_handlers {
-                    self.async_runtime.enqueue_microtask(handler);
-                }
-            }
-        }
-    }
-
-    pub(crate) fn reject_promise(&mut self, promise_idx: usize, reason: Value) {
-        if let HeapValue::Promise(promise) = &mut self.heap[promise_idx] {
-            if promise.state == PromiseState::Pending {
-                promise.state = PromiseState::Rejected(reason.clone());
-                let handlers: Vec<Value> = promise.catch_handlers.iter()
-                    .map(|h| Value::Function(h.callback))
-                    .collect();
-                promise.catch_handlers.clear();
-                for handler in handlers {
-                    self.async_runtime.enqueue_microtask_with_arg(handler, reason.clone());
-                }
-                let finally_handlers: Vec<Value> = promise.finally_handlers.iter()
-                    .map(|h| Value::Function(h.callback))
-                    .collect();
-                promise.finally_handlers.clear();
-                for handler in finally_handlers {
-                    self.async_runtime.enqueue_microtask(handler);
-                }
-            }
-        }
     }
 }
 
