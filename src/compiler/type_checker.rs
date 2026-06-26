@@ -110,6 +110,7 @@ impl TypeChecker {
                 self.define_variable(name, Type::Any);
                 Ok(Type::Void)
             }
+            _ => Ok(Type::Void),
         }
     }
     
@@ -133,7 +134,7 @@ impl TypeChecker {
                 let operand_type = self.check_expression(operand)?;
                 self.check_unary_op(op, &operand_type)
             }
-            Expression::Assignment { target, value } => {
+            Expression::Assignment { target, value, .. } => {
                 let target_type = self.check_expression(target)?;
                 let value_type = self.check_expression(value)?;
                 if !self.is_compatible(&target_type, &value_type) {
@@ -166,6 +167,7 @@ impl TypeChecker {
                 self.exit_scope();
                 Ok(Type::Any)
             }
+            _ => Ok(Type::Any),
         }
     }
     
@@ -197,7 +199,21 @@ impl TypeChecker {
                     Ok(Type::Any)
                 }
             }
-            _ => Ok(Type::Number),
+            BinaryOperator::Power => {
+                if matches!(left, Type::Number) && matches!(right, Type::Number) {
+                    Ok(Type::Number)
+                } else {
+                    Err(Error::TypeError(format!(
+                        "Operator '{:?}' cannot be applied to types '{:?}' and '{:?}'",
+                        op, left, right
+                    )))
+                }
+            }
+            BinaryOperator::Instanceof | BinaryOperator::In => Ok(Type::Boolean),
+            BinaryOperator::BitAnd | BinaryOperator::BitOr | BinaryOperator::BitXor |
+            BinaryOperator::ShiftLeft | BinaryOperator::ShiftRight => {
+                Ok(Type::Number)
+            }
         }
     }
     

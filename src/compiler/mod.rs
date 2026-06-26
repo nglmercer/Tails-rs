@@ -14,15 +14,15 @@ impl Compiler {
     pub fn new(type_checking: bool) -> Self {
         Self { type_checking }
     }
-    
+
     pub fn compile(&self, source: &str) -> Result<CompiledModule> {
         let tokens = lexer::tokenize(source)?;
         let ast = parser::parse(&tokens)?;
-        
+
         if self.type_checking {
             type_checker::TypeChecker::check(&ast)?;
         }
-        
+
         bytecode::generate(&ast)
     }
 }
@@ -40,6 +40,7 @@ pub struct CompiledFunction {
     pub params: Vec<String>,
     pub bytecode_index: usize,
     pub param_count: usize,
+    pub closure_var_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +62,7 @@ pub enum Instruction {
     Power,
     Negate,
     Not,
+    BitNot,
     Eq,
     StrictEq,
     NotEqual,
@@ -89,4 +91,7 @@ pub enum Instruction {
     In,
     Delete,
     Void,
+    Throw,
+    MakeClass(u32),
+    NotImplementedError(String),
 }

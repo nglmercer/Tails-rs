@@ -41,6 +41,8 @@ pub enum HeapValue {
 struct CallFrame {
     return_address: usize,
     base_pointer: usize,
+    closure_var_count: usize,
+    func_heap_idx: Option<usize>,
 }
 
 pub struct Interpreter {
@@ -66,12 +68,12 @@ impl Interpreter {
     
     fn execute_from(&mut self, module: &CompiledModule, start_pc: usize) -> Result<Value> {
         let mut pc = start_pc;
-        
+
         loop {
             if pc >= module.instructions.len() {
                 break;
             }
-            
+
             let instruction = module.instructions[pc].clone();
             
             match &instruction {
@@ -119,7 +121,7 @@ impl Interpreter {
                         .map(|f| f.base_pointer)
                         .unwrap_or(0);
                     let idx = base + *slot as usize;
-                    
+
                     if idx >= self.stack.len() {
                         self.stack.resize(idx + 1, Value::Undefined);
                     }
@@ -284,30 +286,37 @@ impl Interpreter {
                 Instruction::Call(argc) => {
                     let callee = self.stack.pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    
+
                     let mut args = Vec::new();
                     for _ in 0..*argc {
                         args.push(self.stack.pop()
                             .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?);
                     }
                     args.reverse();
-                    
+
                     match callee {
                         Value::Function(func_idx) => {
                             let func = self.heap[func_idx].clone();
                             if let HeapValue::Function(f) = func {
                                 let return_address = pc + 1;
                                 let base_pointer = self.stack.len();
-                                
+                                let closure_count = f.closure.len();
+
                                 self.call_stack.push(CallFrame {
                                     return_address,
                                     base_pointer,
+                                    closure_var_count: closure_count,
+                                    func_heap_idx: Some(func_idx),
                                 });
-                                
+
+                                for closure_var in &f.closure {
+                                    self.stack.push(closure_var.clone());
+                                }
+
                                 for arg in args {
                                     self.stack.push(arg);
                                 }
-                                
+
                                 pc = f.bytecode_index;
                                 continue;
                             }
@@ -324,8 +333,21 @@ impl Interpreter {
                 Instruction::Return => {
                     let return_value = self.stack.pop()
                         .unwrap_or(Value::Undefined);
-                    
+
                     if let Some(frame) = self.call_stack.pop() {
+                        if frame.closure_var_count > 0 {
+                            if let Some(heap_idx) = frame.func_heap_idx {
+                                if let HeapValue::Function(f) = &mut self.heap[heap_idx] {
+                                    f.closure.clear();
+                                    for i in 0..frame.closure_var_count {
+                                        let val = self.stack.get(frame.base_pointer + i)
+                                            .cloned()
+                                            .unwrap_or(Value::Undefined);
+                                        f.closure.push(val);
+                                    }
+                                }
+                            }
+                        }
                         self.stack.truncate(frame.base_pointer);
                         self.stack.push(return_value);
                         pc = frame.return_address;

@@ -2,16 +2,12 @@ use crate::errors::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    // Literals
     Number(f64),
     String(String),
     BigInt(String),
     Regex(String),
-    
-    // Identifiers & Keywords
     Identifier(String),
-    
-    // Keywords
+    TemplateLiteral(Vec<TemplatePart>),
     Const,
     Let,
     Var,
@@ -27,9 +23,11 @@ pub enum Token {
     Break,
     Continue,
     New,
+    Void,
     Delete,
     Typeof,
     Instanceof,
+    Constructor,
     In,
     Of,
     Class,
@@ -54,8 +52,6 @@ pub enum Token {
     Static,
     Get,
     Set,
-    
-    // Operators
     Plus,
     Minus,
     Star,
@@ -69,6 +65,8 @@ pub enum Token {
     SlashAssign,
     PercentAssign,
     PowerAssign,
+    AndAssign,
+    OrAssign,
     Equal,
     StrictEqual,
     NotEqual,
@@ -89,8 +87,6 @@ pub enum Token {
     UnsignedShiftRight,
     Increment,
     Decrement,
-    
-    // Punctuation
     LeftParen,
     RightParen,
     LeftBrace,
@@ -104,15 +100,83 @@ pub enum Token {
     Question,
     Arrow,
     Ellipsis,
-    
-    // Special
     Eof,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TemplatePart {
+    Text(String),
+    Expression(Vec<Token>),
+}
+
+fn tokenize_template_literal(chars: &mut std::iter::Peekable<std::str::CharIndices>) -> Result<Vec<TemplatePart>> {
+    let mut parts = Vec::new();
+    let mut text_buf = String::new();
+
+    loop {
+        match chars.next() {
+            Some((_, '`')) => {
+                if !text_buf.is_empty() {
+                    parts.push(TemplatePart::Text(text_buf.clone()));
+                    text_buf.clear();
+                }
+                return Ok(parts);
+            }
+            Some((_, '$')) => {
+                if let Some(&(_, '{')) = chars.peek() {
+                    chars.next();
+                    if !text_buf.is_empty() {
+                        parts.push(TemplatePart::Text(text_buf.clone()));
+                        text_buf.clear();
+                    }
+                    let mut depth = 1u32;
+                    let mut expr_src = String::new();
+                    loop {
+                        match chars.next() {
+                            Some((_, '{')) => { depth += 1; expr_src.push('{'); }
+                            Some((_, '}')) => {
+                                depth -= 1;
+                                if depth == 0 { break; }
+                                expr_src.push('}');
+                            }
+                            Some((_, c)) => expr_src.push(c),
+                            None => return Err(Error::ParseError("Unterminated template expression".into())),
+                        }
+                    }
+                    let inner_tokens = tokenize(&expr_src)?;
+                    let filtered: Vec<Token> = inner_tokens.into_iter()
+                        .filter(|t| *t != Token::Eof)
+                        .collect();
+                    parts.push(TemplatePart::Expression(filtered));
+                } else {
+                    text_buf.push('$');
+                }
+            }
+            Some((_, '\\')) => {
+                if let Some((_, c)) = chars.next() {
+                    match c {
+                        'n' => text_buf.push('\n'),
+                        't' => text_buf.push('\t'),
+                        'r' => text_buf.push('\r'),
+                        '\\' => text_buf.push('\\'),
+                        '\'' => text_buf.push('\''),
+                        '"' => text_buf.push('"'),
+                        '`' => text_buf.push('`'),
+                        '$' => text_buf.push('$'),
+                        _ => { text_buf.push('\\'); text_buf.push(c); }
+                    }
+                }
+            }
+            Some((_, c)) => text_buf.push(c),
+            None => return Err(Error::ParseError("Unterminated template literal".into())),
+        }
+    }
 }
 
 pub fn tokenize(source: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::new();
     let mut chars = source.char_indices().peekable();
-    
+
     while let Some(&(_pos, ch)) = chars.peek() {
         match ch {
             ' ' | '\t' | '\r' => { chars.next(); }
@@ -138,6 +202,9 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                             _ => {}
                         }
                     }
+                } else if let Some(&(_, '=')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::SlashAssign);
                 } else {
                     tokens.push(Token::Slash);
                 }
@@ -180,6 +247,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     "break" => tokens.push(Token::Break),
                     "continue" => tokens.push(Token::Continue),
                     "new" => tokens.push(Token::New),
+                    "void" => tokens.push(Token::Void),
                     "delete" => tokens.push(Token::Delete),
                     "typeof" => tokens.push(Token::Typeof),
                     "instanceof" => tokens.push(Token::Instanceof),
@@ -204,6 +272,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     "finally" => tokens.push(Token::Finally),
                     "throw" => tokens.push(Token::Throw),
                     "static" => tokens.push(Token::Static),
+                    "constructor" => tokens.push(Token::Constructor),
                     "get" => tokens.push(Token::Get),
                     "set" => tokens.push(Token::Set),
                     "true" => tokens.push(Token::Identifier("true".into())),
@@ -213,7 +282,12 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     _ => tokens.push(Token::Identifier(ident)),
                 }
             }
-            '"' | '\'' | '`' => {
+            '`' => {
+                chars.next();
+                let parts = tokenize_template_literal(&mut chars)?;
+                tokens.push(Token::TemplateLiteral(parts));
+            }
+            '"' | '\'' => {
                 let quote = ch;
                 chars.next();
                 let mut str = String::new();
@@ -243,10 +317,56 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                 }
                 tokens.push(Token::String(str));
             }
-            '+' => { chars.next(); tokens.push(Token::Plus); }
-            '-' => { chars.next(); tokens.push(Token::Minus); }
-            '*' => { chars.next(); tokens.push(Token::Star); }
-            '%' => { chars.next(); tokens.push(Token::Percent); }
+            '+' => {
+                chars.next();
+                if let Some(&(_, '+')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::Increment);
+                } else if let Some(&(_, '=')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::PlusAssign);
+                } else {
+                    tokens.push(Token::Plus);
+                }
+            }
+            '-' => {
+                chars.next();
+                if let Some(&(_, '-')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::Decrement);
+                } else if let Some(&(_, '=')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::MinusAssign);
+                } else {
+                    tokens.push(Token::Minus);
+                }
+            }
+            '*' => {
+                chars.next();
+                if let Some(&(_, '=')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::StarAssign);
+                } else if let Some(&(_, '*')) = chars.peek() {
+                    chars.next();
+                    if let Some(&(_, '=')) = chars.peek() {
+                        chars.next();
+                        tokens.push(Token::PowerAssign);
+                    } else {
+                        tokens.push(Token::Power);
+                    }
+                } else {
+                    tokens.push(Token::Star);
+                }
+            }
+            '%' => {
+                chars.next();
+                if let Some(&(_, '=')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::PercentAssign);
+                } else {
+                    tokens.push(Token::Percent);
+                }
+            }
             '(' => { chars.next(); tokens.push(Token::LeftParen); }
             ')' => { chars.next(); tokens.push(Token::RightParen); }
             '{' => { chars.next(); tokens.push(Token::LeftBrace); }
@@ -268,6 +388,9 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     } else {
                         tokens.push(Token::Equal);
                     }
+                } else if let Some(&(_, '>')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::Arrow);
                 } else {
                     tokens.push(Token::Assign);
                 }
@@ -308,7 +431,12 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                 chars.next();
                 if let Some(&(_, '&')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::And);
+                    if let Some(&(_, '=')) = chars.peek() {
+                        chars.next();
+                        tokens.push(Token::AndAssign);
+                    } else {
+                        tokens.push(Token::And);
+                    }
                 } else {
                     tokens.push(Token::BitAnd);
                 }
@@ -317,7 +445,12 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                 chars.next();
                 if let Some(&(_, '|')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::Or);
+                    if let Some(&(_, '=')) = chars.peek() {
+                        chars.next();
+                        tokens.push(Token::OrAssign);
+                    } else {
+                        tokens.push(Token::Or);
+                    }
                 } else {
                     tokens.push(Token::BitOr);
                 }
@@ -329,7 +462,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
         }
     }
-    
+
     tokens.push(Token::Eof);
     Ok(tokens)
 }
