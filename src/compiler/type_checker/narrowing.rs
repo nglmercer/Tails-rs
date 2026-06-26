@@ -18,8 +18,7 @@ impl TypeChecker {
                 ) = (left.as_ref(), right.as_ref())
                 {
                     if let Expression::Identifier(name) = operand.as_ref() {
-                        if let Some(orig) = self.get_variable_type(name) {
-                            if let Type::Union(variants) = &orig {
+                        if let Some(Type::Union(variants)) = self.get_variable_type(name).as_ref() {
                                 let narrowed: Vec<Type> = variants
                                     .iter()
                                     .filter(|v| self.type_matches_typeof_value(v, lit))
@@ -49,7 +48,6 @@ impl TypeChecker {
                                         }
                                     }
                                 }
-                            }
                         }
                     }
                 } else if let (Expression::Identifier(name), Expression::StringLiteral(lit)) =
@@ -116,8 +114,7 @@ impl TypeChecker {
         if let Expression::UnaryOp { op, operand } = condition {
             if matches!(op, crate::compiler::parser::UnaryOperator::Typeof) {
                 if let Expression::Identifier(name) = operand.as_ref() {
-                    if let Some(orig) = self.get_variable_type(name) {
-                        if let Type::Union(variants) = &orig {
+                    if let Some(Type::Union(variants)) = self.get_variable_type(name).as_ref() {
                             if is_true_branch {
                                 let narrowed: Vec<Type> = variants
                                     .iter()
@@ -147,7 +144,6 @@ impl TypeChecker {
                                     self.narrowed_types.insert(name.clone(), ty);
                                 }
                             }
-                        }
                     }
                 }
             }

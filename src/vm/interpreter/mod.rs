@@ -720,6 +720,7 @@ impl Interpreter {
                 }
                 _ => {
                     // Delegate to instruction handler modules
+                    #[allow(clippy::if_same_then_else)]
                     if self.exec_load_store(&instruction, module)? {
                         // handled
                     } else if self.exec_arithmetic(&instruction)? {
@@ -782,7 +783,7 @@ impl Interpreter {
             }
             Value::Function(func_idx) => {
                 if let HeapValue::Function(f) = &self.heap[*func_idx] {
-                    f.prototype.map(|idx| Value::Object(idx))
+                    f.prototype.map(Value::Object)
                 } else {
                     None
                 }
@@ -795,7 +796,7 @@ impl Interpreter {
         let ctor_heap_idx = if let Some(ctor_func_idx) = class_info.constructor_func_idx {
             let func_info = module.functions[ctor_func_idx as usize].clone();
             let owner = self.current_module.clone();
-            let idx = self.gc.allocate(
+            self.gc.allocate(
                 &mut self.heap,
                 HeapValue::Function(JsFunction {
                     name: func_info.name,
@@ -808,10 +809,9 @@ impl Interpreter {
                     owner_module: owner,
                     module_scope: None,
                 }),
-            );
-            idx
+            )
         } else {
-            let idx = self.gc.allocate(
+            self.gc.allocate(
                 &mut self.heap,
                 HeapValue::Function(JsFunction {
                     name: Some(class_info.name.clone()),
@@ -824,8 +824,7 @@ impl Interpreter {
                     owner_module: None,
                     module_scope: None,
                 }),
-            );
-            idx
+            )
         };
         if let HeapValue::Object(proto_obj) = &mut self.heap[proto_obj_idx] {
             proto_obj

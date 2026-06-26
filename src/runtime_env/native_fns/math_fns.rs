@@ -9,7 +9,7 @@ pub(super) fn native_math_abs(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.abs()))
 }
 
@@ -18,7 +18,7 @@ pub(super) fn native_math_floor(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.floor()))
 }
 
@@ -27,7 +27,7 @@ pub(super) fn native_math_ceil(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.ceil()))
 }
 
@@ -36,7 +36,7 @@ pub(super) fn native_math_round(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.round()))
 }
 
@@ -94,8 +94,8 @@ pub(super) fn native_math_pow(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let base = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
-    let exp = args.get(1).map(|v| to_f64(v)).unwrap_or(0.0);
+    let base = args.first().map(to_f64).unwrap_or(0.0);
+    let exp = args.get(1).map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(base.powf(exp)))
 }
 
@@ -104,7 +104,7 @@ pub(super) fn native_math_sqrt(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.sqrt()))
 }
 
@@ -113,7 +113,7 @@ pub(super) fn native_math_log(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.ln()))
 }
 
@@ -122,7 +122,7 @@ pub(super) fn native_math_sin(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.sin()))
 }
 
@@ -131,7 +131,7 @@ pub(super) fn native_math_cos(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.cos()))
 }
 
@@ -140,6 +140,6 @@ pub(super) fn native_math_tan(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(0.0);
+    let n = args.first().map(to_f64).unwrap_or(0.0);
     Ok(Value::Float(n.tan()))
 }

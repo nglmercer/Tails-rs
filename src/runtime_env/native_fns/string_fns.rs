@@ -248,7 +248,7 @@ pub(super) fn native_string_pad_start(
         return Ok(Value::String(s));
     }
     let pad_count = target_len - s.len();
-    let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+    let padding: String = std::iter::repeat_n(pad_char, pad_count).collect();
     Ok(Value::String(format!("{}{}", padding, s)))
 }
 
@@ -267,6 +267,6 @@ pub(super) fn native_string_pad_end(
         return Ok(Value::String(s));
     }
     let pad_count = target_len - s.len();
-    let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+    let padding: String = std::iter::repeat_n(pad_char, pad_count).collect();
     Ok(Value::String(format!("{}{}", s, padding)))
 }

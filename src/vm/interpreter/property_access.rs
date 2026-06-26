@@ -4,6 +4,92 @@ use crate::objects::js_promise::PromiseState;
 use crate::objects::Value;
 
 impl Interpreter {
+    pub fn new_object(&mut self) -> Value {
+        let idx = self.heap.len();
+        self.heap.push(HeapValue::Object(crate::vm::interpreter::heap_types::JsObject::new()));
+        Value::Object(idx)
+    }
+
+    pub fn new_array(&mut self) -> Value {
+        let idx = self.heap.len();
+        self.heap.push(HeapValue::Array(crate::vm::interpreter::heap_types::JsArray { elements: Vec::new() }));
+        Value::Array(idx)
+    }
+
+    pub fn get_property_str(&mut self, object: &Value, key: &str) -> Option<Value> {
+        self.get_property(object, &Value::String(key.to_string())).ok()
+    }
+
+    pub fn set_property_str(&mut self, object: &Value, key: &str, value: Value) {
+        let _ = self.set_property(object, &Value::String(key.to_string()), value);
+    }
+
+    pub fn get_array_length(&self, array: &Value) -> Option<i64> {
+        match array {
+            Value::Array(arr_idx) => {
+                if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
+                    Some(arr.elements.len() as i64)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn get_array_element(&self, array: &Value, index: usize) -> Option<Value> {
+        match array {
+            Value::Array(arr_idx) => {
+                if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
+                    arr.elements.get(index).cloned()
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn push_array_element(&mut self, array: &Value, value: Value) {
+        if let Value::Array(arr_idx) = array {
+            if let HeapValue::Array(arr) = &mut self.heap[*arr_idx] {
+                arr.elements.push(value);
+            }
+        }
+    }
+
+    pub fn set_property(&mut self, object: &Value, key: &Value, value: Value) -> Result<()> {
+        match object {
+            Value::Object(obj_idx) => {
+                if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
+                    if let Value::String(key_str) = key {
+                        obj.properties.insert(key_str.clone(), value);
+                    }
+                }
+            }
+            Value::Array(arr_idx) => {
+                if let HeapValue::Array(arr) = &mut self.heap[*arr_idx] {
+                    if let Value::String(key_str) = key {
+                        if let Ok(index) = key_str.parse::<usize>() {
+                            if index < arr.elements.len() {
+                                arr.elements[index] = value;
+                            }
+                        }
+                    }
+                }
+            }
+            Value::Function(func_idx) => {
+                if let HeapValue::Function(f) = &mut self.heap[*func_idx] {
+                    if let Value::String(key_str) = key {
+                        f.properties.insert(key_str.clone(), value);
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     pub(super) fn get_property(&mut self, object: &Value, key: &Value) -> Result<Value> {
         self.get_property_with_this(object, key, object)
     }
@@ -147,9 +233,8 @@ impl Interpreter {
                                 &handler,
                                 &[target, key.clone(), this.clone()],
                             );
-                            match trap_result {
-                                Ok(v) => return Ok(v),
-                                Err(_) => {}
+                            if let Ok(v) = trap_result {
+                                return Ok(v);
                             }
                         }
                         _ => {
@@ -193,9 +278,8 @@ impl Interpreter {
 
     pub(super) fn get_property_from_primitive_string(&self, s: &str, key: &Value) -> Result<Value> {
         if let Value::String(key_str) = key {
-            match key_str.as_str() {
-                "length" => return Ok(Value::Float(s.len() as f64)),
-                _ => {}
+            if key_str.as_str() == "length" {
+                return Ok(Value::Float(s.len() as f64));
             }
             return self.get_string_method(key_str);
         }
@@ -379,9 +463,8 @@ impl Interpreter {
                     let trap = self.get_property(&handler, &Value::String("has".to_string()));
                     if let Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) = &trap {
                         let trap_result = self.call_value(&trap?, &handler, &[target, key.clone()]);
-                        match trap_result {
-                            Ok(v) => return Ok(v),
-                            Err(_) => {}
+                        if let Ok(v) = trap_result {
+                            return Ok(v);
                         }
                     } else {
                         return self.in_check_mut(key, &target);

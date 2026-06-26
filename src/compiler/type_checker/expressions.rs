@@ -249,12 +249,8 @@ impl TypeChecker {
                 Ok(Type::Any)
             }
             Expression::UpdateExpression { operand, .. } => {
-                let ty = self.check_expression(operand)?;
-                if matches!(ty, Type::Number) || matches!(ty, Type::NumberLiteral(_)) {
-                    Ok(Type::Number)
-                } else {
-                    Ok(Type::Number)
-                }
+                let _ty = self.check_expression(operand)?;
+                Ok(Type::Number)
             }
             Expression::AwaitExpression { argument } => {
                 self.check_expression(argument)?;

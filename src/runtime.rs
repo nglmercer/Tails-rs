@@ -62,6 +62,43 @@ impl TailsRuntime {
             .get(module_path)
             .and_then(|exports| exports.get(name).cloned())
     }
+
+    pub fn new_object(&mut self) -> Value {
+        self.interpreter.new_object()
+    }
+
+    pub fn new_array(&mut self) -> Value {
+        self.interpreter.new_array()
+    }
+
+    pub fn get_property(&mut self, object: &Value, key: &str) -> Option<Value> {
+        self.interpreter.get_property_str(object, key)
+    }
+
+    pub fn set_property(&mut self, object: &Value, key: &str, value: Value) {
+        self.interpreter.set_property_str(object, key, value);
+    }
+
+    pub fn get_array_length(&self, array: &Value) -> Option<i64> {
+        self.interpreter.get_array_length(array)
+    }
+
+    pub fn get_array_element(&self, array: &Value, index: usize) -> Option<Value> {
+        self.interpreter.get_array_element(array, index)
+    }
+
+    pub fn push_array_element(&mut self, array: &Value, value: Value) {
+        self.interpreter.push_array_element(array, value);
+    }
+
+    pub fn call_function(
+        &mut self,
+        func: &Value,
+        this: &Value,
+        args: &[Value],
+    ) -> Result<Value> {
+        self.interpreter.call_value(func, this, args)
+    }
 }
 
 impl Default for TailsRuntime {

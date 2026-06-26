@@ -139,14 +139,7 @@ impl TypeChecker {
             TypeAnnotation::Unknown => Ok(Type::Unknown),
             TypeAnnotation::Never => Ok(Type::Never),
             TypeAnnotation::Named(name) => {
-                if self.type_aliases.contains_key(name)
-                    || self.interfaces.contains_key(name)
-                    || self.enums.contains_key(name)
-                {
-                    Ok(Type::Named(name.clone()))
-                } else {
-                    Ok(Type::Named(name.clone()))
-                }
+                Ok(Type::Named(name.clone()))
             }
             TypeAnnotation::Array(inner) => {
                 let inner_ty = self.resolve_annotation(inner)?;

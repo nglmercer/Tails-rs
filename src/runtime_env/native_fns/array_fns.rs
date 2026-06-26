@@ -71,10 +71,10 @@ pub(super) fn native_array_slice(
     args: &[Value],
 ) -> Result<Value> {
     let elements = get_array_elements(interp, this)?;
-    let start_raw = args.first().map(|v| to_f64(v)).unwrap_or(0.0) as i64;
+    let start_raw = args.first().map(to_f64).unwrap_or(0.0) as i64;
     let end_raw = args
         .get(1)
-        .map(|v| to_f64(v))
+        .map(to_f64)
         .unwrap_or(elements.len() as f64) as i64;
 
     let len = elements.len() as i64;
@@ -107,8 +107,8 @@ pub(super) fn native_array_splice(
     args: &[Value],
 ) -> Result<Value> {
     if let Value::Array(arr_idx) = this {
-        let start_raw = args.first().map(|v| to_f64(v)).unwrap_or(0.0) as i64;
-        let delete_count_raw = args.get(1).map(|v| to_f64(v)).unwrap_or(0.0) as i64;
+        let start_raw = args.first().map(to_f64).unwrap_or(0.0) as i64;
+        let delete_count_raw = args.get(1).map(to_f64).unwrap_or(0.0) as i64;
 
         if let crate::vm::interpreter::HeapValue::Array(arr) = &mut interp.heap[*arr_idx] {
             let len = arr.elements.len() as i64;
@@ -117,7 +117,7 @@ pub(super) fn native_array_splice(
             } else {
                 start_raw.min(len)
             } as usize;
-            let delete_count = delete_count_raw.max(0).min((len - start as i64) as i64) as usize;
+            let delete_count = delete_count_raw.max(0).min(len - start as i64) as usize;
 
             let removed: Vec<Value> = arr.elements.drain(start..start + delete_count).collect();
             let new_items: Vec<Value> = args[2..].to_vec();
@@ -150,10 +150,8 @@ pub(super) fn native_array_index_of(
     let search = args.first().cloned().unwrap_or(Value::Undefined);
     let from = args.get(1).map(|v| to_f64(v) as usize).unwrap_or(0);
     for (i, elem) in elements.iter().enumerate() {
-        if i >= from {
-            if elem == &search {
-                return Ok(Value::Float(i as f64));
-            }
+        if i >= from && elem == &search {
+            return Ok(Value::Float(i as f64));
         }
     }
     Ok(Value::Float(-1.0))
@@ -270,10 +268,10 @@ pub(super) fn native_array_reduce(
         acc = elements[0].clone();
     }
 
-    for i in start_idx..elements.len() {
+    for (i, elem) in elements.iter().enumerate().skip(start_idx) {
         let call_args = vec![
             acc,
-            elements[i].clone(),
+            elem.clone(),
             Value::Integer(i as i64),
             this.clone(),
         ];

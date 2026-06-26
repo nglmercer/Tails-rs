@@ -14,13 +14,13 @@ pub(super) fn native_parse_int(
         Some(v) => to_string_value(_interp, v),
         None => return Ok(Value::Float(f64::NAN)),
     };
-    let radix = args.get(1).map(|r| to_i64(r)).unwrap_or(10);
+    let radix = args.get(1).map(to_i64).unwrap_or(10);
     let _trimmed = s.trim().trim_start_matches(|c: char| {
         c.is_ascii_digit() || c == '-' || c == '+' || c.is_alphabetic()
     });
     let actual = s.trim();
     let result = i64::from_str_radix(
-        actual.trim_start_matches(|c: char| c == '+' || c == '-'),
+        actual.trim_start_matches(['+', '-']),
         radix as u32,
     );
     match result {
@@ -60,7 +60,7 @@ pub(super) fn native_is_nan(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(f64::NAN);
+    let n = args.first().map(to_f64).unwrap_or(f64::NAN);
     Ok(Value::Boolean(n.is_nan()))
 }
 
@@ -69,7 +69,7 @@ pub(super) fn native_is_finite(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let n = args.first().map(|v| to_f64(v)).unwrap_or(f64::NAN);
+    let n = args.first().map(to_f64).unwrap_or(f64::NAN);
     Ok(Value::Boolean(n.is_finite()))
 }
 
@@ -79,7 +79,7 @@ pub(super) fn native_set_timeout(
     args: &[Value],
 ) -> Result<Value> {
     let callback = args.first().cloned().unwrap_or(Value::Undefined);
-    let _delay = args.get(1).map(|v| to_f64(v)).unwrap_or(0.0);
+    let _delay = args.get(1).map(to_f64).unwrap_or(0.0);
     let id = interp.async_runtime.enqueue_macrotask(callback);
     Ok(Value::Float(id as f64))
 }
@@ -90,7 +90,7 @@ pub(super) fn native_set_interval(
     args: &[Value],
 ) -> Result<Value> {
     let callback = args.first().cloned().unwrap_or(Value::Undefined);
-    let delay = args.get(1).map(|v| to_f64(v)).unwrap_or(0.0);
+    let delay = args.get(1).map(to_f64).unwrap_or(0.0);
     let id = interp.async_runtime.enqueue_interval(callback, delay);
     Ok(Value::Float(id as f64))
 }

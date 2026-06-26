@@ -494,7 +494,7 @@ impl CodeGenerator {
                         } => {
                             let func_idx = self.compile_function(
                                 Some(format!("get_{}", mname)),
-                                &vec![],
+                                &[],
                                 mbody,
                             )?;
                             methods.push(ClassMethodInfo {
@@ -512,7 +512,7 @@ impl CodeGenerator {
                         } => {
                             let func_idx = self.compile_function(
                                 Some(format!("set_{}", mname)),
-                                &vec![param.clone()],
+                                std::slice::from_ref(param),
                                 mbody,
                             )?;
                             methods.push(ClassMethodInfo {

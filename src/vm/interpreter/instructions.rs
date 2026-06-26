@@ -180,7 +180,7 @@ impl Interpreter {
                     .pop()
                     .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
                 let num = self.to_number(&value)?;
-                self.stack.push(Value::Integer(!(num as i64) as i64));
+                self.stack.push(Value::Integer(!(num as i64)));
             }
             Instruction::Void => {
                 self.stack
@@ -404,9 +404,7 @@ impl Interpreter {
                                     &handler,
                                     &[target, key.clone(), value, object.clone()],
                                 );
-                                if let Err(e) = trap_result {
-                                    return Err(e);
-                                }
+                                trap_result?;
                             } else {
                                 if let Value::Object(target_obj_idx) = &target {
                                     if let HeapValue::Object(obj) = &mut self.heap[*target_obj_idx]

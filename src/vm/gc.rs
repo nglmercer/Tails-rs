@@ -53,7 +53,7 @@ impl GarbageCollector {
         }
     }
 
-    pub fn sweep(&mut self, heap: &mut Vec<HeapValue>) -> usize {
+    pub fn sweep(&mut self, heap: &mut [HeapValue]) -> usize {
         let mut freed = 0;
         let mut new_free_list = VecDeque::new();
 
@@ -78,7 +78,7 @@ impl GarbageCollector {
 
     pub(crate) fn collect(
         &mut self,
-        heap: &mut Vec<HeapValue>,
+        heap: &mut [HeapValue],
         globals: &HashMap<String, Value>,
         stack: &[Value],
         call_stack: &[crate::vm::interpreter::CallFrame],
@@ -230,10 +230,8 @@ impl GarbageCollector {
             | Value::Array(idx)
             | Value::Function(idx)
             | Value::Promise(idx)
-            | Value::Proxy(idx) => {
-                if *idx < self.marked.len() {
-                    self.marked[*idx] = true;
-                }
+            | Value::Proxy(idx) if *idx < self.marked.len() => {
+                self.marked[*idx] = true;
             }
             _ => {}
         }

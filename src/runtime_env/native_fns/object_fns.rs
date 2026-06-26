@@ -122,8 +122,7 @@ pub(super) fn native_object_assign(
     let target = args[0].clone();
     if let Value::Object(target_idx) = &target {
         for src in &args[1..] {
-            match src {
-                Value::Object(src_idx) => {
+            if let Value::Object(src_idx) = src {
                     let cloned: Vec<(String, Value)> =
                         if let crate::vm::interpreter::HeapValue::Object(src_obj) =
                             &interp.heap[*src_idx]
@@ -143,8 +142,6 @@ pub(super) fn native_object_assign(
                             tgt_obj.properties.insert(k, v);
                         }
                     }
-                }
-                _ => {}
             }
         }
     }
