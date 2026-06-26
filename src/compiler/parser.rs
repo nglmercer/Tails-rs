@@ -1,11 +1,60 @@
 use crate::compiler::lexer::{Token, TemplatePart};
 use crate::errors::{Error, Result};
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeAnnotation {
+    Number,
+    String,
+    Boolean,
+    Null,
+    Undefined,
+    Void,
+    Any,
+    Unknown,
+    Never,
+    Named(String),
+    Array(Box<TypeAnnotation>),
+    Tuple(Vec<TypeAnnotation>),
+    Union(Vec<TypeAnnotation>),
+    Intersection(Vec<TypeAnnotation>),
+    Object(Vec<(String, TypeAnnotation, bool)>),
+    Function {
+        params: Vec<TypeAnnotation>,
+        return_type: Box<TypeAnnotation>,
+    },
+    Literal(TypeLiteral),
+    Generic {
+        name: String,
+        args: Vec<TypeAnnotation>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeLiteral {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+}
+
 #[derive(Debug, Clone)]
 pub enum AstNode {
     Program(Vec<Statement>),
     Statement(Statement),
     Expression(Expression),
+}
+
+#[derive(Debug, Clone)]
+pub enum InterfaceMember {
+    Property {
+        name: String,
+        type_annotation: TypeAnnotation,
+        optional: bool,
+    },
+    Method {
+        name: String,
+        params: Vec<(String, TypeAnnotation)>,
+        return_type: TypeAnnotation,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -18,6 +67,8 @@ pub enum Statement {
     FunctionDeclaration {
         name: String,
         params: Vec<String>,
+        param_types: Option<Vec<Option<TypeAnnotation>>>,
+        return_type: Option<TypeAnnotation>,
         body: Vec<Statement>,
         is_async: bool,
     },
@@ -80,6 +131,25 @@ pub enum Statement {
     ExportDefaultDeclaration {
         declaration: Box<Statement>,
     },
+    InterfaceDeclaration {
+        name: String,
+        extends: Vec<String>,
+        members: Vec<InterfaceMember>,
+    },
+    TypeAliasDeclaration {
+        name: String,
+        type_annotation: TypeAnnotation,
+    },
+    EnumDeclaration {
+        name: String,
+        members: Vec<EnumMember>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumMember {
+    pub name: String,
+    pub value: Option<TypeLiteral>,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +225,7 @@ pub enum VarKind {
 #[derive(Debug, Clone)]
 pub struct VariableDeclarator {
     pub id: String,
+    pub type_annotation: Option<TypeAnnotation>,
     pub init: Option<Expression>,
 }
 
@@ -192,11 +263,15 @@ pub enum Expression {
     FunctionExpression {
         name: Option<String>,
         params: Vec<String>,
+        param_types: Option<Vec<Option<TypeAnnotation>>>,
+        return_type: Option<TypeAnnotation>,
         body: Vec<Statement>,
         is_async: bool,
     },
     ArrowFunction {
         params: Vec<String>,
+        param_types: Option<Vec<Option<TypeAnnotation>>>,
+        return_type: Option<TypeAnnotation>,
         body: Box<ArrowFunctionBody>,
         is_async: bool,
     },
@@ -238,6 +313,10 @@ pub enum Expression {
     },
     ObjectLiteral {
         properties: Vec<(String, Expression)>,
+    },
+    TypeAssertion {
+        expression: Box<Expression>,
+        type_annotation: TypeAnnotation,
     },
 }
 
@@ -363,6 +442,9 @@ impl<'a> Parser<'a> {
             Token::Class => self.parse_class_declaration(),
             Token::Import => self.parse_import_declaration(),
             Token::Export => self.parse_export_declaration(),
+            Token::Interface => self.parse_interface_declaration(),
+            Token::Type => self.parse_type_alias_declaration(),
+            Token::Enum => self.parse_enum_declaration(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -380,13 +462,19 @@ impl<'a> Parser<'a> {
                 Token::Identifier(name) => name,
                 token => return Err(Error::ParseError(format!("Expected identifier, got {:?}", token))),
             };
+            let type_annotation = if self.peek() == &Token::Colon {
+                self.advance();
+                Some(self.parse_type_annotation()?)
+            } else {
+                None
+            };
             let init = if self.peek() == &Token::Assign {
                 self.advance();
                 Some(self.parse_expression()?)
             } else {
                 None
             };
-            declarations.push(VariableDeclarator { id, init });
+            declarations.push(VariableDeclarator { id, type_annotation, init });
             if self.peek() == &Token::Comma {
                 self.advance();
             } else {
@@ -409,13 +497,27 @@ impl<'a> Parser<'a> {
             Token::Identifier(name) => name,
             token => return Err(Error::ParseError(format!("Expected function name, got {:?}", token))),
         };
+        if self.peek() == &Token::Less {
+            self.advance();
+            while self.peek() != &Token::Greater && self.peek() != &Token::Eof {
+                if self.peek() == &Token::Comma { self.advance(); continue; }
+                self.advance();
+            }
+            self.expect(&Token::Greater)?;
+        }
         self.expect(&Token::LeftParen)?;
-        let params = self.parse_params()?;
+        let (params, param_types) = self.parse_typed_params()?;
         self.expect(&Token::RightParen)?;
+        let return_type = if self.peek() == &Token::Colon {
+            self.advance();
+            Some(self.parse_type_annotation()?)
+        } else {
+            None
+        };
         self.expect(&Token::LeftBrace)?;
         let body = self.parse_block_body()?;
         self.expect(&Token::RightBrace)?;
-        Ok(Statement::FunctionDeclaration { name, params, body, is_async })
+        Ok(Statement::FunctionDeclaration { name, params, param_types: Some(param_types), return_type, body, is_async })
     }
 
     fn parse_params(&mut self) -> Result<Vec<String>> {
@@ -435,6 +537,193 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(params)
+    }
+
+    fn parse_typed_params(&mut self) -> Result<(Vec<String>, Vec<Option<TypeAnnotation>>)> {
+        let mut params = Vec::new();
+        let mut param_types = Vec::new();
+        if self.peek() != &Token::RightParen {
+            loop {
+                let param = match self.advance() {
+                    Token::Identifier(name) => name,
+                    token => return Err(Error::ParseError(format!("Expected parameter name, got {:?}", token))),
+                };
+                let ty = if self.peek() == &Token::Colon {
+                    self.advance();
+                    Some(self.parse_type_annotation()?)
+                } else {
+                    None
+                };
+                params.push(param);
+                param_types.push(ty);
+                if self.peek() == &Token::Comma {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        Ok((params, param_types))
+    }
+
+    fn parse_type_annotation(&mut self) -> Result<TypeAnnotation> {
+        self.parse_union_type()
+    }
+
+    fn parse_union_type(&mut self) -> Result<TypeAnnotation> {
+        let mut types = vec![self.parse_intersection_type()?];
+        while self.peek() == &Token::BitOr {
+            self.advance();
+            types.push(self.parse_intersection_type()?);
+        }
+        if types.len() == 1 {
+            Ok(types.remove(0))
+        } else {
+            Ok(TypeAnnotation::Union(types))
+        }
+    }
+
+    fn parse_intersection_type(&mut self) -> Result<TypeAnnotation> {
+        let mut types = vec![self.parse_primary_type()?];
+        while self.peek() == &Token::BitAnd {
+            self.advance();
+            types.push(self.parse_primary_type()?);
+        }
+        if types.len() == 1 {
+            Ok(types.remove(0))
+        } else {
+            Ok(TypeAnnotation::Intersection(types))
+        }
+    }
+
+    fn parse_primary_type(&mut self) -> Result<TypeAnnotation> {
+        let base = match self.peek().clone() {
+            Token::Identifier(name) => {
+                self.advance();
+                match name.as_str() {
+                    "number" => Ok(TypeAnnotation::Number),
+                    "string" => Ok(TypeAnnotation::String),
+                    "boolean" => Ok(TypeAnnotation::Boolean),
+                    "null" => Ok(TypeAnnotation::Null),
+                    "undefined" => Ok(TypeAnnotation::Undefined),
+                    "void" => Ok(TypeAnnotation::Void),
+                    "any" => Ok(TypeAnnotation::Any),
+                    "unknown" => Ok(TypeAnnotation::Unknown),
+                    "never" => Ok(TypeAnnotation::Never),
+                    _ => {
+                        if self.peek() == &Token::Less {
+                            self.advance();
+                            let mut args = vec![self.parse_type_annotation()?];
+                            while self.peek() == &Token::Comma {
+                                self.advance();
+                                args.push(self.parse_type_annotation()?);
+                            }
+                            self.expect(&Token::Greater)?;
+                            Ok(TypeAnnotation::Generic { name, args })
+                        } else {
+                            Ok(TypeAnnotation::Named(name))
+                        }
+                    }
+                }
+            }
+            Token::Void => {
+                self.advance();
+                Ok(TypeAnnotation::Void)
+            }
+            Token::Number(n) => {
+                self.advance();
+                Ok(TypeAnnotation::Literal(TypeLiteral::Number(n)))
+            }
+            Token::String(s) => {
+                self.advance();
+                Ok(TypeAnnotation::Literal(TypeLiteral::String(s)))
+            }
+            Token::LeftBracket => {
+                self.advance();
+                if self.peek() == &Token::RightBracket {
+                    self.advance();
+                    return Ok(TypeAnnotation::Array(Box::new(TypeAnnotation::Any)));
+                }
+                let first = self.parse_type_annotation()?;
+                let mut elements = vec![first];
+                while self.peek() == &Token::Comma {
+                    self.advance();
+                    if self.peek() == &Token::RightBracket {
+                        break;
+                    }
+                    elements.push(self.parse_type_annotation()?);
+                }
+                self.expect(&Token::RightBracket)?;
+                Ok(TypeAnnotation::Tuple(elements))
+            }
+            Token::LeftBrace => {
+                self.advance();
+                let mut properties = Vec::new();
+                if self.peek() != &Token::RightBrace {
+                    loop {
+                        let name = match self.advance() {
+                            Token::Identifier(n) => n,
+                            t => return Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
+                        };
+                        let optional = if self.peek() == &Token::Question {
+                            self.advance();
+                            true
+                        } else {
+                            false
+                        };
+                        self.expect(&Token::Colon)?;
+                        let ty = self.parse_type_annotation()?;
+                        properties.push((name, ty, optional));
+                        if self.peek() == &Token::Comma {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(&Token::RightBrace)?;
+                Ok(TypeAnnotation::Object(properties))
+            }
+            Token::LeftParen => {
+                self.advance();
+                let mut param_types = Vec::new();
+                if self.peek() != &Token::RightParen {
+                    loop {
+                        if self.peek() == &Token::RightParen {
+                            break;
+                        }
+                        if matches!(self.peek(), Token::Identifier(_)) {
+                            self.advance();
+                            if self.peek() == &Token::Colon {
+                                self.advance();
+                                param_types.push(self.parse_type_annotation()?);
+                            } else {
+                                param_types.push(TypeAnnotation::Any);
+                            }
+                        } else {
+                            param_types.push(self.parse_type_annotation()?);
+                        }
+                        if self.peek() == &Token::Comma {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(&Token::RightParen)?;
+                self.expect(&Token::Arrow)?;
+                let return_type = Box::new(self.parse_type_annotation()?);
+                Ok(TypeAnnotation::Function { params: param_types, return_type })
+            }
+            _ => Ok(TypeAnnotation::Any),
+        }?;
+        if self.peek() == &Token::LeftBracket {
+            self.advance();
+            self.expect(&Token::RightBracket)?;
+            Ok(TypeAnnotation::Array(Box::new(base)))
+        } else {
+            Ok(base)
+        }
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement> {
@@ -767,18 +1056,26 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_postfix(&mut self) -> Result<Expression> {
-        let expr = self.parse_call()?;
-        match self.peek() {
-            Token::Increment => {
-                self.advance();
-                Ok(Expression::UpdateExpression { op: UpdateOperator::Increment, operand: Box::new(expr), prefix: false })
+        let mut expr = self.parse_call()?;
+        loop {
+            match self.peek() {
+                Token::Increment => {
+                    self.advance();
+                    expr = Expression::UpdateExpression { op: UpdateOperator::Increment, operand: Box::new(expr), prefix: false };
+                }
+                Token::Decrement => {
+                    self.advance();
+                    expr = Expression::UpdateExpression { op: UpdateOperator::Decrement, operand: Box::new(expr), prefix: false };
+                }
+                Token::As => {
+                    self.advance();
+                    let type_annotation = self.parse_type_annotation()?;
+                    expr = Expression::TypeAssertion { expression: Box::new(expr), type_annotation };
+                }
+                _ => break,
             }
-            Token::Decrement => {
-                self.advance();
-                Ok(Expression::UpdateExpression { op: UpdateOperator::Decrement, operand: Box::new(expr), prefix: false })
-            }
-            _ => Ok(expr),
         }
+        Ok(expr)
     }
 
     fn parse_new_expression(&mut self) -> Result<Expression> {
@@ -970,7 +1267,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         if self.peek() == &Token::Arrow {
                             self.advance();
-                            self.parse_arrow_body(vec![name], false)
+                            self.parse_arrow_body(vec![name], None, None, false)
                         } else {
                             Ok(Expression::Identifier(name))
                         }
@@ -983,7 +1280,7 @@ impl<'a> Parser<'a> {
                     self.advance();
                     if self.peek() == &Token::Arrow {
                         self.advance();
-                        return self.parse_arrow_body(vec![], false);
+                        return self.parse_arrow_body(vec![], None, None, false);
                     }
                     return Err(Error::ParseError("Unexpected )".into()));
                 }
@@ -992,7 +1289,7 @@ impl<'a> Parser<'a> {
                     let first = match self.advance() { Token::Identifier(n) => n, _ => unreachable!() };
                     if self.peek() == &Token::Arrow {
                         self.advance();
-                        return self.parse_arrow_body(vec![first], false);
+                        return self.parse_arrow_body(vec![first], None, None, false);
                     }
                     if self.peek() == &Token::Comma {
                         let mut params = vec![first];
@@ -1008,7 +1305,7 @@ impl<'a> Parser<'a> {
                         self.expect(&Token::RightParen)?;
                         if self.peek() == &Token::Arrow {
                             self.advance();
-                            return self.parse_arrow_body(params, false);
+                            return self.parse_arrow_body(params, None, None, false);
                         }
                         self.pos = saved;
                     } else {
@@ -1023,7 +1320,7 @@ impl<'a> Parser<'a> {
                         _ => return Err(Error::ParseError("Invalid arrow function parameter".into())),
                     };
                     self.advance();
-                    return self.parse_arrow_body(params, false);
+                    return self.parse_arrow_body(params, None, None, false);
                 }
                 Ok(expr)
             }
@@ -1035,12 +1332,18 @@ impl<'a> Parser<'a> {
                     None
                 };
                 self.expect(&Token::LeftParen)?;
-                let params = self.parse_params()?;
+                let (params, param_types) = self.parse_typed_params()?;
                 self.expect(&Token::RightParen)?;
+                let return_type = if self.peek() == &Token::Colon {
+                    self.advance();
+                    Some(self.parse_type_annotation()?)
+                } else {
+                    None
+                };
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::FunctionExpression { name, params, body, is_async: false })
+                Ok(Expression::FunctionExpression { name, params, param_types: Some(param_types), return_type, body, is_async: false })
             }
             Token::Async => {
                 self.advance();
@@ -1052,19 +1355,31 @@ impl<'a> Parser<'a> {
                         None
                     };
                     self.expect(&Token::LeftParen)?;
-                    let params = self.parse_params()?;
+                    let (params, param_types) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
+                    let return_type = if self.peek() == &Token::Colon {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    };
                     self.expect(&Token::LeftBrace)?;
                     let body = self.parse_block_body()?;
                     self.expect(&Token::RightBrace)?;
-                    Ok(Expression::FunctionExpression { name, params, body, is_async: true })
+                    Ok(Expression::FunctionExpression { name, params, param_types: Some(param_types), return_type, body, is_async: true })
                 } else {
                     self.expect(&Token::LeftParen)?;
-                    let params = self.parse_params()?;
+                    let (params, param_types) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
+                    let return_type = if self.peek() == &Token::Colon {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    };
                     if self.peek() == &Token::Arrow {
                         self.advance();
-                        self.parse_arrow_body(params, true)
+                        self.parse_arrow_body(params, Some(param_types), return_type, true)
                     } else {
                         Err(Error::ParseError("Expected '=>' after async parameters".into()))
                     }
@@ -1170,15 +1485,15 @@ impl<'a> Parser<'a> {
         Ok(Expression::TemplateLiteral { quasis, expressions })
     }
 
-    fn parse_arrow_body(&mut self, params: Vec<String>, is_async: bool) -> Result<Expression> {
+    fn parse_arrow_body(&mut self, params: Vec<String>, param_types: Option<Vec<Option<TypeAnnotation>>>, return_type: Option<TypeAnnotation>, is_async: bool) -> Result<Expression> {
         if self.peek() == &Token::LeftBrace {
             self.advance();
             let body = self.parse_block_body()?;
             self.expect(&Token::RightBrace)?;
-            Ok(Expression::ArrowFunction { params, body: Box::new(ArrowFunctionBody::Block(body)), is_async })
+            Ok(Expression::ArrowFunction { params, param_types, return_type, body: Box::new(ArrowFunctionBody::Block(body)), is_async })
         } else {
             let expr = self.parse_assignment()?;
-            Ok(Expression::ArrowFunction { params, body: Box::new(ArrowFunctionBody::Expression(expr)), is_async })
+            Ok(Expression::ArrowFunction { params, param_types, return_type, body: Box::new(ArrowFunctionBody::Expression(expr)), is_async })
         }
     }
 
@@ -1238,7 +1553,7 @@ impl<'a> Parser<'a> {
             } else {
                 None
             };
-            declarations.push(VariableDeclarator { id: decl_id, init: init_val });
+            declarations.push(VariableDeclarator { id: decl_id, type_annotation: None, init: init_val });
             let init = Some(Box::new(ForInit::Variable(Statement::VariableDeclaration { kind, declarations })));
             self.expect(&Token::Semicolon)?;
             let condition = if self.peek() != &Token::Semicolon { Some(self.parse_expression()?) } else { None };
@@ -1527,5 +1842,140 @@ impl<'a> Parser<'a> {
 
         let decl = self.parse_statement()?;
         Ok(Statement::ExportDeclaration { declaration: Box::new(decl) })
+    }
+
+    fn parse_interface_declaration(&mut self) -> Result<Statement> {
+        self.expect(&Token::Interface)?;
+        let name = match self.advance() {
+            Token::Identifier(name) => name,
+            t => return Err(Error::ParseError(format!("Expected interface name, got {:?}", t))),
+        };
+        let mut extends = Vec::new();
+        if self.peek() == &Token::Extends {
+            self.advance();
+            loop {
+                match self.advance() {
+                    Token::Identifier(n) => extends.push(n),
+                    t => return Err(Error::ParseError(format!("Expected identifier, got {:?}", t))),
+                }
+                if self.peek() == &Token::Comma {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.expect(&Token::LeftBrace)?;
+        let mut members = Vec::new();
+        while self.peek() != &Token::RightBrace && self.peek() != &Token::Eof {
+            if self.peek() == &Token::Comma {
+                self.advance();
+                continue;
+            }
+            let name = match self.advance() {
+                Token::Identifier(n) => n,
+                t => return Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
+            };
+            if self.peek() == &Token::LeftParen {
+                self.advance();
+                let mut params = Vec::new();
+                if self.peek() != &Token::RightParen {
+                    loop {
+                        let pname = match self.advance() {
+                            Token::Identifier(n) => n,
+                            t => return Err(Error::ParseError(format!("Expected param name, got {:?}", t))),
+                        };
+                        let ptype = if self.peek() == &Token::Colon {
+                            self.advance();
+                            self.parse_type_annotation()?
+                        } else {
+                            TypeAnnotation::Any
+                        };
+                        params.push((pname, ptype));
+                        if self.peek() == &Token::Comma {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(&Token::RightParen)?;
+                let return_type = if self.peek() == &Token::Colon {
+                    self.advance();
+                    self.parse_type_annotation()?
+                } else {
+                    TypeAnnotation::Any
+                };
+                if self.peek() == &Token::Semicolon { self.advance(); }
+                members.push(InterfaceMember::Method { name, params, return_type });
+            } else {
+                let optional = if self.peek() == &Token::Question {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
+                self.expect(&Token::Colon)?;
+                let type_annotation = self.parse_type_annotation()?;
+                if self.peek() == &Token::Semicolon { self.advance(); }
+                members.push(InterfaceMember::Property { name, type_annotation, optional });
+            }
+        }
+        self.expect(&Token::RightBrace)?;
+        if self.peek() == &Token::Semicolon { self.advance(); }
+        Ok(Statement::InterfaceDeclaration { name, extends, members })
+    }
+
+    fn parse_type_alias_declaration(&mut self) -> Result<Statement> {
+        self.expect(&Token::Type)?;
+        let name = match self.advance() {
+            Token::Identifier(name) => name,
+            t => return Err(Error::ParseError(format!("Expected type name, got {:?}", t))),
+        };
+        self.expect(&Token::Assign)?;
+        let type_annotation = self.parse_type_annotation()?;
+        if self.peek() == &Token::Semicolon { self.advance(); }
+        Ok(Statement::TypeAliasDeclaration { name, type_annotation })
+    }
+
+    fn parse_enum_declaration(&mut self) -> Result<Statement> {
+        self.expect(&Token::Enum)?;
+        let name = match self.advance() {
+            Token::Identifier(name) => name,
+            t => return Err(Error::ParseError(format!("Expected enum name, got {:?}", t))),
+        };
+        self.expect(&Token::LeftBrace)?;
+        let mut members = Vec::new();
+        while self.peek() != &Token::RightBrace && self.peek() != &Token::Eof {
+            let member_name = match self.advance() {
+                Token::Identifier(n) => n,
+                t => return Err(Error::ParseError(format!("Expected enum member name, got {:?}", t))),
+            };
+            let value = if self.peek() == &Token::Assign {
+                self.advance();
+                match self.peek().clone() {
+                    Token::Number(n) => {
+                        self.advance();
+                        Some(TypeLiteral::Number(n))
+                    }
+                    Token::String(s) => {
+                        self.advance();
+                        Some(TypeLiteral::String(s))
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            members.push(EnumMember { name: member_name, value });
+            if self.peek() == &Token::Comma {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        self.expect(&Token::RightBrace)?;
+        if self.peek() == &Token::Semicolon { self.advance(); }
+        Ok(Statement::EnumDeclaration { name, members })
     }
 }

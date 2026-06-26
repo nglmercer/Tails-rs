@@ -367,7 +367,6 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Jump(0));
 
                 let break_start = self.break_targets.len();
-                let mut non_default_idx = 0;
                 for case in cases {
                     if case.test.is_some() {
                         if !body_jumps.is_empty() {
@@ -380,7 +379,6 @@ impl CodeGenerator {
                     for s in &case.consequent {
                         self.generate_statement(s, false)?;
                     }
-                    let _ = non_default_idx;
                 }
 
                 let loop_end = self.instructions.len();
@@ -600,6 +598,9 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
+            Statement::InterfaceDeclaration { .. } => Ok(()),
+            Statement::TypeAliasDeclaration { .. } => Ok(()),
+            Statement::EnumDeclaration { .. } => Ok(()),
             Statement::ExportDefaultDeclaration { declaration } => {
                 match declaration.as_ref() {
                     Statement::FunctionDeclaration { name, .. } => {
@@ -628,7 +629,7 @@ impl CodeGenerator {
                 self.scope_depth -= 1;
                 Ok(())
             }
-            Statement::FunctionDeclaration { name, params, body, is_async: _ } => {
+            Statement::FunctionDeclaration { name, params, body, is_async: _, param_types: _, return_type: _ } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
                 let outer_refs = find_outer_refs(body, params, &parent_locals_snapshot);
@@ -872,7 +873,7 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::GetProperty);
                 Ok(())
             }
-            Expression::FunctionExpression { name: _, params, body, is_async: _ } => {
+            Expression::FunctionExpression { name: _, params, body, is_async: _, param_types: _, return_type: _ } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
                 let outer_refs = find_outer_refs(body, params, &parent_locals_snapshot);
@@ -926,7 +927,7 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Expression::ArrowFunction { params, body, is_async: _ } => {
+            Expression::ArrowFunction { params, body, is_async: _, param_types: _, return_type: _ } => {
                 let func_idx = self.functions.len() as u32;
 
                 let (body_stmts, is_expr) = match body.as_ref() {
@@ -1186,6 +1187,10 @@ impl CodeGenerator {
                     self.generate_expression(value)?;
                     self.instructions.push(Instruction::SetProperty);
                 }
+                Ok(())
+            }
+            Expression::TypeAssertion { expression, type_annotation: _ } => {
+                self.generate_expression(expression)?;
                 Ok(())
             }
         }
