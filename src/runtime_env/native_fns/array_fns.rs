@@ -72,10 +72,7 @@ pub(super) fn native_array_slice(
 ) -> Result<Value> {
     let elements = get_array_elements(interp, this)?;
     let start_raw = args.first().map(to_f64).unwrap_or(0.0) as i64;
-    let end_raw = args
-        .get(1)
-        .map(to_f64)
-        .unwrap_or(elements.len() as f64) as i64;
+    let end_raw = args.get(1).map(to_f64).unwrap_or(elements.len() as f64) as i64;
 
     let len = elements.len() as i64;
     let start = if start_raw < 0 {
@@ -269,12 +266,7 @@ pub(super) fn native_array_reduce(
     }
 
     for (i, elem) in elements.iter().enumerate().skip(start_idx) {
-        let call_args = vec![
-            acc,
-            elem.clone(),
-            Value::Integer(i as i64),
-            this.clone(),
-        ];
+        let call_args = vec![acc, elem.clone(), Value::Integer(i as i64), this.clone()];
         acc = interp.call_value(&callback, &Value::Undefined, &call_args)?;
     }
     Ok(acc)

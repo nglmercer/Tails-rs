@@ -150,7 +150,10 @@ pub extern "C" fn tails_call_native(
         unsafe { std::slice::from_raw_parts(args, args_len) }
     };
 
-    let values: Vec<Value> = args.iter().map(|v| super::tails_value_to_value(*v)).collect();
+    let values: Vec<Value> = args
+        .iter()
+        .map(|v| super::tails_value_to_value(*v))
+        .collect();
 
     match registry.call(id, &values) {
         Ok(value) => super::value_to_tails_value(value),

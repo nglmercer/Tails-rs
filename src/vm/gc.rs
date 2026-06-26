@@ -230,7 +230,9 @@ impl GarbageCollector {
             | Value::Array(idx)
             | Value::Function(idx)
             | Value::Promise(idx)
-            | Value::Proxy(idx) if *idx < self.marked.len() => {
+            | Value::Proxy(idx)
+                if *idx < self.marked.len() =>
+            {
                 self.marked[*idx] = true;
             }
             _ => {}

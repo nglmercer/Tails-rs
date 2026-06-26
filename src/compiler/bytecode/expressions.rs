@@ -492,11 +492,8 @@ impl CodeGenerator {
                             body: mbody,
                             is_static,
                         } => {
-                            let func_idx = self.compile_function(
-                                Some(format!("get_{}", mname)),
-                                &[],
-                                mbody,
-                            )?;
+                            let func_idx =
+                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -577,7 +574,9 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::ArrayLiteral { elements } => {
-                let has_spread = elements.iter().any(|e| matches!(e, Expression::SpreadElement { .. }));
+                let has_spread = elements
+                    .iter()
+                    .any(|e| matches!(e, Expression::SpreadElement { .. }));
                 if has_spread {
                     self.instructions.push(Instruction::NewArray(0));
                     for elem in elements {
@@ -608,7 +607,9 @@ impl CodeGenerator {
                 if has_spread {
                     self.instructions.push(Instruction::NewObject);
                     for prop in properties {
-                        if prop.key.is_empty() && matches!(prop.value, Expression::SpreadElement { .. }) {
+                        if prop.key.is_empty()
+                            && matches!(prop.value, Expression::SpreadElement { .. })
+                        {
                             if let Expression::SpreadElement { argument } = &prop.value {
                                 self.instructions.push(Instruction::Dup);
                                 self.generate_expression(argument)?;
@@ -636,9 +637,7 @@ impl CodeGenerator {
                 self.generate_expression(argument)?;
                 Ok(())
             }
-            Expression::RestElement { .. } => {
-                Ok(())
-            }
+            Expression::RestElement { .. } => Ok(()),
             Expression::TypeAssertion {
                 expression,
                 type_annotation: _,

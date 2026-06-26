@@ -23,10 +23,7 @@ pub(super) fn to_i64(v: &Value) -> i64 {
     match v {
         Value::Integer(n) => *n,
         Value::Float(n) => *n as i64,
-        Value::Boolean(b)
-            if *b => {
-                1
-            }
+        Value::Boolean(b) if *b => 1,
         Value::Boolean(_) => 0,
         _ => 0,
     }

@@ -91,12 +91,7 @@ impl TailsRuntime {
         self.interpreter.push_array_element(array, value);
     }
 
-    pub fn call_function(
-        &mut self,
-        func: &Value,
-        this: &Value,
-        args: &[Value],
-    ) -> Result<Value> {
+    pub fn call_function(&mut self, func: &Value, this: &Value, args: &[Value]) -> Result<Value> {
         self.interpreter.call_value(func, this, args)
     }
 }

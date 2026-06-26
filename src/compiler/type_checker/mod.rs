@@ -114,7 +114,11 @@ impl TypeChecker {
         }
     }
 
-    pub(crate) fn define_pattern_variables(&mut self, pattern: &crate::compiler::parser::BindingPattern, type_: &Type) {
+    pub(crate) fn define_pattern_variables(
+        &mut self,
+        pattern: &crate::compiler::parser::BindingPattern,
+        type_: &Type,
+    ) {
         use crate::compiler::parser::BindingPattern;
         match pattern {
             BindingPattern::Identifier(name) => {
@@ -165,9 +169,7 @@ impl TypeChecker {
             TypeAnnotation::Any => Ok(Type::Any),
             TypeAnnotation::Unknown => Ok(Type::Unknown),
             TypeAnnotation::Never => Ok(Type::Never),
-            TypeAnnotation::Named(name) => {
-                Ok(Type::Named(name.clone()))
-            }
+            TypeAnnotation::Named(name) => Ok(Type::Named(name.clone())),
             TypeAnnotation::Array(inner) => {
                 let inner_ty = self.resolve_annotation(inner)?;
                 Ok(Type::Array(Box::new(inner_ty)))

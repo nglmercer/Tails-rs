@@ -104,7 +104,11 @@ impl<'a> Parser<'a> {
                     elements.push(ObjectBindingElement {
                         key: match &rest {
                             BindingPattern::Identifier(name) => name.clone(),
-                            _ => return Err(Error::ParseError("Invalid rest pattern in object".into())),
+                            _ => {
+                                return Err(Error::ParseError(
+                                    "Invalid rest pattern in object".into(),
+                                ))
+                            }
                         },
                         value: rest,
                         shorthand: true,

@@ -452,7 +452,6 @@ impl Interpreter {
                 for _ in 0..*size {
                     elements.push(self.stack.pop().unwrap_or(Value::Undefined));
                 }
-                elements.reverse();
                 let heap_idx = self
                     .gc
                     .allocate(&mut self.heap, HeapValue::Array(JsArray { elements }));
@@ -493,8 +492,11 @@ impl Interpreter {
                 if let Value::Object(target_idx) = target {
                     if let Value::Object(source_idx) = source {
                         if let HeapValue::Object(source_obj) = &self.heap[source_idx] {
-                            let props: Vec<(String, Value)> =
-                                source_obj.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                            let props: Vec<(String, Value)> = source_obj
+                                .properties
+                                .iter()
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect();
                             if let HeapValue::Object(target_obj) = &mut self.heap[target_idx] {
                                 for (k, v) in props {
                                     target_obj.properties.insert(k, v);

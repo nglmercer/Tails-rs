@@ -2,9 +2,8 @@ mod closures;
 mod expressions;
 
 use crate::compiler::parser::{
-    ArrowFunctionBody, ArrayBindingElement, AstNode, BinaryOperator, BindingPattern,
-    ClassMember, CompoundAssignmentOp, Expression, ForInLeft, ForInit, Statement,
-    UnaryOperator, UpdateOperator,
+    ArrayBindingElement, ArrowFunctionBody, AstNode, BinaryOperator, BindingPattern, ClassMember,
+    CompoundAssignmentOp, Expression, ForInLeft, ForInit, Statement, UnaryOperator, UpdateOperator,
 };
 use crate::compiler::{
     ClassInfo, ClassMethodInfo, ClassMethodKind, CompiledFunction, CompiledModule, Instruction,
@@ -95,8 +94,7 @@ impl CodeGenerator {
                             BindingPattern::Identifier(id) => {
                                 self.instructions.push(Instruction::LoadUndefined);
                                 if self.scope_depth == 0 {
-                                    self.instructions
-                                        .push(Instruction::StoreGlobal(id.clone()));
+                                    self.instructions.push(Instruction::StoreGlobal(id.clone()));
                                 } else {
                                     self.locals.push(id.clone());
                                     let slot = (self.locals.len() - 1) as u16;
@@ -568,11 +566,8 @@ impl CodeGenerator {
                             body: mbody,
                             is_static,
                         } => {
-                            let func_idx = self.compile_function(
-                                Some(format!("get_{}", mname)),
-                                &[],
-                                mbody,
-                            )?;
+                            let func_idx =
+                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -806,12 +801,14 @@ impl CodeGenerator {
         }
     }
 
-    pub(crate) fn generate_destructuring_pattern(&mut self, pattern: &BindingPattern) -> Result<()> {
+    pub(crate) fn generate_destructuring_pattern(
+        &mut self,
+        pattern: &BindingPattern,
+    ) -> Result<()> {
         match pattern {
             BindingPattern::Identifier(id) => {
                 if self.scope_depth == 0 {
-                    self.instructions
-                        .push(Instruction::StoreGlobal(id.clone()));
+                    self.instructions.push(Instruction::StoreGlobal(id.clone()));
                 } else {
                     self.locals.push(id.clone());
                     let slot = (self.locals.len() - 1) as u16;

@@ -19,35 +19,35 @@ impl TypeChecker {
                 {
                     if let Expression::Identifier(name) = operand.as_ref() {
                         if let Some(Type::Union(variants)) = self.get_variable_type(name).as_ref() {
-                                let narrowed: Vec<Type> = variants
-                                    .iter()
-                                    .filter(|v| self.type_matches_typeof_value(v, lit))
-                                    .cloned()
-                                    .collect();
-                                if !narrowed.is_empty() {
-                                    let ty = if narrowed.len() == 1 {
-                                        narrowed[0].clone()
-                                    } else {
-                                        Type::Union(narrowed)
-                                    };
-                                    if is_true_branch {
+                            let narrowed: Vec<Type> = variants
+                                .iter()
+                                .filter(|v| self.type_matches_typeof_value(v, lit))
+                                .cloned()
+                                .collect();
+                            if !narrowed.is_empty() {
+                                let ty = if narrowed.len() == 1 {
+                                    narrowed[0].clone()
+                                } else {
+                                    Type::Union(narrowed)
+                                };
+                                if is_true_branch {
+                                    self.narrowed_types.insert(name.clone(), ty);
+                                } else {
+                                    let excluded: Vec<Type> = variants
+                                        .iter()
+                                        .filter(|v| !self.type_matches_typeof_value(v, lit))
+                                        .cloned()
+                                        .collect();
+                                    if !excluded.is_empty() {
+                                        let ty = if excluded.len() == 1 {
+                                            excluded[0].clone()
+                                        } else {
+                                            Type::Union(excluded)
+                                        };
                                         self.narrowed_types.insert(name.clone(), ty);
-                                    } else {
-                                        let excluded: Vec<Type> = variants
-                                            .iter()
-                                            .filter(|v| !self.type_matches_typeof_value(v, lit))
-                                            .cloned()
-                                            .collect();
-                                        if !excluded.is_empty() {
-                                            let ty = if excluded.len() == 1 {
-                                                excluded[0].clone()
-                                            } else {
-                                                Type::Union(excluded)
-                                            };
-                                            self.narrowed_types.insert(name.clone(), ty);
-                                        }
                                     }
                                 }
+                            }
                         }
                     }
                 } else if let (Expression::Identifier(name), Expression::StringLiteral(lit)) =
@@ -115,35 +115,35 @@ impl TypeChecker {
             if matches!(op, crate::compiler::parser::UnaryOperator::Typeof) {
                 if let Expression::Identifier(name) = operand.as_ref() {
                     if let Some(Type::Union(variants)) = self.get_variable_type(name).as_ref() {
-                            if is_true_branch {
-                                let narrowed: Vec<Type> = variants
-                                    .iter()
-                                    .filter(|v| self.type_matches_typeof(v, condition))
-                                    .cloned()
-                                    .collect();
-                                if !narrowed.is_empty() {
-                                    let ty = if narrowed.len() == 1 {
-                                        narrowed[0].clone()
-                                    } else {
-                                        Type::Union(narrowed)
-                                    };
-                                    self.narrowed_types.insert(name.clone(), ty);
-                                }
-                            } else {
-                                let narrowed: Vec<Type> = variants
-                                    .iter()
-                                    .filter(|v| !self.type_matches_typeof(v, condition))
-                                    .cloned()
-                                    .collect();
-                                if !narrowed.is_empty() {
-                                    let ty = if narrowed.len() == 1 {
-                                        narrowed[0].clone()
-                                    } else {
-                                        Type::Union(narrowed)
-                                    };
-                                    self.narrowed_types.insert(name.clone(), ty);
-                                }
+                        if is_true_branch {
+                            let narrowed: Vec<Type> = variants
+                                .iter()
+                                .filter(|v| self.type_matches_typeof(v, condition))
+                                .cloned()
+                                .collect();
+                            if !narrowed.is_empty() {
+                                let ty = if narrowed.len() == 1 {
+                                    narrowed[0].clone()
+                                } else {
+                                    Type::Union(narrowed)
+                                };
+                                self.narrowed_types.insert(name.clone(), ty);
                             }
+                        } else {
+                            let narrowed: Vec<Type> = variants
+                                .iter()
+                                .filter(|v| !self.type_matches_typeof(v, condition))
+                                .cloned()
+                                .collect();
+                            if !narrowed.is_empty() {
+                                let ty = if narrowed.len() == 1 {
+                                    narrowed[0].clone()
+                                } else {
+                                    Type::Union(narrowed)
+                                };
+                                self.narrowed_types.insert(name.clone(), ty);
+                            }
+                        }
                     }
                 }
             }

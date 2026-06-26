@@ -160,7 +160,7 @@ pub extern "C" fn tails_is_array(value: TailsValue) -> bool {
 #[no_mangle]
 pub extern "C" fn tails_is_function(value: TailsValue) -> bool {
     value.tag == TailsValueType::Function as u32
-    || value.tag == TailsValueType::NativeFunction as u32
+        || value.tag == TailsValueType::NativeFunction as u32
 }
 
 #[no_mangle]

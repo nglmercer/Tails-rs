@@ -19,10 +19,7 @@ pub(super) fn native_parse_int(
         c.is_ascii_digit() || c == '-' || c == '+' || c.is_alphabetic()
     });
     let actual = s.trim();
-    let result = i64::from_str_radix(
-        actual.trim_start_matches(['+', '-']),
-        radix as u32,
-    );
+    let result = i64::from_str_radix(actual.trim_start_matches(['+', '-']), radix as u32);
     match result {
         Ok(n) => {
             if actual.starts_with('-') {

@@ -123,25 +123,25 @@ pub(super) fn native_object_assign(
     if let Value::Object(target_idx) = &target {
         for src in &args[1..] {
             if let Value::Object(src_idx) = src {
-                    let cloned: Vec<(String, Value)> =
-                        if let crate::vm::interpreter::HeapValue::Object(src_obj) =
-                            &interp.heap[*src_idx]
-                        {
-                            src_obj
-                                .properties
-                                .iter()
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect()
-                        } else {
-                            Vec::new()
-                        };
-                    if let crate::vm::interpreter::HeapValue::Object(tgt_obj) =
-                        &mut interp.heap[*target_idx]
+                let cloned: Vec<(String, Value)> =
+                    if let crate::vm::interpreter::HeapValue::Object(src_obj) =
+                        &interp.heap[*src_idx]
                     {
-                        for (k, v) in cloned {
-                            tgt_obj.properties.insert(k, v);
-                        }
+                        src_obj
+                            .properties
+                            .iter()
+                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+                if let crate::vm::interpreter::HeapValue::Object(tgt_obj) =
+                    &mut interp.heap[*target_idx]
+                {
+                    for (k, v) in cloned {
+                        tgt_obj.properties.insert(k, v);
                     }
+                }
             }
         }
     }

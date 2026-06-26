@@ -6,18 +6,25 @@ use crate::objects::Value;
 impl Interpreter {
     pub fn new_object(&mut self) -> Value {
         let idx = self.heap.len();
-        self.heap.push(HeapValue::Object(crate::vm::interpreter::heap_types::JsObject::new()));
+        self.heap.push(HeapValue::Object(
+            crate::vm::interpreter::heap_types::JsObject::new(),
+        ));
         Value::Object(idx)
     }
 
     pub fn new_array(&mut self) -> Value {
         let idx = self.heap.len();
-        self.heap.push(HeapValue::Array(crate::vm::interpreter::heap_types::JsArray { elements: Vec::new() }));
+        self.heap.push(HeapValue::Array(
+            crate::vm::interpreter::heap_types::JsArray {
+                elements: Vec::new(),
+            },
+        ));
         Value::Array(idx)
     }
 
     pub fn get_property_str(&mut self, object: &Value, key: &str) -> Option<Value> {
-        self.get_property(object, &Value::String(key.to_string())).ok()
+        self.get_property(object, &Value::String(key.to_string()))
+            .ok()
     }
 
     pub fn set_property_str(&mut self, object: &Value, key: &str, value: Value) {
