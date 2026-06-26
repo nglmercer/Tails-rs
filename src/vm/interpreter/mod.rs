@@ -9,6 +9,7 @@ pub use heap_types::{JsObject, JsArray, JsFunction, HeapValue, JsProxyData};
 pub(crate) use call_frame::{CallFrame, ExceptionHandler};
 
 use std::collections::HashMap;
+use std::rc::Rc;
 use crate::compiler::{CompiledModule, Instruction};
 use crate::errors::{Error, Result};
 use crate::objects::Value;
@@ -22,7 +23,7 @@ pub struct Interpreter {
     pub(crate) heap: Vec<HeapValue>,
     pub(crate) gc: crate::vm::gc::GarbageCollector,
     pub(crate) call_stack: Vec<CallFrame>,
-    pub(crate) current_module: Option<CompiledModule>,
+    pub(crate) current_module: Option<Rc<CompiledModule>>,
     exception_handlers: Vec<ExceptionHandler>,
     pending_exception: Option<Value>,
     pub(crate) async_runtime: AsyncRuntime,
@@ -56,7 +57,7 @@ impl Interpreter {
     }
 
     pub fn execute(&mut self, module: &CompiledModule) -> Result<Value> {
-        self.current_module = Some(module.clone());
+        self.current_module = Some(Rc::new(module.clone()));
         let result = self.execute_from(module, 0);
         self.drain_microtasks();
         let macrotasks: Vec<_> = self.async_runtime.run_macrotasks();
@@ -330,29 +331,34 @@ impl Interpreter {
                                         continue;
                                     }
                                 }
-                                let return_address = pc + 1;
-                                let base_pointer = self.stack.len();
-                                let closure_count = f.closure.len();
-
-                                self.call_stack.push(CallFrame {
-                                    return_address,
-                                    base_pointer,
-                                    closure_var_count: closure_count,
-                                    func_heap_idx: Some(func_idx),
-                                    this_value: None,
-                                    is_construct: false,
-                                });
-
-                                for closure_var in &f.closure {
-                                    self.stack.push(closure_var.clone());
+                                let same_module = match (&f.owner_module, &self.current_module) {
+                                    (Some(om), Some(cm)) => Rc::ptr_eq(om, cm),
+                                    (None, None) => true,
+                                    _ => false,
+                                };
+                                if same_module {
+                                    let return_address = pc + 1;
+                                    let base_pointer = self.stack.len();
+                                    let closure_count = f.closure.len();
+                                    self.call_stack.push(CallFrame {
+                                        return_address,
+                                        base_pointer,
+                                        closure_var_count: closure_count,
+                                        func_heap_idx: Some(func_idx),
+                                        this_value: None,
+                                        is_construct: false,
+                                    });
+                                    for closure_var in &f.closure {
+                                        self.stack.push(closure_var.clone());
+                                    }
+                                    for arg in args {
+                                        self.stack.push(arg);
+                                    }
+                                    pc = f.bytecode_index;
+                                    continue;
                                 }
-
-                                for arg in args {
-                                    self.stack.push(arg);
-                                }
-
-                                pc = f.bytecode_index;
-                                continue;
+                                let result = self.call_value(&Value::Function(func_idx), &Value::Undefined, &args)?;
+                                self.stack.push(result);
                             }
                         }
                         Value::NativeFunction(native_idx) => {
@@ -573,7 +579,7 @@ impl Interpreter {
 
                     let proto_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
-                    let owner = self.current_module.as_ref().map(|m| std::rc::Rc::new(m.clone()));
+                    let owner = self.current_module.clone();
                     let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
@@ -600,7 +606,7 @@ impl Interpreter {
 
                     let proto_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
-                    let owner = self.current_module.as_ref().map(|m| std::rc::Rc::new(m.clone()));
+                    let owner = self.current_module.clone();
                     let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
@@ -881,7 +887,7 @@ impl Interpreter {
 
                     let ctor_heap_idx = if let Some(ctor_func_idx) = class_info.constructor_func_idx {
                         let func_info = module.functions[ctor_func_idx as usize].clone();
-                        let owner = self.current_module.as_ref().map(|m| std::rc::Rc::new(m.clone()));
+                        let owner = self.current_module.clone();
 
                         let idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                             name: func_info.name,
@@ -916,7 +922,7 @@ impl Interpreter {
                         let method_func_info = module.functions[method_info.func_idx as usize].clone();
 
                         let method_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-                        let owner = self.current_module.as_ref().map(|m| std::rc::Rc::new(m.clone()));
+                        let owner = self.current_module.clone();
 
                         let method_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                             name: Some(method_info.name.clone()),
@@ -1227,7 +1233,7 @@ impl Interpreter {
 
     pub fn execute_module(&mut self, module: &CompiledModule) -> Result<Value> {
         let saved_module = self.current_module.take();
-        self.current_module = Some(module.clone());
+        self.current_module = Some(Rc::new(module.clone()));
         let prev_exports = std::mem::take(&mut self.module_exports);
         let pre_keys: std::collections::HashSet<String> = self.globals.keys().cloned().collect();
         let result = self.execute(module);
@@ -1310,7 +1316,9 @@ impl Interpreter {
             Value::Function(func_idx) => {
                 if let HeapValue::Function(f) = &self.heap[*func_idx] {
                     let f_clone = f.clone();
-                    let return_address = self.current_module.as_ref()
+                    let func_module: Option<Rc<CompiledModule>> = f_clone.owner_module.clone()
+                        .or_else(|| self.current_module.clone());
+                    let return_address = func_module.as_ref()
                         .map(|m| m.instructions.len())
                         .unwrap_or(0);
                     let base_pointer = self.stack.len();
@@ -1332,7 +1340,7 @@ impl Interpreter {
                         self.stack.push(arg.clone());
                     }
 
-                    if let Some(module) = self.current_module.clone() {
+                    if let Some(module) = func_module {
                         self.execute_from(&module, f_clone.bytecode_index)
                     } else {
                         Ok(Value::Undefined)
