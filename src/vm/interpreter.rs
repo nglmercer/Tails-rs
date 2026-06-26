@@ -81,6 +81,7 @@ pub struct Interpreter {
     pub(crate) globals: HashMap<String, Value>,
     pub(crate) stack: Vec<Value>,
     pub(crate) heap: Vec<HeapValue>,
+    pub(crate) gc: crate::vm::gc::GarbageCollector,
     pub(crate) call_stack: Vec<CallFrame>,
     pub(crate) current_module: Option<CompiledModule>,
     exception_handlers: Vec<ExceptionHandler>,
@@ -99,6 +100,7 @@ impl Interpreter {
             globals: HashMap::new(),
             stack: Vec::new(),
             heap: Vec::new(),
+            gc: crate::vm::gc::GarbageCollector::new(),
             call_stack: Vec::new(),
             current_module: None,
             exception_handlers: Vec::new(),
@@ -128,17 +130,15 @@ impl Interpreter {
         self.globals.insert("clearInterval".into(), Value::NativeFunction(17));
 
         // console object
-        let console_obj_idx = self.heap.len();
         let mut console_props = HashMap::new();
         console_props.insert("log".into(), Value::NativeFunction(0));
         console_props.insert("warn".into(), Value::NativeFunction(1));
         console_props.insert("error".into(), Value::NativeFunction(2));
         console_props.insert("info".into(), Value::NativeFunction(3));
-        self.heap.push(HeapValue::Object(JsObject { properties: console_props, prototype: None }));
+        let console_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: console_props, prototype: None }));
         self.globals.insert("console".into(), Value::Object(console_obj_idx));
 
         // Object
-        let object_obj_idx = self.heap.len();
         let mut object_props = HashMap::new();
         object_props.insert("keys".into(), Value::NativeFunction(4));
         object_props.insert("values".into(), Value::NativeFunction(5));
@@ -147,14 +147,13 @@ impl Interpreter {
         object_props.insert("defineProperty".into(), Value::NativeFunction(99));
         object_props.insert("getOwnPropertyDescriptor".into(), Value::NativeFunction(100));
         object_props.insert("freeze".into(), Value::NativeFunction(101));
-        self.heap.push(HeapValue::Object(JsObject { properties: object_props, prototype: None }));
+        let object_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: object_props, prototype: None }));
         self.globals.insert("Object".into(), Value::Object(object_obj_idx));
 
         // Proxy
         self.globals.insert("Proxy".into(), Value::NativeFunction(85));
 
         // Reflect
-        let reflect_obj_idx = self.heap.len();
         let mut reflect_props = HashMap::new();
         reflect_props.insert("get".into(), Value::NativeFunction(86));
         reflect_props.insert("set".into(), Value::NativeFunction(87));
@@ -169,19 +168,17 @@ impl Interpreter {
         reflect_props.insert("setPrototypeOf".into(), Value::NativeFunction(96));
         reflect_props.insert("isExtensible".into(), Value::NativeFunction(97));
         reflect_props.insert("preventExtensions".into(), Value::NativeFunction(98));
-        self.heap.push(HeapValue::Object(JsObject { properties: reflect_props, prototype: None }));
+        let reflect_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: reflect_props, prototype: None }));
         self.globals.insert("Reflect".into(), Value::Object(reflect_obj_idx));
 
         // JSON
-        let json_obj_idx = self.heap.len();
         let mut json_props = HashMap::new();
         json_props.insert("parse".into(), Value::NativeFunction(8));
         json_props.insert("stringify".into(), Value::NativeFunction(9));
-        self.heap.push(HeapValue::Object(JsObject { properties: json_props, prototype: None }));
+        let json_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: json_props, prototype: None }));
         self.globals.insert("JSON".into(), Value::Object(json_obj_idx));
 
         // Math
-        let math_obj_idx = self.heap.len();
         let mut math_props = HashMap::new();
         math_props.insert("PI".into(), Value::Float(std::f64::consts::PI));
         math_props.insert("E".into(), Value::Float(std::f64::consts::E));
@@ -198,88 +195,75 @@ impl Interpreter {
         math_props.insert("sin".into(), Value::NativeFunction(28));
         math_props.insert("cos".into(), Value::NativeFunction(29));
         math_props.insert("tan".into(), Value::NativeFunction(30));
-        self.heap.push(HeapValue::Object(JsObject { properties: math_props, prototype: None }));
+        let math_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: math_props, prototype: None }));
         self.globals.insert("Math".into(), Value::Object(math_obj_idx));
 
         // Number constructor
-        let number_obj_idx = self.heap.len();
         let mut number_props = HashMap::new();
         number_props.insert("isFinite".into(), Value::NativeFunction(13));
         number_props.insert("isNaN".into(), Value::NativeFunction(12));
         number_props.insert("parseFloat".into(), Value::NativeFunction(11));
         number_props.insert("parseInt".into(), Value::NativeFunction(10));
-        self.heap.push(HeapValue::Object(JsObject { properties: number_props, prototype: None }));
+        let number_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: number_props, prototype: None }));
         self.globals.insert("Number".into(), Value::Object(number_obj_idx));
 
         // Promise constructor and prototype
-        let promise_proto_idx = self.heap.len();
         let mut promise_proto_props = HashMap::new();
         promise_proto_props.insert("then".into(), Value::NativeFunction(78));
         promise_proto_props.insert("catch".into(), Value::NativeFunction(79));
         promise_proto_props.insert("finally".into(), Value::NativeFunction(80));
-        self.heap.push(HeapValue::Object(JsObject { properties: promise_proto_props, prototype: None }));
+        let promise_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: promise_proto_props, prototype: None }));
 
-        let _promise_ctor_idx = self.heap.len();
         let mut promise_ctor_props = HashMap::new();
         promise_ctor_props.insert("prototype".into(), Value::Object(promise_proto_idx));
         promise_ctor_props.insert("resolve".into(), Value::NativeFunction(81));
         promise_ctor_props.insert("reject".into(), Value::NativeFunction(82));
         promise_ctor_props.insert("all".into(), Value::NativeFunction(83));
         promise_ctor_props.insert("race".into(), Value::NativeFunction(84));
-        self.heap.push(HeapValue::Object(JsObject { properties: promise_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: promise_ctor_props, prototype: None }));
         self.globals.insert("Promise".into(), Value::NativeFunction(77));
 
         // Error constructor
-        let error_proto_idx = self.heap.len();
-        self.heap.push(HeapValue::Object(JsObject::new()));
-        let _error_ctor_idx = self.heap.len();
+        let error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
         let mut error_ctor_props = HashMap::new();
         error_ctor_props.insert("prototype".into(), Value::Object(error_proto_idx));
-        self.heap.push(HeapValue::Object(JsObject { properties: error_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: error_ctor_props, prototype: None }));
         self.globals.insert("Error".into(), Value::NativeFunction(72));
 
         // TypeError constructor
-        let type_error_proto_idx = self.heap.len();
         let mut type_error_proto_props = HashMap::new();
         type_error_proto_props.insert("name".into(), Value::String("TypeError".into()));
-        self.heap.push(HeapValue::Object(JsObject { properties: type_error_proto_props, prototype: Some(error_proto_idx) }));
-        let _type_error_ctor_idx = self.heap.len();
+        let type_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: type_error_proto_props, prototype: Some(error_proto_idx) }));
         let mut type_error_ctor_props = HashMap::new();
         type_error_ctor_props.insert("prototype".into(), Value::Object(type_error_proto_idx));
-        self.heap.push(HeapValue::Object(JsObject { properties: type_error_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: type_error_ctor_props, prototype: None }));
         self.globals.insert("TypeError".into(), Value::NativeFunction(73));
 
         // ReferenceError constructor
-        let ref_error_proto_idx = self.heap.len();
         let mut ref_error_proto_props = HashMap::new();
         ref_error_proto_props.insert("name".into(), Value::String("ReferenceError".into()));
-        self.heap.push(HeapValue::Object(JsObject { properties: ref_error_proto_props, prototype: Some(error_proto_idx) }));
-        let _ref_error_ctor_idx = self.heap.len();
+        let ref_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: ref_error_proto_props, prototype: Some(error_proto_idx) }));
         let mut ref_error_ctor_props = HashMap::new();
         ref_error_ctor_props.insert("prototype".into(), Value::Object(ref_error_proto_idx));
-        self.heap.push(HeapValue::Object(JsObject { properties: ref_error_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: ref_error_ctor_props, prototype: None }));
         self.globals.insert("ReferenceError".into(), Value::NativeFunction(74));
 
         // SyntaxError constructor
-        let syntax_error_proto_idx = self.heap.len();
         let mut syntax_error_proto_props = HashMap::new();
         syntax_error_proto_props.insert("name".into(), Value::String("SyntaxError".into()));
-        self.heap.push(HeapValue::Object(JsObject { properties: syntax_error_proto_props, prototype: Some(error_proto_idx) }));
-        let _syntax_error_ctor_idx = self.heap.len();
+        let syntax_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: syntax_error_proto_props, prototype: Some(error_proto_idx) }));
         let mut syntax_error_ctor_props = HashMap::new();
         syntax_error_ctor_props.insert("prototype".into(), Value::Object(syntax_error_proto_idx));
-        self.heap.push(HeapValue::Object(JsObject { properties: syntax_error_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: syntax_error_ctor_props, prototype: None }));
         self.globals.insert("SyntaxError".into(), Value::NativeFunction(75));
 
         // RangeError constructor
-        let range_error_proto_idx = self.heap.len();
         let mut range_error_proto_props = HashMap::new();
         range_error_proto_props.insert("name".into(), Value::String("RangeError".into()));
-        self.heap.push(HeapValue::Object(JsObject { properties: range_error_proto_props, prototype: Some(error_proto_idx) }));
-        let _range_error_ctor_idx = self.heap.len();
+        let range_error_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: range_error_proto_props, prototype: Some(error_proto_idx) }));
         let mut range_error_ctor_props = HashMap::new();
         range_error_ctor_props.insert("prototype".into(), Value::Object(range_error_proto_idx));
-        self.heap.push(HeapValue::Object(JsObject { properties: range_error_ctor_props, prototype: None }));
+        self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: range_error_ctor_props, prototype: None }));
         self.globals.insert("RangeError".into(), Value::NativeFunction(76));
     }
 
@@ -294,12 +278,23 @@ impl Interpreter {
         result
     }
     
+    pub(crate) fn collect_garbage(&mut self) {
+        let globals_snapshot = self.globals.clone();
+        let stack_snapshot = self.stack.clone();
+        let call_stack_snapshot = self.call_stack.clone();
+        self.gc.collect(&mut self.heap, &globals_snapshot, &stack_snapshot, &call_stack_snapshot);
+    }
+
     pub(crate) fn execute_from(&mut self, module: &CompiledModule, start_pc: usize) -> Result<Value> {
         let mut pc = start_pc;
 
         'main: loop {
             if pc >= module.instructions.len() {
                 break;
+            }
+
+            if self.gc.should_collect() {
+                self.collect_garbage();
             }
 
             let instruction = module.instructions[pc].clone();
@@ -590,8 +585,7 @@ impl Interpreter {
                             if let HeapValue::Proxy(proxy) = &self.heap[proxy_idx] {
                                 let handler = proxy.handler.clone();
                                 let target = proxy.target.clone();
-                                let arr_idx = self.heap.len();
-                                self.heap.push(HeapValue::Array(JsArray { elements: args }));
+                                let arr_idx = self.gc.allocate(&mut self.heap, HeapValue::Array(JsArray { elements: args }));
                                 let trap_result = self.call_proxy_trap(&handler, "apply", &[target, Value::Undefined, Value::Array(arr_idx)]);
                                 match trap_result {
                                     Ok(v) => self.stack.push(v),
@@ -678,8 +672,7 @@ impl Interpreter {
                                 None
                             };
 
-                            let new_obj_heap_idx = self.heap.len();
-                            self.heap.push(HeapValue::Object(JsObject::with_prototype(proto_idx)));
+                            let new_obj_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::with_prototype(proto_idx)));
                             let this_val = Value::Object(new_obj_heap_idx);
 
                             if let HeapValue::Function(f) = &self.heap[*func_idx] {
@@ -715,8 +708,7 @@ impl Interpreter {
                         }
                         Value::NativeFunction(native_idx) => {
                             let proto_idx = self.find_native_prototype(*native_idx);
-                            let new_obj_heap_idx = self.heap.len();
-                            self.heap.push(HeapValue::Object(JsObject::with_prototype(proto_idx)));
+                            let new_obj_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::with_prototype(proto_idx)));
                             let this_val = Value::Object(new_obj_heap_idx);
                             let result = self.call_native(*native_idx, &this_val, &args)?;
                             match result {
@@ -732,8 +724,7 @@ impl Interpreter {
                             if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
                                 let handler = proxy.handler.clone();
                                 let target = proxy.target.clone();
-                                let args_arr_idx = self.heap.len();
-                                self.heap.push(HeapValue::Array(JsArray { elements: args }));
+                                let args_arr_idx = self.gc.allocate(&mut self.heap, HeapValue::Array(JsArray { elements: args }));
                                 let trap_result = self.call_proxy_trap(&handler, "construct", &[target, Value::Array(args_arr_idx), constructor.clone()]);
                                 match trap_result {
                                     Ok(v) => self.stack.push(v),
@@ -802,11 +793,9 @@ impl Interpreter {
                 Instruction::MakeFunction(func_idx) => {
                     let func_info = module.functions[*func_idx as usize].clone();
 
-                    let proto_obj_idx = self.heap.len();
-                    self.heap.push(HeapValue::Object(JsObject::new()));
+                    let proto_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
-                    let heap_idx = self.heap.len();
-                    self.heap.push(HeapValue::Function(JsFunction {
+                    let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
                         bytecode_index: func_info.bytecode_index,
@@ -829,11 +818,9 @@ impl Interpreter {
                         closure_vars.push(value);
                     }
 
-                    let proto_obj_idx = self.heap.len();
-                    self.heap.push(HeapValue::Object(JsObject::new()));
+                    let proto_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
-                    let heap_idx = self.heap.len();
-                    self.heap.push(HeapValue::Function(JsFunction {
+                    let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
                         bytecode_index: func_info.bytecode_index,
@@ -846,8 +833,7 @@ impl Interpreter {
                     self.stack.push(Value::Function(heap_idx));
                 }
                 Instruction::NewObject => {
-                    let heap_idx = self.heap.len();
-                    self.heap.push(HeapValue::Object(JsObject::new()));
+                    let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
                     self.stack.push(Value::Object(heap_idx));
                 }
                 Instruction::SetProperty => {
@@ -912,8 +898,7 @@ impl Interpreter {
                     for _ in 0..*size {
                         elements.push(self.stack.pop().unwrap_or(Value::Undefined));
                     }
-                    let heap_idx = self.heap.len();
-                    self.heap.push(HeapValue::Array(JsArray { elements }));
+                    let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Array(JsArray { elements }));
                     self.stack.push(Value::Array(heap_idx));
                 }
                 Instruction::TypeOf => {
@@ -1089,8 +1074,7 @@ impl Interpreter {
                         Value::Undefined
                     };
 
-                    let proto_obj_idx = self.heap.len();
-                    self.heap.push(HeapValue::Object(JsObject::new()));
+                    let proto_obj_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
                     let super_proto = match &super_val {
                         Value::Object(super_obj_idx) => {
@@ -1116,8 +1100,7 @@ impl Interpreter {
                     let ctor_heap_idx = if let Some(ctor_func_idx) = class_info.constructor_func_idx {
                         let func_info = module.functions[ctor_func_idx as usize].clone();
 
-                        let idx = self.heap.len();
-                        self.heap.push(HeapValue::Function(JsFunction {
+                        let idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                             name: func_info.name,
                             params: func_info.params,
                             bytecode_index: func_info.bytecode_index,
@@ -1128,8 +1111,7 @@ impl Interpreter {
                         }));
                         idx
                     } else {
-                        let idx = self.heap.len();
-                        self.heap.push(HeapValue::Function(JsFunction {
+                        let idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                             name: Some(class_info.name.clone()),
                             params: Vec::new(),
                             bytecode_index: usize::MAX,
@@ -1148,11 +1130,9 @@ impl Interpreter {
                     for method_info in &class_info.methods {
                         let method_func_info = module.functions[method_info.func_idx as usize].clone();
 
-                        let method_proto_idx = self.heap.len();
-                        self.heap.push(HeapValue::Object(JsObject::new()));
+                        let method_proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
 
-                        let method_heap_idx = self.heap.len();
-                        self.heap.push(HeapValue::Function(JsFunction {
+                        let method_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
                             name: Some(method_info.name.clone()),
                             params: method_func_info.params,
                             bytecode_index: method_func_info.bytecode_index,
@@ -1227,10 +1207,9 @@ impl Interpreter {
                             if let HeapValue::Function(f) = &self.heap[func_idx] {
                                 let f_clone = f.clone();
 
-                                let new_obj_heap_idx = self.heap.len();
                                 let proto_val = self.get_property(&super_class, &Value::String("prototype".to_string()))?;
                                 let proto_idx = if let Value::Object(pi) = proto_val { Some(pi) } else { None };
-                                self.heap.push(HeapValue::Object(JsObject::with_prototype(proto_idx)));
+                                let new_obj_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::with_prototype(proto_idx)));
 
                                 let constructed = Value::Object(new_obj_heap_idx);
 
@@ -1305,15 +1284,13 @@ impl Interpreter {
                         Ok(module_path) => {
                             if self.module_registry.contains_key(&module_path) {
                                 let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                                let ns_heap_idx = self.heap.len();
-                                self.heap.push(HeapValue::Object(JsObject { properties: exports, prototype: None }));
+                                let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: exports, prototype: None }));
                                 self.stack.push(Value::Object(ns_heap_idx));
                             } else {
                                 let source_code = match std::fs::read_to_string(&module_path) {
                                     Ok(s) => s,
                                     Err(_) => {
-                                        let ns_heap_idx = self.heap.len();
-                                        self.heap.push(HeapValue::Object(JsObject::new()));
+                                        let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
                                         self.stack.push(Value::Object(ns_heap_idx));
                                         continue;
                                     }
@@ -1330,15 +1307,13 @@ impl Interpreter {
                                 self.module_exports = prev_exports;
                                 self.current_module_path = prev_path;
                                 result?;
-                                let ns_heap_idx = self.heap.len();
                                 let final_exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                                self.heap.push(HeapValue::Object(JsObject { properties: final_exports, prototype: None }));
+                                let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: final_exports, prototype: None }));
                                 self.stack.push(Value::Object(ns_heap_idx));
                             }
                         }
                         Err(_) => {
-                            let ns_heap_idx = self.heap.len();
-                            self.heap.push(HeapValue::Object(JsObject::new()));
+                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
                             self.stack.push(Value::Object(ns_heap_idx));
                         }
                     }
@@ -1419,13 +1394,11 @@ impl Interpreter {
                                 }
                             }
                             let exports = self.module_registry.get(&module_path).cloned().unwrap_or_default();
-                            let ns_heap_idx = self.heap.len();
-                            self.heap.push(HeapValue::Object(JsObject { properties: exports, prototype: None }));
+                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject { properties: exports, prototype: None }));
                             self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
                         }
                         Err(_) => {
-                            let ns_heap_idx = self.heap.len();
-                            self.heap.push(HeapValue::Object(JsObject::new()));
+                            let ns_heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
                             self.globals.insert(local_name.clone(), Value::Object(ns_heap_idx));
                         }
                     }
@@ -1578,8 +1551,7 @@ impl Interpreter {
                 if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
                     let handler = proxy.handler.clone();
                     let target = proxy.target.clone();
-                    let arr_idx = self.heap.len();
-                    self.heap.push(HeapValue::Array(JsArray { elements: args.to_vec() }));
+                    let arr_idx = self.gc.allocate(&mut self.heap, HeapValue::Array(JsArray { elements: args.to_vec() }));
                     self.call_proxy_trap(&handler, "apply", &[target, this.clone(), Value::Array(arr_idx)])
                 } else {
                     Err(Error::TypeError(format!("{} is not a function", self.value_to_string(callee))))
@@ -2260,10 +2232,8 @@ impl Interpreter {
     }
 
     pub(crate) fn create_resolve_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.heap.len();
-        self.heap.push(HeapValue::Object(JsObject::new()));
-        let heap_idx = self.heap.len();
-        self.heap.push(HeapValue::Function(JsFunction {
+        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
+        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
             name: Some("resolve".into()),
             params: vec!["value".into()],
             bytecode_index: usize::MAX,
@@ -2276,10 +2246,8 @@ impl Interpreter {
     }
 
     pub(crate) fn create_reject_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.heap.len();
-        self.heap.push(HeapValue::Object(JsObject::new()));
-        let heap_idx = self.heap.len();
-        self.heap.push(HeapValue::Function(JsFunction {
+        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
+        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
             name: Some("reject".into()),
             params: vec!["reason".into()],
             bytecode_index: usize::MAX,

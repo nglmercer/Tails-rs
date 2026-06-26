@@ -1,28 +1,11 @@
+use std::collections::{HashMap, VecDeque};
 use crate::objects::Value;
 use crate::vm::interpreter::HeapValue;
-use std::collections::VecDeque;
-
-#[derive(Debug, Clone)]
-pub struct HeapSlot {
-    pub value: HeapValue,
-    pub marked: bool,
-    pub free: bool,
-}
-
-impl HeapSlot {
-    pub fn new(value: HeapValue) -> Self {
-        Self {
-            value,
-            marked: false,
-            free: false,
-        }
-    }
-}
 
 pub struct GarbageCollector {
-    pub heap: Vec<HeapSlot>,
     free_list: VecDeque<usize>,
-    allocation_count: usize,
+    marked: Vec<bool>,
+    pub allocation_count: usize,
     pub threshold: usize,
     pub collections_performed: usize,
     pub bytes_freed: usize,
@@ -31,10 +14,10 @@ pub struct GarbageCollector {
 impl GarbageCollector {
     pub fn new() -> Self {
         Self {
-            heap: Vec::new(),
             free_list: VecDeque::new(),
+            marked: Vec::new(),
             allocation_count: 0,
-            threshold: 1024, // Start small for testing; 1KB triggers GC
+            threshold: 256,
             collections_performed: 0,
             bytes_freed: 0,
         }
@@ -44,91 +27,231 @@ impl GarbageCollector {
         self.allocation_count >= self.threshold
     }
 
-    pub fn allocate(&mut self, value: HeapValue) -> usize {
+    pub fn allocate(&mut self, heap: &mut Vec<HeapValue>, value: HeapValue) -> usize {
         self.allocation_count += 1;
-
         if let Some(idx) = self.free_list.pop_front() {
-            self.heap[idx] = HeapSlot::new(value);
+            heap[idx] = value;
+            self.marked[idx] = false;
             idx
         } else {
-            let idx = self.heap.len();
-            self.heap.push(HeapSlot::new(value));
+            let idx = heap.len();
+            heap.push(value);
+            self.marked.push(false);
             idx
         }
-    }
-
-    pub fn get(&self, idx: usize) -> Option<&HeapValue> {
-        self.heap.get(idx).filter(|s| !s.free).map(|s| &s.value)
-    }
-
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut HeapValue> {
-        self.heap.get_mut(idx).filter(|s| !s.free).map(|s| &mut s.value)
-    }
-
-    pub fn mark(&mut self, idx: usize) {
-        if let Some(slot) = self.heap.get_mut(idx) {
-            if !slot.free {
-                slot.marked = true;
-            }
-        }
-    }
-
-    pub fn is_marked(&self, idx: usize) -> bool {
-        self.heap.get(idx).map_or(false, |s| s.marked && !s.free)
     }
 
     pub fn reset_marks(&mut self) {
-        for slot in &mut self.heap {
-            slot.marked = false;
+        for m in &mut self.marked {
+            *m = false;
         }
     }
 
-    pub fn sweep(&mut self) -> usize {
+    pub fn mark(&mut self, idx: usize, heap_len: usize) {
+        if idx < self.marked.len() && idx < heap_len {
+            self.marked[idx] = true;
+        }
+    }
+
+    pub fn sweep(&mut self, heap: &mut Vec<HeapValue>) -> usize {
         let mut freed = 0;
-        for (i, slot) in self.heap.iter_mut().enumerate() {
-            if !slot.free && !slot.marked {
-                slot.free = true;
-                self.free_list.push_back(i);
+        let mut new_free_list = VecDeque::new();
+
+        for i in 0..heap.len().min(self.marked.len()) {
+            if !self.marked[i] {
+                let old = std::mem::replace(&mut heap[i], HeapValue::Object(crate::vm::interpreter::JsObject::new()));
+                drop(old);
+                new_free_list.push_back(i);
                 freed += 1;
             }
         }
-        self.allocation_count = self.heap.iter().filter(|s| !s.free).count();
+
+        self.free_list = new_free_list;
+        self.allocation_count = heap.len() - self.free_list.len();
         self.bytes_freed += freed;
         self.collections_performed += 1;
         freed
     }
 
+    pub fn collect(
+        &mut self,
+        heap: &mut Vec<HeapValue>,
+        globals: &HashMap<String, Value>,
+        stack: &[Value],
+        call_stack: &[crate::vm::interpreter::CallFrame],
+    ) -> usize {
+        self.reset_marks();
+        self.mark_roots(globals, stack, call_stack, heap);
+        self.sweep(heap)
+    }
+
+    pub fn mark_roots(
+        &mut self,
+        globals: &HashMap<String, Value>,
+        stack: &[Value],
+        call_stack: &[crate::vm::interpreter::CallFrame],
+        heap: &[HeapValue],
+    ) {
+        for value in globals.values() {
+            self.mark_value(value);
+        }
+
+        for value in stack {
+            self.mark_value(value);
+        }
+
+        for frame in call_stack {
+            if let Some(func_idx) = frame.func_heap_idx {
+                self.mark(func_idx, heap.len());
+                if let Some(HeapValue::Function(f)) = heap.get(func_idx) {
+                    for closure_val in &f.closure {
+                        self.mark_value(closure_val);
+                    }
+                    if let Some(ref super_class) = f.super_class {
+                        self.mark_value(super_class);
+                    }
+                }
+            }
+            if let Some(ref this) = frame.this_value {
+                self.mark_value(this);
+            }
+        }
+
+        let mut worklist: Vec<usize> = Vec::new();
+        for i in 0..self.marked.len().min(heap.len()) {
+            if self.marked[i] {
+                worklist.push(i);
+            }
+        }
+
+        while let Some(idx) = worklist.pop() {
+            if let Some(hv) = heap.get(idx) {
+                match hv {
+                    HeapValue::String(_) => {}
+                    HeapValue::Object(obj) => {
+                        for val in obj.properties.values() {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                        if let Some(proto) = obj.prototype {
+                            if !self.is_marked(proto, heap.len()) {
+                                self.mark(proto, heap.len());
+                                worklist.push(proto);
+                            }
+                        }
+                    }
+                    HeapValue::Array(arr) => {
+                        for val in &arr.elements {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                    }
+                    HeapValue::Function(f) => {
+                        for val in &f.closure {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                        if let Some(proto) = f.prototype {
+                            if !self.is_marked(proto, heap.len()) {
+                                self.mark(proto, heap.len());
+                                worklist.push(proto);
+                            }
+                        }
+                        if let Some(ref sc) = f.super_class {
+                            if let Some(child_idx) = heap_value_to_index(sc) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                        for val in f.properties.values() {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                    }
+                    HeapValue::Promise(p) => {
+                        match &p.state {
+                            crate::objects::js_promise::PromiseState::Fulfilled(v) | crate::objects::js_promise::PromiseState::Rejected(v) => {
+                                if let Some(child_idx) = heap_value_to_index(v) {
+                                    if !self.is_marked(child_idx, heap.len()) {
+                                        self.mark(child_idx, heap.len());
+                                        worklist.push(child_idx);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    HeapValue::Proxy(proxy) => {
+                        if let Some(child_idx) = heap_value_to_index(&proxy.target) {
+                            if !self.is_marked(child_idx, heap.len()) {
+                                self.mark(child_idx, heap.len());
+                                worklist.push(child_idx);
+                            }
+                        }
+                        if let Some(child_idx) = heap_value_to_index(&proxy.handler) {
+                            if !self.is_marked(child_idx, heap.len()) {
+                                self.mark(child_idx, heap.len());
+                                worklist.push(child_idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn is_marked(&self, idx: usize, heap_len: usize) -> bool {
+        idx < self.marked.len() && self.marked[idx] && idx < heap_len
+    }
+
     pub fn mark_value(&mut self, value: &Value) {
         match value {
-            Value::Object(idx) | Value::Array(idx) | Value::Function(idx) | Value::Promise(idx) | Value::Proxy(idx) => {
-                self.mark(*idx);
+            Value::Object(idx) | Value::Array(idx) | Value::Function(idx) |
+            Value::Promise(idx) | Value::Proxy(idx) => {
+                if *idx < self.marked.len() {
+                    self.marked[*idx] = true;
+                }
             }
             _ => {}
         }
     }
 
-    pub fn collect(&mut self) -> usize {
-        self.reset_marks();
-        // Mark phase happens externally (roots identification)
-        // This is called after marking is complete
-        let freed = self.sweep();
-        freed
+    pub fn set_threshold(&mut self, threshold: usize) {
+        self.threshold = threshold;
     }
 
-    pub fn live_count(&self) -> usize {
-        self.heap.iter().filter(|s| !s.free).count()
-    }
-
-    pub fn total_count(&self) -> usize {
-        self.heap.len()
+    pub fn live_count(&self, heap_len: usize) -> usize {
+        heap_len - self.free_list.len()
     }
 
     pub fn free_count(&self) -> usize {
         self.free_list.len()
     }
+}
 
-    pub fn set_threshold(&mut self, threshold: usize) {
-        self.threshold = threshold;
+fn heap_value_to_index(value: &Value) -> Option<usize> {
+    match value {
+        Value::Object(idx) | Value::Array(idx) | Value::Function(idx) |
+        Value::Promise(idx) | Value::Proxy(idx) => Some(*idx),
+        _ => None,
     }
 }
 
@@ -141,55 +264,84 @@ impl Default for GarbageCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::interpreter::{JsObject, JsArray, JsFunction};
-    use std::collections::HashMap;
+    use crate::vm::interpreter::{JsObject, JsArray};
+
+    fn make_obj() -> HeapValue {
+        HeapValue::Object(JsObject::new())
+    }
+
+    fn make_arr() -> HeapValue {
+        HeapValue::Array(JsArray { elements: vec![] })
+    }
 
     #[test]
     fn test_gc_new() {
         let gc = GarbageCollector::new();
-        assert_eq!(gc.live_count(), 0);
-        assert_eq!(gc.total_count(), 0);
+        assert_eq!(gc.allocation_count, 0);
         assert_eq!(gc.collections_performed, 0);
     }
 
     #[test]
-    fn test_gc_allocate() {
+    fn test_gc_allocate_reuses_free_slot() {
         let mut gc = GarbageCollector::new();
-        let idx = gc.allocate(HeapValue::Object(JsObject::new()));
-        assert_eq!(idx, 0);
-        assert_eq!(gc.live_count(), 1);
-    }
+        let mut heap = Vec::new();
 
-    #[test]
-    fn test_gc_mark_and_sweep_removes_unmarked() {
-        let mut gc = GarbageCollector::new();
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
+        let idx0 = gc.allocate(&mut heap, make_obj());
+        let idx1 = gc.allocate(&mut heap, make_obj());
+        assert_eq!(idx0, 0);
+        assert_eq!(idx1, 1);
 
-        gc.reset_marks();
-        gc.mark(0); // Only mark first
-
-        let freed = gc.sweep();
+        gc.mark(0, heap.len());
+        let freed = gc.sweep(&mut heap);
         assert_eq!(freed, 1);
-        assert_eq!(gc.live_count(), 1);
-        assert!(gc.is_marked(0));
+        assert_eq!(gc.free_count(), 1);
+
+        let idx2 = gc.allocate(&mut heap, make_obj());
+        assert_eq!(idx2, 1);
+        assert_eq!(gc.free_count(), 0);
     }
 
     #[test]
-    fn test_gc_reuses_free_slots() {
+    fn test_gc_collect_preserves_reachable() {
         let mut gc = GarbageCollector::new();
-        let _idx0 = gc.allocate(HeapValue::Object(JsObject::new()));
-        let _idx1 = gc.allocate(HeapValue::Object(JsObject::new()));
+        let mut heap = Vec::new();
+        let globals = HashMap::new();
 
-        // Mark only first, sweep second
-        gc.reset_marks();
-        gc.mark(0);
-        gc.sweep();
+        let idx0 = gc.allocate(&mut heap, make_obj());
+        let idx1 = gc.allocate(&mut heap, make_obj());
+        let idx2 = gc.allocate(&mut heap, make_obj());
 
-        // Allocate new - should reuse freed slot 1
-        let idx2 = gc.allocate(HeapValue::Object(JsObject::new()));
-        assert_eq!(idx2, 1); // Reused slot
-        assert_eq!(gc.live_count(), 2);
+        heap[idx0] = HeapValue::Array(JsArray {
+            elements: vec![Value::Object(idx1)],
+        });
+        heap[idx1] = HeapValue::Array(JsArray {
+            elements: vec![Value::Object(idx2)],
+        });
+
+        let stack = vec![Value::Object(idx0)];
+
+        gc.collect(&mut heap, &globals, &stack, &[]);
+
+        assert!(gc.is_marked(idx0, heap.len()));
+        assert!(gc.is_marked(idx1, heap.len()));
+        assert!(gc.is_marked(idx2, heap.len()));
+    }
+
+    #[test]
+    fn test_gc_collect_frees_unreachable() {
+        let mut gc = GarbageCollector::new();
+        let mut heap = Vec::new();
+        let globals = HashMap::new();
+        let stack = vec![];
+
+        gc.allocate(&mut heap, make_obj());
+        gc.allocate(&mut heap, make_obj());
+        gc.allocate(&mut heap, make_arr());
+
+        gc.collect(&mut heap, &globals, &stack, &[]);
+
+        assert_eq!(gc.free_count(), 3);
+        assert_eq!(heap.len(), 3);
     }
 
     #[test]
@@ -198,57 +350,76 @@ mod tests {
         gc.set_threshold(3);
         assert!(!gc.should_collect());
 
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
+        gc.allocation_count = 3;
         assert!(gc.should_collect());
-    }
-
-    #[test]
-    fn test_gc_mark_value() {
-        let mut gc = GarbageCollector::new();
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Array(JsArray { elements: vec![] }));
-
-        gc.reset_marks();
-        gc.mark_value(&Value::Object(0));
-        assert!(gc.is_marked(0));
-        assert!(!gc.is_marked(1));
-    }
-
-    #[test]
-    fn test_gc_collect_resets_marks() {
-        let mut gc = GarbageCollector::new();
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
-
-        gc.mark(0);
-        gc.mark(1);
-        gc.collect();
-
-        assert!(!gc.is_marked(0));
-        assert!(!gc.is_marked(1));
-        assert_eq!(gc.collections_performed, 1);
     }
 
     #[test]
     fn test_gc_multiple_collections() {
         let mut gc = GarbageCollector::new();
-        gc.set_threshold(2);
+        let mut heap = Vec::new();
+        let globals = HashMap::new();
+        let stack = vec![];
 
-        // First round
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.mark(0);
-        gc.collect();
+        gc.allocate(&mut heap, make_obj());
+        gc.allocate(&mut heap, make_obj());
+        gc.collect(&mut heap, &globals, &stack, &[]);
         assert_eq!(gc.collections_performed, 1);
 
-        // Second round
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.allocate(HeapValue::Object(JsObject::new()));
-        gc.mark(2);
-        gc.collect();
+        gc.allocate(&mut heap, make_obj());
+        gc.allocate(&mut heap, make_obj());
+        gc.collect(&mut heap, &globals, &stack, &[]);
         assert_eq!(gc.collections_performed, 2);
-        assert_eq!(gc.live_count(), 1);
+    }
+
+    #[test]
+    fn test_gc_chain_of_references() {
+        let mut gc = GarbageCollector::new();
+        let mut heap = Vec::new();
+        let globals = HashMap::new();
+
+        let idx0 = gc.allocate(&mut heap, make_obj());
+        let idx1 = gc.allocate(&mut heap, make_obj());
+        let idx2 = gc.allocate(&mut heap, make_obj());
+
+        heap[idx0] = HeapValue::Array(JsArray {
+            elements: vec![Value::Object(idx1)],
+        });
+        heap[idx1] = HeapValue::Array(JsArray {
+            elements: vec![Value::Object(idx2)],
+        });
+
+        let stack = vec![Value::Object(idx0)];
+
+        gc.collect(&mut heap, &globals, &stack, &[]);
+
+        assert!(gc.is_marked(idx0, heap.len()));
+        assert!(gc.is_marked(idx1, heap.len()));
+        assert!(gc.is_marked(idx2, heap.len()));
+    }
+
+    #[test]
+    fn test_gc_closure_references() {
+        let mut gc = GarbageCollector::new();
+        let mut heap = Vec::new();
+        let globals = HashMap::new();
+
+        let inner_obj_idx = gc.allocate(&mut heap, make_obj());
+        let func_idx = gc.allocate(&mut heap, HeapValue::Function(crate::vm::interpreter::JsFunction {
+            name: Some("test".into()),
+            params: vec![],
+            bytecode_index: 0,
+            closure: vec![Value::Object(inner_obj_idx)],
+            prototype: None,
+            super_class: None,
+            properties: HashMap::new(),
+        }));
+
+        let stack = vec![Value::Function(func_idx)];
+
+        gc.collect(&mut heap, &globals, &stack, &[]);
+
+        assert!(gc.is_marked(func_idx, heap.len()));
+        assert!(gc.is_marked(inner_obj_idx, heap.len()));
     }
 }
