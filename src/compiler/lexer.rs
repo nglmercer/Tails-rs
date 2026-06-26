@@ -411,7 +411,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
             '<' => {
                 chars.next();
-                if let Some(&(_, '=')) = chars.peek() {
+                if let Some(&(_, '<')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::ShiftLeft);
+                } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
                     tokens.push(Token::LessEqual);
                 } else {
@@ -420,7 +423,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
             '>' => {
                 chars.next();
-                if let Some(&(_, '=')) = chars.peek() {
+                if let Some(&(_, '>')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::ShiftRight);
+                } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
                     tokens.push(Token::GreaterEqual);
                 } else {

@@ -215,6 +215,12 @@ pub enum Expression {
     AwaitExpression {
         argument: Box<Expression>,
     },
+    ArrayLiteral {
+        elements: Vec<Expression>,
+    },
+    ObjectLiteral {
+        properties: Vec<(String, Expression)>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -853,7 +859,14 @@ impl<'a> Parser<'a> {
                     "false" => Ok(Expression::BooleanLiteral(false)),
                     "null" => Ok(Expression::NullLiteral),
                     "undefined" => Ok(Expression::UndefinedLiteral),
-                    _ => Ok(Expression::Identifier(name)),
+                    _ => {
+                        if self.peek() == &Token::Arrow {
+                            self.advance();
+                            self.parse_arrow_body(vec![name], false)
+                        } else {
+                            Ok(Expression::Identifier(name))
+                        }
+                    }
                 }
             }
             Token::LeftParen => {
@@ -896,6 +909,14 @@ impl<'a> Parser<'a> {
                 }
                 let expr = self.parse_expression()?;
                 self.expect(&Token::RightParen)?;
+                if self.peek() == &Token::Arrow {
+                    let params = match &expr {
+                        Expression::Identifier(name) => vec![name.clone()],
+                        _ => return Err(Error::ParseError("Invalid arrow function parameter".into())),
+                    };
+                    self.advance();
+                    return self.parse_arrow_body(params, false);
+                }
                 Ok(expr)
             }
             Token::Function => {
@@ -962,6 +983,41 @@ impl<'a> Parser<'a> {
             Token::This => {
                 self.advance();
                 Ok(Expression::Identifier("this".into()))
+            }
+            Token::LeftBracket => {
+                self.advance();
+                let mut elements = Vec::new();
+                if self.peek() != &Token::RightBracket {
+                    loop {
+                        elements.push(self.parse_expression()?);
+                        if self.peek() != &Token::Comma { break; }
+                        self.advance();
+                        if self.peek() == &Token::RightBracket { break; }
+                    }
+                }
+                self.expect(&Token::RightBracket)?;
+                Ok(Expression::ArrayLiteral { elements })
+            }
+            Token::LeftBrace => {
+                self.advance();
+                let mut properties = Vec::new();
+                if self.peek() != &Token::RightBrace {
+                    loop {
+                        let key = match self.advance() {
+                            Token::Identifier(n) => n,
+                            Token::String(s) => s,
+                            t => return Err(Error::ParseError(format!("Expected property key, got {:?}", t))),
+                        };
+                        self.expect(&Token::Colon)?;
+                        let value = self.parse_expression()?;
+                        properties.push((key, value));
+                        if self.peek() != &Token::Comma { break; }
+                        self.advance();
+                        if self.peek() == &Token::RightBrace { break; }
+                    }
+                }
+                self.expect(&Token::RightBrace)?;
+                Ok(Expression::ObjectLiteral { properties })
             }
             token => Err(Error::ParseError(format!("Unexpected token {:?}", token))),
         }
@@ -1268,7 +1324,7 @@ impl<'a> Parser<'a> {
                 if self.peek() == &Token::Comma { self.advance(); }
             }
             self.expect(&Token::RightBrace)?;
-        } else if self.peek() == &Token::Star {
+        } else         if self.peek() == &Token::Star {
             self.advance();
             self.expect(&Token::As)?;
             let local = match self.advance() {
@@ -1276,6 +1332,12 @@ impl<'a> Parser<'a> {
                 t => return Err(Error::ParseError(format!("Expected identifier, got {:?}", t))),
             };
             specifiers.push(ImportSpecifier { local, imported: None });
+        } else if matches!(self.peek(), Token::Identifier(_)) {
+            let local = match self.advance() {
+                Token::Identifier(name) => name,
+                t => return Err(Error::ParseError(format!("Expected identifier, got {:?}", t))),
+            };
+            specifiers.push(ImportSpecifier { local: local.clone(), imported: Some(local) });
         }
 
         if self.peek() == &Token::From { self.advance(); }

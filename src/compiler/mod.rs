@@ -77,6 +77,10 @@ pub enum Instruction {
     JumpIf(u32),
     JumpIfNot(u32),
     Call(u16),
+    CallMethod(u16),
+    Construct(u16),
+    LoadThis,
+    Dup,
     Return,
     Pop,
     MakeFunction(u32),
@@ -93,5 +97,6 @@ pub enum Instruction {
     Void,
     Throw,
     MakeClass(u32),
+    ToString,
     NotImplementedError(String),
 }

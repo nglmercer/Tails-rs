@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use crate::compiler::parser::{AstNode, Statement, Expression, BinaryOperator, UnaryOperator, ForInit, ForInLeft, CompoundAssignmentOp, UpdateOperator, ArrowFunctionBody, ClassMember};
+use crate::compiler::parser::{AstNode, Statement, Expression, BinaryOperator, UnaryOperator, ForInit, ForInLeft, CompoundAssignmentOp, UpdateOperator, ArrowFunctionBody};
 use crate::compiler::{CompiledModule, CompiledFunction, Instruction};
 use crate::errors::Result;
 use crate::objects::Value;
@@ -17,6 +17,8 @@ struct CodeGenerator {
     scope_depth: usize,
     captured_var_names: Vec<String>,
     local_start_idx: usize,
+    break_targets: Vec<usize>,
+    continue_targets: Vec<usize>,
 }
 
 impl CodeGenerator {
@@ -29,6 +31,8 @@ impl CodeGenerator {
             scope_depth: 0,
             captured_var_names: Vec::new(),
             local_start_idx: 0,
+            break_targets: Vec::new(),
+            continue_targets: Vec::new(),
         }
     }
 
@@ -111,9 +115,18 @@ impl CodeGenerator {
                 self.generate_expression(condition)?;
                 let jump_if_not = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfNot(0));
+                self.continue_targets.push(loop_start as usize);
+                let break_start = self.break_targets.len();
+                self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
                 self.instructions.push(Instruction::Jump(loop_start));
-                self.patch_jump(jump_if_not, self.instructions.len());
+                let loop_end = self.instructions.len();
+                self.patch_jump(jump_if_not, loop_end);
+                while self.break_targets.len() > break_start {
+                    let idx = self.break_targets.pop().unwrap();
+                    self.patch_jump(idx, loop_end);
+                }
+                self.continue_targets.pop();
                 Ok(())
             }
             Statement::ForStatement { init, condition, update, body } => {
@@ -143,14 +156,27 @@ impl CodeGenerator {
                     None
                 };
 
+                self.continue_targets.push(loop_start as usize);
+                let break_start = self.break_targets.len();
+                self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
 
                 if let Some(upd) = update {
+                    let is_assignment = matches!(upd, Expression::Assignment { .. });
                     self.generate_expression(upd)?;
-                    self.instructions.push(Instruction::Pop);
+                    if !is_assignment {
+                        self.instructions.push(Instruction::Pop);
+                    }
                 }
 
                 self.instructions.push(Instruction::Jump(loop_start));
+
+                let loop_end = self.instructions.len();
+                while self.break_targets.len() > break_start {
+                    let idx = self.break_targets.pop().unwrap();
+                    self.patch_jump(idx, loop_end);
+                }
+                self.continue_targets.pop();
 
                 if let Some(j) = jump_to_end {
                     self.patch_jump(j, self.instructions.len());
@@ -173,32 +199,38 @@ impl CodeGenerator {
                     ForInLeft::VariableDeclaration { id, .. } => id.clone(),
                 };
 
-                self.instructions.push(Instruction::LoadUndefined);
                 self.locals.push(var_name.clone());
                 let var_slot = (self.locals.len() - 1) as u16;
 
                 self.generate_expression(right)?;
-
                 let iter_slot = self.locals.len() as u16;
                 self.locals.push("__iter".to_string());
                 self.instructions.push(Instruction::StoreLocal(iter_slot));
 
-                let loop_start = self.instructions.len() as u32;
-
-                self.instructions.push(Instruction::LoadLocal(iter_slot));
-                let jump_if_done = self.instructions.len();
-                self.instructions.push(Instruction::JumpIfNot(0));
-
-                self.instructions.push(Instruction::LoadLocal(iter_slot));
                 let idx_slot = self.locals.len() as u16;
                 self.locals.push("__idx".to_string());
+                let zero_idx = self.add_constant(Value::Float(0.0));
+                self.instructions.push(Instruction::LoadConst(zero_idx));
                 self.instructions.push(Instruction::StoreLocal(idx_slot));
+
+                let loop_start = self.instructions.len() as u32;
 
                 self.instructions.push(Instruction::LoadLocal(iter_slot));
                 self.instructions.push(Instruction::LoadLocal(idx_slot));
                 self.instructions.push(Instruction::GetProperty);
+                self.instructions.push(Instruction::TypeOf);
+                let undef_idx = self.add_constant(Value::String("undefined".to_string()));
+                self.instructions.push(Instruction::LoadConst(undef_idx));
+                self.instructions.push(Instruction::StrictEq);
+                let jump_if_done = self.instructions.len();
+                self.instructions.push(Instruction::JumpIf(0));
 
+                self.instructions.push(Instruction::LoadLocal(iter_slot));
+                self.instructions.push(Instruction::LoadLocal(idx_slot));
+                self.instructions.push(Instruction::GetProperty);
                 self.instructions.push(Instruction::StoreLocal(var_slot));
+
+                self.generate_statement(body, false)?;
 
                 self.instructions.push(Instruction::LoadLocal(idx_slot));
                 let one_idx = self.add_constant(Value::Float(1.0));
@@ -206,12 +238,11 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Add);
                 self.instructions.push(Instruction::StoreLocal(idx_slot));
 
-                self.generate_statement(body, false)?;
-
                 self.instructions.push(Instruction::Jump(loop_start));
 
                 self.patch_jump(jump_if_done, self.instructions.len());
 
+                self.locals.pop();
                 self.locals.pop();
                 self.locals.pop();
 
@@ -285,6 +316,8 @@ impl CodeGenerator {
             Statement::DoWhileStatement { condition, body } => {
                 let loop_start = self.instructions.len() as u32;
 
+                let break_start = self.break_targets.len();
+                self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
 
                 self.generate_expression(condition)?;
@@ -294,64 +327,89 @@ impl CodeGenerator {
 
                 self.instructions.push(Instruction::Jump(loop_start));
 
-                self.patch_jump(jump_if_not, self.instructions.len());
+                let loop_end = self.instructions.len();
+                self.patch_jump(jump_if_not, loop_end);
+                while self.break_targets.len() > break_start {
+                    let idx = self.break_targets.pop().unwrap();
+                    self.patch_jump(idx, loop_end);
+                }
 
                 Ok(())
             }
             Statement::SwitchStatement { discriminant, cases } => {
                 self.generate_expression(discriminant)?;
 
-                let mut case_jumps = Vec::new();
+                self.locals.push("__switch_val".to_string());
+                let disc_slot = (self.locals.len() - 1) as u16;
+                self.instructions.push(Instruction::StoreLocal(disc_slot));
+
+                let mut body_jumps: Vec<usize> = Vec::new();
+                let mut default_jump: Option<usize> = None;
+
                 for case in cases {
                     if let Some(test) = &case.test {
-                        self.instructions.push(Instruction::LoadLocal((self.locals.len() as u16).saturating_sub(0)));
+                        self.instructions.push(Instruction::LoadLocal(disc_slot));
                         self.generate_expression(test)?;
                         self.instructions.push(Instruction::StrictEq);
                         let j = self.instructions.len();
                         self.instructions.push(Instruction::JumpIf(0));
-                        case_jumps.push(j);
+                        body_jumps.push(j);
+                    } else {
+                        default_jump = Some(self.instructions.len());
+                        self.instructions.push(Instruction::Jump(0));
                     }
                 }
 
-                if cases.iter().any(|c| c.test.is_none()) {
-                    let default_jmp = self.instructions.len();
-                    self.instructions.push(Instruction::Jump(0));
-                    case_jumps.push(default_jmp);
-                } else {
-                    let end_jmp = self.instructions.len();
-                    self.instructions.push(Instruction::Jump(0));
-                    case_jumps.push(end_jmp);
-                }
+                let end_jump = self.instructions.len();
+                self.instructions.push(Instruction::Jump(0));
 
-                let mut case_bodies = Vec::new();
+                let break_start = self.break_targets.len();
+                let mut non_default_idx = 0;
                 for case in cases {
-                    if case_jumps.len() > 0 {
-                        if case.test.is_some() {
-                            let jmp_idx = case_jumps.remove(0);
+                    if case.test.is_some() {
+                        if !body_jumps.is_empty() {
+                            let jmp_idx = body_jumps.remove(0);
                             self.patch_jump(jmp_idx, self.instructions.len());
                         }
+                    } else if let Some(j) = default_jump.take() {
+                        self.patch_jump(j, self.instructions.len());
                     }
                     for s in &case.consequent {
                         self.generate_statement(s, false)?;
                     }
-                    case_bodies.push(());
+                    let _ = non_default_idx;
                 }
 
-                if let Some(last) = case_jumps.pop() {
-                    self.patch_jump(last, self.instructions.len());
+                let loop_end = self.instructions.len();
+                while self.break_targets.len() > break_start {
+                    let idx = self.break_targets.pop().unwrap();
+                    self.patch_jump(idx, loop_end);
                 }
 
+                self.patch_jump(end_jump, loop_end);
+
+                self.locals.pop();
                 self.instructions.push(Instruction::Pop);
+
                 Ok(())
             }
             Statement::BreakStatement => {
-                self.instructions.push(Instruction::LoadUndefined);
-                self.instructions.push(Instruction::Return);
+                if !self.break_targets.is_empty() {
+                    self.instructions.push(Instruction::Jump(0));
+                    self.break_targets.push(self.instructions.len() - 1);
+                } else {
+                    self.instructions.push(Instruction::LoadUndefined);
+                    self.instructions.push(Instruction::Return);
+                }
                 Ok(())
             }
             Statement::ContinueStatement => {
-                self.instructions.push(Instruction::LoadUndefined);
-                self.instructions.push(Instruction::Return);
+                if let Some(target) = self.continue_targets.last().copied() {
+                    self.instructions.push(Instruction::Jump(target as u32));
+                } else {
+                    self.instructions.push(Instruction::LoadUndefined);
+                    self.instructions.push(Instruction::Return);
+                }
                 Ok(())
             }
             Statement::TryStatement { block, handler, finalizer } => {
@@ -366,8 +424,8 @@ impl CodeGenerator {
                     let _catch_param = handler.as_ref().map(|h| h.param.clone());
                 }
 
-                if let Some(final) = finalizer {
-                    for stmt in final {
+                if let Some(finally_block) = finalizer {
+                    for stmt in finally_block {
                         self.generate_statement(stmt, false)?;
                     }
                 }
@@ -404,11 +462,7 @@ impl CodeGenerator {
                 Ok(())
             }
             Statement::ImportDeclaration { source, .. } => {
-                let src_idx = self.add_constant(Value::String(source.clone()));
-                self.instructions.push(Instruction::LoadConst(src_idx));
-                self.instructions.push(Instruction::LoadGlobal("__import".to_string()));
-                self.instructions.push(Instruction::Call(1));
-                self.instructions.push(Instruction::Pop);
+                let _src_idx = self.add_constant(Value::String(source.clone()));
                 Ok(())
             }
             Statement::ExportDeclaration { declaration } => {
@@ -526,7 +580,9 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::Identifier(name) => {
-                if let Some(local_idx) = self.resolve_local(name) {
+                if name == "this" {
+                    self.instructions.push(Instruction::LoadThis);
+                } else if let Some(local_idx) = self.resolve_local(name) {
                     self.instructions.push(Instruction::LoadLocal(local_idx));
                 } else {
                     self.instructions.push(Instruction::LoadGlobal(name.clone()));
@@ -540,14 +596,41 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::UnaryOp { op, operand } => {
-                self.generate_expression(operand)?;
                 match op {
-                    UnaryOperator::Negate => self.instructions.push(Instruction::Negate),
-                    UnaryOperator::Not => self.instructions.push(Instruction::Not),
-                    UnaryOperator::Typeof => self.instructions.push(Instruction::TypeOf),
-                    UnaryOperator::Delete => self.instructions.push(Instruction::Delete),
-                    UnaryOperator::Void => self.instructions.push(Instruction::Void),
-                    UnaryOperator::BitNot => self.instructions.push(Instruction::BitNot),
+                    UnaryOperator::Delete => {
+                        if let Expression::Member { object, property, computed } = operand.as_ref() {
+                            self.generate_expression(object)?;
+                            if *computed {
+                                self.generate_expression(property)?;
+                            } else if let Expression::Identifier(name) = property.as_ref() {
+                                let idx = self.add_constant(Value::String(name.clone()));
+                                self.instructions.push(Instruction::LoadConst(idx));
+                            } else {
+                                self.generate_expression(property)?;
+                            }
+                            self.instructions.push(Instruction::Delete);
+                        } else {
+                            self.generate_expression(operand)?;
+                            self.instructions.push(Instruction::Pop);
+                            self.instructions.push(Instruction::LoadTrue);
+                        }
+                    }
+                    UnaryOperator::Void if matches!(operand.as_ref(), Expression::Assignment { .. }) => {
+                        self.generate_expression(operand)?;
+                        self.instructions.push(Instruction::Pop);
+                        self.instructions.push(Instruction::LoadUndefined);
+                    }
+                    _ => {
+                        self.generate_expression(operand)?;
+                        match op {
+                            UnaryOperator::Negate => self.instructions.push(Instruction::Negate),
+                            UnaryOperator::Not => self.instructions.push(Instruction::Not),
+                            UnaryOperator::Typeof => self.instructions.push(Instruction::TypeOf),
+                            UnaryOperator::Void => self.instructions.push(Instruction::Void),
+                            UnaryOperator::BitNot => self.instructions.push(Instruction::BitNot),
+                            _ => {}
+                        }
+                    }
                 }
                 Ok(())
             }
@@ -570,12 +653,38 @@ impl CodeGenerator {
                         } else {
                             self.instructions.push(Instruction::StoreGlobal(name.clone()));
                         }
+                    } else if let Expression::Member { object, property, computed } = target.as_ref() {
+                        self.generate_expression(object)?;
+                        if *computed {
+                            self.generate_expression(property)?;
+                        } else if let Expression::Identifier(name) = property.as_ref() {
+                            let idx = self.add_constant(Value::String(name.clone()));
+                            self.instructions.push(Instruction::LoadConst(idx));
+                        } else {
+                            self.generate_expression(property)?;
+                        }
+                        self.instructions.push(Instruction::SetProperty);
+                        self.instructions.push(Instruction::Pop);
                     } else {
                         return Err(crate::errors::Error::RuntimeError("Invalid assignment target".into()));
                     }
                 } else {
-                    self.generate_expression(value)?;
-                    if let Expression::Identifier(name) = target.as_ref() {
+                    if let Expression::Member { object, property, computed } = target.as_ref() {
+                        self.generate_expression(value)?;
+                        self.instructions.push(Instruction::Dup);
+                        self.generate_expression(object)?;
+                        if *computed {
+                            self.generate_expression(property)?;
+                        } else if let Expression::Identifier(name) = property.as_ref() {
+                            let idx = self.add_constant(Value::String(name.clone()));
+                            self.instructions.push(Instruction::LoadConst(idx));
+                        } else {
+                            self.generate_expression(property)?;
+                        }
+                        self.instructions.push(Instruction::SetProperty);
+                        self.instructions.push(Instruction::Pop);
+                    } else if let Expression::Identifier(name) = target.as_ref() {
+                        self.generate_expression(value)?;
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::StoreLocal(local_idx));
                         } else {
@@ -588,11 +697,27 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::Call { callee, args } => {
-                for arg in args {
-                    self.generate_expression(arg)?;
+                if let Expression::Member { object, property, computed } = callee.as_ref() {
+                    self.generate_expression(object)?;
+                    if *computed {
+                        self.generate_expression(property)?;
+                    } else if let Expression::Identifier(name) = property.as_ref() {
+                        let idx = self.add_constant(Value::String(name.clone()));
+                        self.instructions.push(Instruction::LoadConst(idx));
+                    } else {
+                        self.generate_expression(property)?;
+                    }
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.instructions.push(Instruction::CallMethod(args.len() as u16));
+                } else {
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.generate_expression(callee)?;
+                    self.instructions.push(Instruction::Call(args.len() as u16));
                 }
-                self.generate_expression(callee)?;
-                self.instructions.push(Instruction::Call(args.len() as u16));
                 Ok(())
             }
             Expression::Member { object, property, computed } => {
@@ -731,12 +856,11 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::NewExpression { callee, args } => {
+                self.generate_expression(callee)?;
                 for arg in args {
                     self.generate_expression(arg)?;
                 }
-                self.generate_expression(callee)?;
-                self.instructions.push(Instruction::NewObject);
-                self.instructions.push(Instruction::Call(args.len() as u16));
+                self.instructions.push(Instruction::Construct(args.len() as u16));
                 Ok(())
             }
             Expression::ConditionalExpression { test, consequent, alternate } => {
@@ -800,26 +924,15 @@ impl CodeGenerator {
                     if !first.is_empty() {
                         let idx = self.add_constant(Value::String(first.clone()));
                         self.instructions.push(Instruction::LoadConst(idx));
-                    } else {
-                        self.generate_expression(&expressions[0])?;
-                        let one = self.add_constant(Value::Float(1.0));
-                        self.instructions.push(Instruction::LoadConst(one));
-                        let two = self.add_constant(Value::Float(2.0));
-                        self.instructions.push(Instruction::LoadConst(two));
-                        self.instructions.push(Instruction::LoadUndefined);
-                        self.instructions.push(Instruction::Pop);
-                        self.instructions.push(Instruction::Pop);
-                        self.instructions.push(Instruction::Pop);
                     }
 
                     for i in 0..expressions.len() {
-                        if i == 0 && !quasis[0].is_empty() {
+                        if first.is_empty() && i == 0 {
                             self.generate_expression(&expressions[i])?;
-                            self.instructions.push(Instruction::Add);
-                        } else if i == 0 && quasis[0].is_empty() {
-                            // already loaded first expression
+                            self.instructions.push(Instruction::ToString);
                         } else {
                             self.generate_expression(&expressions[i])?;
+                            self.instructions.push(Instruction::ToString);
                             self.instructions.push(Instruction::Add);
                         }
 
@@ -844,6 +957,23 @@ impl CodeGenerator {
             }
             Expression::AwaitExpression { argument } => {
                 self.generate_expression(argument)?;
+                Ok(())
+            }
+            Expression::ArrayLiteral { elements } => {
+                for elem in elements.iter().rev() {
+                    self.generate_expression(elem)?;
+                }
+                self.instructions.push(Instruction::NewArray(elements.len() as u32));
+                Ok(())
+            }
+            Expression::ObjectLiteral { properties } => {
+                self.instructions.push(Instruction::NewObject);
+                for (key, value) in properties {
+                    self.generate_expression(value)?;
+                    let key_idx = self.add_constant(Value::String(key.clone()));
+                    self.instructions.push(Instruction::LoadConst(key_idx));
+                    self.instructions.push(Instruction::SetProperty);
+                }
                 Ok(())
             }
         }
@@ -896,6 +1026,9 @@ impl CodeGenerator {
     }
 
     fn patch_jump(&mut self, offset: usize, target: usize) {
+        if offset >= self.instructions.len() {
+            return;
+        }
         let target_u32 = target as u32;
         match &mut self.instructions[offset] {
             Instruction::JumpIfNot(addr) => *addr = target_u32,
