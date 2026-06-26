@@ -1,10 +1,10 @@
-mod statements;
-mod expressions;
-mod operators;
-mod narrowing;
 mod compatibility;
+mod expressions;
+mod narrowing;
+mod operators;
+mod statements;
 
-use crate::compiler::parser::{AstNode, Statement, Expression, BinaryOperator, VarKind};
+use crate::compiler::parser::{AstNode, BinaryOperator, Expression, Statement, VarKind};
 use crate::errors::{Error, Result};
 use std::collections::HashMap;
 
@@ -139,7 +139,10 @@ impl TypeChecker {
             TypeAnnotation::Unknown => Ok(Type::Unknown),
             TypeAnnotation::Never => Ok(Type::Never),
             TypeAnnotation::Named(name) => {
-                if self.type_aliases.contains_key(name) || self.interfaces.contains_key(name) || self.enums.contains_key(name) {
+                if self.type_aliases.contains_key(name)
+                    || self.interfaces.contains_key(name)
+                    || self.enums.contains_key(name)
+                {
                     Ok(Type::Named(name.clone()))
                 } else {
                     Ok(Type::Named(name.clone()))
@@ -198,7 +201,9 @@ impl TypeChecker {
             }
             TypeAnnotation::Literal(lit) => match lit {
                 crate::compiler::parser::TypeLiteral::Number(n) => Ok(Type::NumberLiteral(*n)),
-                crate::compiler::parser::TypeLiteral::String(s) => Ok(Type::StringLiteral(s.clone())),
+                crate::compiler::parser::TypeLiteral::String(s) => {
+                    Ok(Type::StringLiteral(s.clone()))
+                }
                 crate::compiler::parser::TypeLiteral::Boolean(b) => Ok(Type::BooleanLiteral(*b)),
             },
             TypeAnnotation::Generic { name, args } => {

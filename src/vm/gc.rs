@@ -1,6 +1,6 @@
-use std::collections::{HashMap, VecDeque};
 use crate::objects::Value;
 use crate::vm::interpreter::HeapValue;
+use std::collections::{HashMap, VecDeque};
 
 pub struct GarbageCollector {
     free_list: VecDeque<usize>,
@@ -59,7 +59,10 @@ impl GarbageCollector {
 
         for i in 0..heap.len().min(self.marked.len()) {
             if !self.marked[i] {
-                let old = std::mem::replace(&mut heap[i], HeapValue::Object(crate::vm::interpreter::JsObject::new()));
+                let old = std::mem::replace(
+                    &mut heap[i],
+                    HeapValue::Object(crate::vm::interpreter::JsObject::new()),
+                );
                 drop(old);
                 new_free_list.push_back(i);
                 freed += 1;
@@ -186,19 +189,18 @@ impl GarbageCollector {
                             }
                         }
                     }
-                    HeapValue::Promise(p) => {
-                        match &p.state {
-                            crate::objects::js_promise::PromiseState::Fulfilled(v) | crate::objects::js_promise::PromiseState::Rejected(v) => {
-                                if let Some(child_idx) = heap_value_to_index(v) {
-                                    if !self.is_marked(child_idx, heap.len()) {
-                                        self.mark(child_idx, heap.len());
-                                        worklist.push(child_idx);
-                                    }
+                    HeapValue::Promise(p) => match &p.state {
+                        crate::objects::js_promise::PromiseState::Fulfilled(v)
+                        | crate::objects::js_promise::PromiseState::Rejected(v) => {
+                            if let Some(child_idx) = heap_value_to_index(v) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
                                 }
                             }
-                            _ => {}
                         }
-                    }
+                        _ => {}
+                    },
                     HeapValue::Proxy(proxy) => {
                         if let Some(child_idx) = heap_value_to_index(&proxy.target) {
                             if !self.is_marked(child_idx, heap.len()) {
@@ -224,8 +226,11 @@ impl GarbageCollector {
 
     pub fn mark_value(&mut self, value: &Value) {
         match value {
-            Value::Object(idx) | Value::Array(idx) | Value::Function(idx) |
-            Value::Promise(idx) | Value::Proxy(idx) => {
+            Value::Object(idx)
+            | Value::Array(idx)
+            | Value::Function(idx)
+            | Value::Promise(idx)
+            | Value::Proxy(idx) => {
                 if *idx < self.marked.len() {
                     self.marked[*idx] = true;
                 }
@@ -249,8 +254,11 @@ impl GarbageCollector {
 
 fn heap_value_to_index(value: &Value) -> Option<usize> {
     match value {
-        Value::Object(idx) | Value::Array(idx) | Value::Function(idx) |
-        Value::Promise(idx) | Value::Proxy(idx) => Some(*idx),
+        Value::Object(idx)
+        | Value::Array(idx)
+        | Value::Function(idx)
+        | Value::Promise(idx)
+        | Value::Proxy(idx) => Some(*idx),
         _ => None,
     }
 }
@@ -264,7 +272,7 @@ impl Default for GarbageCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::interpreter::{JsObject, JsArray};
+    use crate::vm::interpreter::{JsArray, JsObject};
 
     fn make_obj() -> HeapValue {
         HeapValue::Object(JsObject::new())
@@ -405,17 +413,20 @@ mod tests {
         let globals = HashMap::new();
 
         let inner_obj_idx = gc.allocate(&mut heap, make_obj());
-        let func_idx = gc.allocate(&mut heap, HeapValue::Function(crate::vm::interpreter::JsFunction {
-            name: Some("test".into()),
-            params: vec![],
-            bytecode_index: 0,
-            closure: vec![Value::Object(inner_obj_idx)],
-            prototype: None,
-            super_class: None,
-            properties: HashMap::new(),
-            owner_module: None,
-            module_scope: None,
-        }));
+        let func_idx = gc.allocate(
+            &mut heap,
+            HeapValue::Function(crate::vm::interpreter::JsFunction {
+                name: Some("test".into()),
+                params: vec![],
+                bytecode_index: 0,
+                closure: vec![Value::Object(inner_obj_idx)],
+                prototype: None,
+                super_class: None,
+                properties: HashMap::new(),
+                owner_module: None,
+                module_scope: None,
+            }),
+        );
 
         let stack = vec![Value::Function(func_idx)];
 

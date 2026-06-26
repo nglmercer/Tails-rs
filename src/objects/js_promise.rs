@@ -30,70 +30,70 @@ impl JsPromise {
             finally_handlers: Vec::new(),
         }
     }
-    
+
     pub fn resolve(&mut self, value: Value) {
         if self.state == PromiseState::Pending {
             self.state = PromiseState::Fulfilled(value);
         }
     }
-    
+
     pub fn reject(&mut self, reason: Value) {
         if self.state == PromiseState::Pending {
             self.state = PromiseState::Rejected(reason);
         }
     }
-    
+
     pub fn is_pending(&self) -> bool {
         self.state == PromiseState::Pending
     }
-    
+
     pub fn is_fulfilled(&self) -> bool {
         matches!(self.state, PromiseState::Fulfilled(_))
     }
-    
+
     pub fn is_rejected(&self) -> bool {
         matches!(self.state, PromiseState::Rejected(_))
     }
-    
+
     pub fn value(&self) -> Option<&Value> {
         match &self.state {
             PromiseState::Fulfilled(value) => Some(value),
             _ => None,
         }
     }
-    
+
     pub fn reason(&self) -> Option<&Value> {
         match &self.state {
             PromiseState::Rejected(reason) => Some(reason),
             _ => None,
         }
     }
-    
+
     pub fn then(&mut self, callback: usize) {
         self.then_handlers.push(PromiseHandler {
             callback,
             resolve: true,
         });
     }
-    
+
     pub fn catch(&mut self, callback: usize) {
         self.catch_handlers.push(PromiseHandler {
             callback,
             resolve: false,
         });
     }
-    
+
     pub fn finally(&mut self, callback: usize) {
         self.finally_handlers.push(PromiseHandler {
             callback,
             resolve: true,
         });
     }
-    
+
     pub fn resolve_all(promises: &[JsPromise]) -> JsPromise {
         let mut result = JsPromise::new();
         let mut values = Vec::new();
-        
+
         for promise in promises {
             match &promise.state {
                 PromiseState::Fulfilled(value) => values.push(value.clone()),
@@ -106,14 +106,14 @@ impl JsPromise {
                 }
             }
         }
-        
+
         result.resolve(Value::Undefined);
         result
     }
-    
+
     pub fn race(promises: &[JsPromise]) -> JsPromise {
         let mut result = JsPromise::new();
-        
+
         for promise in promises {
             match &promise.state {
                 PromiseState::Fulfilled(value) => {
@@ -127,7 +127,7 @@ impl JsPromise {
                 PromiseState::Pending => {}
             }
         }
-        
+
         result
     }
 }

@@ -40,7 +40,8 @@ impl TypeChecker {
             }
             (Type::Tuple(t1), Type::Tuple(t2)) => {
                 t1.len() == t2.len()
-                    && t1.iter()
+                    && t1
+                        .iter()
                         .zip(t2.iter())
                         .all(|(a, b)| self.is_compatible(a, b))
             }
@@ -55,7 +56,8 @@ impl TypeChecker {
                     let found = props_act.iter().find(|p| p.name == prop_exp.name);
                     match found {
                         Some(prop_act) => {
-                            if !prop_exp.optional && !self.is_compatible(&prop_exp.ty, &prop_act.ty) {
+                            if !prop_exp.optional && !self.is_compatible(&prop_exp.ty, &prop_act.ty)
+                            {
                                 return false;
                             }
                         }
@@ -86,9 +88,21 @@ impl TypeChecker {
                     false
                 }
             }
-            (Type::Function { params: p1, return_type: r1 }, Type::Function { params: p2, return_type: r2 }) => {
+            (
+                Type::Function {
+                    params: p1,
+                    return_type: r1,
+                },
+                Type::Function {
+                    params: p2,
+                    return_type: r2,
+                },
+            ) => {
                 p1.len() == p2.len()
-                    && p1.iter().zip(p2.iter()).all(|(a, b)| self.is_compatible(a, b))
+                    && p1
+                        .iter()
+                        .zip(p2.iter())
+                        .all(|(a, b)| self.is_compatible(a, b))
                     && self.is_compatible(r1, r2)
             }
             _ => false,

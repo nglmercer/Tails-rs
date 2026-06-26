@@ -189,12 +189,14 @@ fn test_json_stringify_object() {
 #[test]
 fn test_json_roundtrip() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let obj = JSON.parse('{"x": 10, "y": "hello"}');
         let s = JSON.stringify(obj);
         let obj2 = JSON.parse(s);
         obj2.x;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(10 as f64));
 }
@@ -203,10 +205,12 @@ fn test_json_roundtrip() {
 #[test]
 fn test_object_keys() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let keys = Object.keys({a: 1, b: 2, c: 3});
         keys.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3.0));
 }
@@ -214,10 +218,12 @@ fn test_object_keys() {
 #[test]
 fn test_object_values() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let vals = Object.values({x: 10, y: 20});
         vals.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -225,10 +231,12 @@ fn test_object_values() {
 #[test]
 fn test_object_entries() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let entries = Object.entries({a: 1});
         entries.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(1.0));
 }
@@ -236,11 +244,13 @@ fn test_object_entries() {
 #[test]
 fn test_object_assign() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let target = {a: 1};
         Object.assign(target, {b: 2}, {c: 3});
         target.b + target.c;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(5 as f64));
 }
@@ -305,11 +315,13 @@ fn test_clear_timeout() {
 #[test]
 fn test_array_push() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2];
         let len = arr.push(3);
         arr.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3.0));
 }
@@ -317,11 +329,13 @@ fn test_array_push() {
 #[test]
 fn test_array_pop() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         let popped = arr.pop();
         arr.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -329,11 +343,13 @@ fn test_array_pop() {
 #[test]
 fn test_array_shift() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         let shifted = arr.shift();
         shifted;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(1 as f64));
 }
@@ -341,11 +357,13 @@ fn test_array_shift() {
 #[test]
 fn test_array_unshift() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [2, 3];
         arr.unshift(1);
         arr.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3.0));
 }
@@ -353,11 +371,13 @@ fn test_array_unshift() {
 #[test]
 fn test_array_slice() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4, 5];
         let sliced = arr.slice(1, 3);
         sliced.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -365,11 +385,13 @@ fn test_array_slice() {
 #[test]
 fn test_array_splice() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4];
         let removed = arr.splice(1, 2);
         removed.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -377,10 +399,12 @@ fn test_array_splice() {
 #[test]
 fn test_array_index_of() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [10, 20, 30];
         arr.indexOf(20);
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(1 as f64));
 }
@@ -388,10 +412,12 @@ fn test_array_index_of() {
 #[test]
 fn test_array_includes() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         arr.includes(2);
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }
@@ -399,11 +425,13 @@ fn test_array_includes() {
 #[test]
 fn test_array_find() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4];
         let found = arr.find(function(x) { return x > 2; });
         found;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3 as f64));
 }
@@ -411,10 +439,12 @@ fn test_array_find() {
 #[test]
 fn test_array_find_index() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4];
         arr.findIndex(function(x) { return x > 2; });
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2 as f64));
 }
@@ -422,11 +452,13 @@ fn test_array_find_index() {
 #[test]
 fn test_array_map() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         let doubled = arr.map(function(x) { return x * 2; });
         doubled.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3.0));
 }
@@ -434,11 +466,13 @@ fn test_array_map() {
 #[test]
 fn test_array_filter() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4, 5];
         let evens = arr.filter(function(x) { return x % 2 === 0; });
         evens.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -446,11 +480,13 @@ fn test_array_filter() {
 #[test]
 fn test_array_reduce() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3, 4];
         let sum = arr.reduce(function(acc, x) { return acc + x; }, 0);
         sum;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(10 as f64));
 }
@@ -458,11 +494,13 @@ fn test_array_reduce() {
 #[test]
 fn test_array_for_each() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let sum = 0;
         [1, 2, 3].forEach(function(x) { sum = sum + x; });
         sum;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(6 as f64));
 }
@@ -470,9 +508,11 @@ fn test_array_for_each() {
 #[test]
 fn test_array_some() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         [1, 2, 3].some(function(x) { return x > 2; });
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }
@@ -480,9 +520,11 @@ fn test_array_some() {
 #[test]
 fn test_array_every() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         [2, 4, 6].every(function(x) { return x % 2 === 0; });
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }
@@ -490,10 +532,12 @@ fn test_array_every() {
 #[test]
 fn test_array_join() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         arr.join("-");
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("1-2-3".to_string()));
 }
@@ -501,11 +545,13 @@ fn test_array_join() {
 #[test]
 fn test_array_reverse() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         arr.reverse();
         arr[0];
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3 as f64));
 }
@@ -513,11 +559,13 @@ fn test_array_reverse() {
 #[test]
 fn test_array_sort() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [3, 1, 4, 1, 5];
         arr.sort();
         arr[0];
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(1 as f64));
 }
@@ -525,10 +573,12 @@ fn test_array_sort() {
 #[test]
 fn test_array_concat() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2].concat([3, 4]);
         arr.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(4.0));
 }
@@ -536,11 +586,13 @@ fn test_array_concat() {
 #[test]
 fn test_array_flat() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [[1, 2], [3, 4]];
         let flat = arr.flat();
         flat.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(4.0));
 }
@@ -605,10 +657,12 @@ fn test_string_replace() {
 #[test]
 fn test_string_split() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let parts = "a,b,c".split(",");
         parts.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(3.0));
 }
@@ -714,11 +768,13 @@ fn test_number_is_finite() {
 #[test]
 fn test_array_map_with_arrow() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [1, 2, 3];
         let result = arr.map(x => x * 10);
         result[0] + result[1] + result[2];
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(60 as f64));
 }
@@ -726,13 +782,15 @@ fn test_array_map_with_arrow() {
 #[test]
 fn test_array_filter_reduce_combined() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let data = [1, 2, 3, 4, 5, 6];
         let sum = data
             .filter(function(x) { return x % 2 === 0; })
             .reduce(function(acc, x) { return acc + x; }, 0);
         sum;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(12 as f64));
 }
@@ -740,11 +798,13 @@ fn test_array_filter_reduce_combined() {
 #[test]
 fn test_json_parse_and_object_keys() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let data = JSON.parse('{"name": "Alice", "age": 30}');
         let keys = Object.keys(data);
         keys.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(2.0));
 }
@@ -752,22 +812,29 @@ fn test_json_parse_and_object_keys() {
 #[test]
 fn test_string_split_and_join() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let parts = "hello-world-foo".split("-");
         parts.join(" ");
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), tails::Value::String("hello world foo".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        tails::Value::String("hello world foo".to_string())
+    );
 }
 
 #[test]
 fn test_math_in_array_reduce() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let arr = [-3, 1, -4, 1, 5];
         let result = arr.map(function(x) { return Math.abs(x); });
         result.reduce(function(acc, x) { return acc + x; }, 0);
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Float(14 as f64));
 }

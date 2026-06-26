@@ -2,7 +2,11 @@ use crate::errors::Result;
 use crate::objects::Value;
 use crate::vm::interpreter::Interpreter;
 
-pub(super) fn native_promise_constructor(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let executor = args.first().cloned().unwrap_or(Value::Undefined);
 
     let promise_idx = interp.heap.len();
@@ -19,7 +23,11 @@ pub(super) fn native_promise_constructor(interp: &mut Interpreter, _this: &Value
     Ok(Value::Promise(promise_idx))
 }
 
-pub(super) fn native_promise_then(interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_then(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let callback = args.first().cloned().unwrap_or(Value::Undefined);
     let on_fulfilled = if let Value::Promise(idx) = this {
         *idx
@@ -32,11 +40,12 @@ pub(super) fn native_promise_then(interp: &mut Interpreter, this: &Value, args: 
         crate::objects::js_promise::JsPromise::new(),
     ));
 
-    let state_snapshot = if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_fulfilled] {
-        promise.state.clone()
-    } else {
-        return Ok(Value::Promise(new_promise_idx));
-    };
+    let state_snapshot =
+        if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_fulfilled] {
+            promise.state.clone()
+        } else {
+            return Ok(Value::Promise(new_promise_idx));
+        };
 
     match state_snapshot {
         crate::objects::js_promise::PromiseState::Fulfilled(value) => {
@@ -47,15 +56,19 @@ pub(super) fn native_promise_then(interp: &mut Interpreter, this: &Value, args: 
             interp.reject_promise(new_promise_idx, reason);
         }
         crate::objects::js_promise::PromiseState::Pending => {
-            if let crate::vm::interpreter::HeapValue::Promise(promise) = &mut interp.heap[on_fulfilled] {
+            if let crate::vm::interpreter::HeapValue::Promise(promise) =
+                &mut interp.heap[on_fulfilled]
+            {
                 let cb_idx = match callback {
                     Value::Function(idx) => idx,
                     _ => 0,
                 };
-                promise.then_handlers.push(crate::objects::js_promise::PromiseHandler {
-                    callback: cb_idx,
-                    resolve: true,
-                });
+                promise
+                    .then_handlers
+                    .push(crate::objects::js_promise::PromiseHandler {
+                        callback: cb_idx,
+                        resolve: true,
+                    });
             }
         }
     }
@@ -63,7 +76,11 @@ pub(super) fn native_promise_then(interp: &mut Interpreter, this: &Value, args: 
     Ok(Value::Promise(new_promise_idx))
 }
 
-pub(super) fn native_promise_catch(interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_catch(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let callback = args.first().cloned().unwrap_or(Value::Undefined);
     let on_rejected = if let Value::Promise(idx) = this {
         *idx
@@ -76,11 +93,12 @@ pub(super) fn native_promise_catch(interp: &mut Interpreter, this: &Value, args:
         crate::objects::js_promise::JsPromise::new(),
     ));
 
-    let state_snapshot = if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_rejected] {
-        promise.state.clone()
-    } else {
-        return Ok(Value::Promise(new_promise_idx));
-    };
+    let state_snapshot =
+        if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_rejected] {
+            promise.state.clone()
+        } else {
+            return Ok(Value::Promise(new_promise_idx));
+        };
 
     match state_snapshot {
         crate::objects::js_promise::PromiseState::Rejected(reason) => {
@@ -91,15 +109,19 @@ pub(super) fn native_promise_catch(interp: &mut Interpreter, this: &Value, args:
             interp.resolve_promise(new_promise_idx, value);
         }
         crate::objects::js_promise::PromiseState::Pending => {
-            if let crate::vm::interpreter::HeapValue::Promise(promise) = &mut interp.heap[on_rejected] {
+            if let crate::vm::interpreter::HeapValue::Promise(promise) =
+                &mut interp.heap[on_rejected]
+            {
                 let cb_idx = match callback {
                     Value::Function(idx) => idx,
                     _ => 0,
                 };
-                promise.catch_handlers.push(crate::objects::js_promise::PromiseHandler {
-                    callback: cb_idx,
-                    resolve: false,
-                });
+                promise
+                    .catch_handlers
+                    .push(crate::objects::js_promise::PromiseHandler {
+                        callback: cb_idx,
+                        resolve: false,
+                    });
             }
         }
     }
@@ -107,7 +129,11 @@ pub(super) fn native_promise_catch(interp: &mut Interpreter, this: &Value, args:
     Ok(Value::Promise(new_promise_idx))
 }
 
-pub(super) fn native_promise_finally(interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_finally(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let callback = args.first().cloned().unwrap_or(Value::Undefined);
     let on_finally = if let Value::Promise(idx) = this {
         *idx
@@ -120,27 +146,33 @@ pub(super) fn native_promise_finally(interp: &mut Interpreter, this: &Value, arg
         crate::objects::js_promise::JsPromise::new(),
     ));
 
-    let state_snapshot = if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_finally] {
-        promise.state.clone()
-    } else {
-        return Ok(Value::Promise(new_promise_idx));
-    };
+    let state_snapshot =
+        if let crate::vm::interpreter::HeapValue::Promise(promise) = &interp.heap[on_finally] {
+            promise.state.clone()
+        } else {
+            return Ok(Value::Promise(new_promise_idx));
+        };
 
     match state_snapshot {
-        crate::objects::js_promise::PromiseState::Fulfilled(value) | crate::objects::js_promise::PromiseState::Rejected(value) => {
+        crate::objects::js_promise::PromiseState::Fulfilled(value)
+        | crate::objects::js_promise::PromiseState::Rejected(value) => {
             let _ = interp.call_value(&callback, &Value::Undefined, &[])?;
             interp.resolve_promise(new_promise_idx, value);
         }
         crate::objects::js_promise::PromiseState::Pending => {
-            if let crate::vm::interpreter::HeapValue::Promise(promise) = &mut interp.heap[on_finally] {
+            if let crate::vm::interpreter::HeapValue::Promise(promise) =
+                &mut interp.heap[on_finally]
+            {
                 let cb_idx = match callback {
                     Value::Function(idx) => idx,
                     _ => 0,
                 };
-                promise.finally_handlers.push(crate::objects::js_promise::PromiseHandler {
-                    callback: cb_idx,
-                    resolve: true,
-                });
+                promise
+                    .finally_handlers
+                    .push(crate::objects::js_promise::PromiseHandler {
+                        callback: cb_idx,
+                        resolve: true,
+                    });
             }
         }
     }
@@ -148,7 +180,11 @@ pub(super) fn native_promise_finally(interp: &mut Interpreter, this: &Value, arg
     Ok(Value::Promise(new_promise_idx))
 }
 
-pub(super) fn native_promise_resolve(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_resolve(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let value = args.first().cloned().unwrap_or(Value::Undefined);
 
     let promise_idx = interp.heap.len();
@@ -160,7 +196,11 @@ pub(super) fn native_promise_resolve(interp: &mut Interpreter, _this: &Value, ar
     Ok(Value::Promise(promise_idx))
 }
 
-pub(super) fn native_promise_reject(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_reject(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let reason = args.first().cloned().unwrap_or(Value::Undefined);
 
     let promise_idx = interp.heap.len();
@@ -172,15 +212,26 @@ pub(super) fn native_promise_reject(interp: &mut Interpreter, _this: &Value, arg
     Ok(Value::Promise(promise_idx))
 }
 
-pub(super) fn native_promise_all(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_all(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let promises_arg = args.first().cloned().unwrap_or(Value::Undefined);
 
     let promise_indices: Vec<usize> = match &promises_arg {
         Value::Array(arr_idx) => {
             if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
-                arr.elements.iter().filter_map(|v| {
-                    if let Value::Promise(idx) = v { Some(*idx) } else { None }
-                }).collect()
+                arr.elements
+                    .iter()
+                    .filter_map(|v| {
+                        if let Value::Promise(idx) = v {
+                            Some(*idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
             } else {
                 Vec::new()
             }
@@ -228,15 +279,26 @@ pub(super) fn native_promise_all(interp: &mut Interpreter, _this: &Value, args: 
     Ok(Value::Promise(result_idx))
 }
 
-pub(super) fn native_promise_race(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_promise_race(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let promises_arg = args.first().cloned().unwrap_or(Value::Undefined);
 
     let promise_indices: Vec<usize> = match &promises_arg {
         Value::Array(arr_idx) => {
             if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
-                arr.elements.iter().filter_map(|v| {
-                    if let Value::Promise(idx) = v { Some(*idx) } else { None }
-                }).collect()
+                arr.elements
+                    .iter()
+                    .filter_map(|v| {
+                        if let Value::Promise(idx) = v {
+                            Some(*idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
             } else {
                 Vec::new()
             }

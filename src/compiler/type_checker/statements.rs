@@ -335,9 +335,7 @@ impl TypeChecker {
                 self.check_expression(expr)?;
                 Ok(Type::Never)
             }
-            Statement::ExportDeclaration { declaration } => {
-                self.check_statement(declaration)
-            }
+            Statement::ExportDeclaration { declaration } => self.check_statement(declaration),
             Statement::ExportDefaultDeclaration { declaration } => {
                 self.check_statement(declaration)
             }

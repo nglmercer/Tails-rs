@@ -1,15 +1,15 @@
-mod helpers;
-mod console;
-mod json_fns;
-mod global_fns;
-mod math_fns;
 mod array_fns;
-mod string_fns;
+mod console;
 mod error_fns;
+mod global_fns;
+mod helpers;
+mod json_fns;
+mod math_fns;
+mod object_fns;
 mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;
-mod object_fns;
+mod string_fns;
 
 use crate::errors::Result;
 use crate::objects::Value;

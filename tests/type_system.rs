@@ -1,6 +1,6 @@
-use tails::compiler::{Compiler, type_checker::TypeChecker};
 use tails::compiler::lexer::tokenize;
 use tails::compiler::parser::parse;
+use tails::compiler::{type_checker::TypeChecker, Compiler};
 
 fn type_check(source: &str) -> Result<(), tails::Error> {
     let tokens = tokenize(source).unwrap();
@@ -156,7 +156,8 @@ fn test_object_type_missing_property() {
 
 #[test]
 fn test_object_type_wrong_property_type() {
-    let result = type_check(r#"let obj: { name: string, age: number } = { name: "John", age: "thirty" };"#);
+    let result =
+        type_check(r#"let obj: { name: string, age: number } = { name: "John", age: "thirty" };"#);
     assert!(result.is_err());
 }
 
@@ -168,81 +169,109 @@ fn test_optional_property() {
 
 #[test]
 fn test_interface_declaration() {
-    type_check(r#"
+    type_check(
+        r#"
         interface User { name: string, age: number }
         let u: User = { name: "Alice", age: 25 };
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_interface_rejects_wrong_type() {
-    let result = type_check(r#"
+    let result = type_check(
+        r#"
         interface User { name: string, age: number }
         let u: User = { name: "Alice", age: "twenty-five" };
-    "#);
+    "#,
+    );
     assert!(result.is_err());
 }
 
 #[test]
 fn test_type_alias() {
-    type_check(r#"
+    type_check(
+        r#"
         type ID = string | number;
         let id: ID = 42;
-    "#).unwrap();
-    type_check(r#"
+    "#,
+    )
+    .unwrap();
+    type_check(
+        r#"
         type ID = string | number;
         let id: ID = "abc";
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_type_alias_rejects_invalid() {
-    let result = type_check(r#"
+    let result = type_check(
+        r#"
         type ID = string | number;
         let id: ID = true;
-    "#);
+    "#,
+    );
     assert!(result.is_err());
 }
 
 #[test]
 fn test_enum_declaration() {
-    type_check(r#"
+    type_check(
+        r#"
         enum Direction { Up, Down, Left, Right }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_enum_with_values() {
-    type_check(r#"
+    type_check(
+        r#"
         enum Status { Active = 1, Inactive = 0 }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_type_assertion() {
-    type_check(r#"
+    type_check(
+        r#"
         let x: any = 42;
         let y: number = x as number;
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_type_narrowing_after_typeof() {
-    type_check(r#"
+    type_check(
+        r#"
         let x: string | number = 42;
         if (typeof x === "string") {
             let y: string = x;
         } else {
             let z: number = x;
         }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_basic_generics_function() {
-    type_check(r#"
+    type_check(
+        r#"
         function identity<T>(x: T): T { return x; }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -280,10 +309,13 @@ fn test_run_typed_string() {
 
 #[test]
 fn test_run_typed_function() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         function add(x: number, y: number): number { return x + y; }
         add(3, 4);
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -298,41 +330,56 @@ fn test_run_typed_object() {
 
 #[test]
 fn test_run_interface() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         interface Point { x: number, y: number }
         let p: Point = { x: 1, y: 2 };
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_run_type_alias() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         type Num = number | string;
         let x: Num = 42;
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_run_enum() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         enum Color { Red, Green, Blue }
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_run_type_assertion() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         let x: any = 42;
         let y: number = x as number;
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_run_function_type_signature() {
-    compile_and_run(r#"
+    compile_and_run(
+        r#"
         function greet(name: string): string { return "hello " + name; }
         greet("world");
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 }
 
 #[test]

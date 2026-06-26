@@ -4,7 +4,11 @@ use crate::vm::interpreter::Interpreter;
 
 use super::reflect_fns::native_reflect_get_own_property_descriptor;
 
-pub(super) fn native_object_keys(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_keys(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let obj_val = args.first().cloned().unwrap_or(Value::Undefined);
     let mut keys = Vec::new();
     match &obj_val {
@@ -31,7 +35,11 @@ pub(super) fn native_object_keys(interp: &mut Interpreter, _this: &Value, args: 
     Ok(Value::Array(heap_idx))
 }
 
-pub(super) fn native_object_values(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_values(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let obj_val = args.first().cloned().unwrap_or(Value::Undefined);
     let mut vals = Vec::new();
     match &obj_val {
@@ -56,18 +64,33 @@ pub(super) fn native_object_values(interp: &mut Interpreter, _this: &Value, args
     Ok(Value::Array(heap_idx))
 }
 
-pub(super) fn native_object_entries(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_entries(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let obj_val = args.first().cloned().unwrap_or(Value::Undefined);
     let pairs: Vec<(String, Value)> = match &obj_val {
         Value::Object(obj_idx) => {
             if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
-                obj.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-            } else { Vec::new() }
+                obj.properties
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect()
+            } else {
+                Vec::new()
+            }
         }
         Value::Array(arr_idx) => {
             if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
-                arr.elements.iter().enumerate().map(|(i, v)| (i.to_string(), v.clone())).collect()
-            } else { Vec::new() }
+                arr.elements
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| (i.to_string(), v.clone()))
+                    .collect()
+            } else {
+                Vec::new()
+            }
         }
         _ => Vec::new(),
     };
@@ -75,7 +98,9 @@ pub(super) fn native_object_entries(interp: &mut Interpreter, _this: &Value, arg
     for (k, v) in pairs {
         let heap_idx = interp.heap.len();
         interp.heap.push(crate::vm::interpreter::HeapValue::Array(
-            crate::vm::interpreter::JsArray { elements: vec![Value::String(k), v] },
+            crate::vm::interpreter::JsArray {
+                elements: vec![Value::String(k), v],
+            },
         ));
         entries.push(Value::Array(heap_idx));
     }
@@ -86,7 +111,11 @@ pub(super) fn native_object_entries(interp: &mut Interpreter, _this: &Value, arg
     Ok(Value::Array(heap_idx))
 }
 
-pub(super) fn native_object_assign(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_assign(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     if args.is_empty() {
         return Ok(Value::Undefined);
     }
@@ -95,10 +124,21 @@ pub(super) fn native_object_assign(interp: &mut Interpreter, _this: &Value, args
         for src in &args[1..] {
             match src {
                 Value::Object(src_idx) => {
-                    let cloned: Vec<(String, Value)> = if let crate::vm::interpreter::HeapValue::Object(src_obj) = &interp.heap[*src_idx] {
-                        src_obj.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-                    } else { Vec::new() };
-                    if let crate::vm::interpreter::HeapValue::Object(tgt_obj) = &mut interp.heap[*target_idx] {
+                    let cloned: Vec<(String, Value)> =
+                        if let crate::vm::interpreter::HeapValue::Object(src_obj) =
+                            &interp.heap[*src_idx]
+                        {
+                            src_obj
+                                .properties
+                                .iter()
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect()
+                        } else {
+                            Vec::new()
+                        };
+                    if let crate::vm::interpreter::HeapValue::Object(tgt_obj) =
+                        &mut interp.heap[*target_idx]
+                    {
                         for (k, v) in cloned {
                             tgt_obj.properties.insert(k, v);
                         }
@@ -111,7 +151,11 @@ pub(super) fn native_object_assign(interp: &mut Interpreter, _this: &Value, args
     Ok(target)
 }
 
-pub(super) fn native_object_define_property(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_define_property(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = match args.get(1) {
         Some(Value::String(s)) => s.clone(),
@@ -138,7 +182,8 @@ pub(super) fn native_object_define_property(interp: &mut Interpreter, _this: &Va
                 }
             }
             Value::Function(func_idx) => {
-                if let crate::vm::interpreter::HeapValue::Function(f) = &mut interp.heap[*func_idx] {
+                if let crate::vm::interpreter::HeapValue::Function(f) = &mut interp.heap[*func_idx]
+                {
                     f.properties.insert(property, val);
                 }
             }
@@ -148,10 +193,18 @@ pub(super) fn native_object_define_property(interp: &mut Interpreter, _this: &Va
     Ok(target)
 }
 
-pub(super) fn native_object_get_own_property_descriptor(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_get_own_property_descriptor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     native_reflect_get_own_property_descriptor(interp, _this, args)
 }
 
-pub(super) fn native_object_freeze(_interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_object_freeze(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     Ok(args.first().cloned().unwrap_or(Value::Undefined))
 }

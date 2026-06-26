@@ -1,6 +1,6 @@
+use super::Interpreter;
 use crate::errors::{Error, Result};
 use crate::objects::Value;
-use super::Interpreter;
 
 impl Interpreter {
     pub(super) fn add(&self, left: Value, right: Value) -> Result<Value> {
@@ -118,7 +118,10 @@ impl Interpreter {
         match value {
             Value::Integer(n) => Ok(Value::Integer(-n)),
             Value::Float(n) => Ok(Value::Float(-n)),
-            _ => Err(Error::TypeError(format!("Cannot negate {}", self.value_to_string(&value)))),
+            _ => Err(Error::TypeError(format!(
+                "Cannot negate {}",
+                self.value_to_string(&value)
+            ))),
         }
     }
 
@@ -213,8 +216,11 @@ impl Interpreter {
             Value::Null => Ok(0.0),
             Value::Undefined => Ok(f64::NAN),
             Value::String(s) => {
-                if s.is_empty() { Ok(0.0) }
-                else { Ok(s.parse::<f64>().unwrap_or(f64::NAN)) }
+                if s.is_empty() {
+                    Ok(0.0)
+                } else {
+                    Ok(s.parse::<f64>().unwrap_or(f64::NAN))
+                }
             }
             _ => Ok(f64::NAN),
         }

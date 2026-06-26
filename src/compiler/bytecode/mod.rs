@@ -1,8 +1,13 @@
-mod expressions;
 mod closures;
+mod expressions;
 
-use crate::compiler::parser::{AstNode, Statement, Expression, BinaryOperator, UnaryOperator, ForInit, ForInLeft, CompoundAssignmentOp, UpdateOperator, ArrowFunctionBody, ClassMember};
-use crate::compiler::{CompiledModule, CompiledFunction, Instruction, ClassInfo, ClassMethodInfo, ClassMethodKind};
+use crate::compiler::parser::{
+    ArrowFunctionBody, AstNode, BinaryOperator, ClassMember, CompoundAssignmentOp, Expression,
+    ForInLeft, ForInit, Statement, UnaryOperator, UpdateOperator,
+};
+use crate::compiler::{
+    ClassInfo, ClassMethodInfo, ClassMethodKind, CompiledFunction, CompiledModule, Instruction,
+};
 use crate::errors::Result;
 use crate::objects::Value;
 
@@ -51,7 +56,11 @@ impl CodeGenerator {
                     self.instructions.push(Instruction::LoadUndefined);
                 }
             }
-            _ => return Err(crate::errors::Error::InternalError("Invalid AST node".into())),
+            _ => {
+                return Err(crate::errors::Error::InternalError(
+                    "Invalid AST node".into(),
+                ))
+            }
         }
 
         Ok(CompiledModule {
@@ -72,7 +81,10 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Statement::VariableDeclaration { kind: _, declarations } => {
+            Statement::VariableDeclaration {
+                kind: _,
+                declarations,
+            } => {
                 for decl in declarations {
                     if let Some(init) = &decl.init {
                         self.generate_expression(init)?;
@@ -81,7 +93,8 @@ impl CodeGenerator {
                     }
 
                     if self.scope_depth == 0 {
-                        self.instructions.push(Instruction::StoreGlobal(decl.id.clone()));
+                        self.instructions
+                            .push(Instruction::StoreGlobal(decl.id.clone()));
                     } else {
                         self.locals.push(decl.id.clone());
                         let slot = (self.locals.len() - 1) as u16;
@@ -99,7 +112,11 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Return);
                 Ok(())
             }
-            Statement::IfStatement { condition, consequent, alternate } => {
+            Statement::IfStatement {
+                condition,
+                consequent,
+                alternate,
+            } => {
                 self.generate_expression(condition)?;
                 let jump_if_not = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfNot(0));
@@ -134,7 +151,12 @@ impl CodeGenerator {
                 self.continue_targets.pop();
                 Ok(())
             }
-            Statement::ForStatement { init, condition, update, body } => {
+            Statement::ForStatement {
+                init,
+                condition,
+                update,
+                body,
+            } => {
                 self.scope_depth += 1;
                 let prev_locals_count = self.locals.len();
 
@@ -259,7 +281,12 @@ impl CodeGenerator {
                 self.scope_depth -= 1;
                 Ok(())
             }
-            Statement::ForOfStatement { left, right, body, is_async: _ } => {
+            Statement::ForOfStatement {
+                left,
+                right,
+                body,
+                is_async: _,
+            } => {
                 self.scope_depth += 1;
                 let prev_locals_count = self.locals.len();
 
@@ -341,7 +368,10 @@ impl CodeGenerator {
 
                 Ok(())
             }
-            Statement::SwitchStatement { discriminant, cases } => {
+            Statement::SwitchStatement {
+                discriminant,
+                cases,
+            } => {
                 self.generate_expression(discriminant)?;
 
                 self.locals.push("__switch_val".to_string());
@@ -415,7 +445,11 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Statement::TryStatement { block, handler, finalizer } => {
+            Statement::TryStatement {
+                block,
+                handler,
+                finalizer,
+            } => {
                 self.scope_depth += 1;
                 let prev_locals_count = self.locals.len();
 
@@ -462,7 +496,8 @@ impl CodeGenerator {
                     self.patch_jump(j, finally_pc as usize);
                 }
 
-                if let Instruction::TryJump(ref mut c, ref mut f) = self.instructions[try_jump_idx] {
+                if let Instruction::TryJump(ref mut c, ref mut f) = self.instructions[try_jump_idx]
+                {
                     *c = catch_pc;
                     *f = finally_pc;
                 }
@@ -489,7 +524,11 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Throw);
                 Ok(())
             }
-            Statement::ClassDeclaration { name, superclass, body } => {
+            Statement::ClassDeclaration {
+                name,
+                superclass,
+                body,
+            } => {
                 let class_name = name.clone();
 
                 let class_info_idx = self.class_infos.len() as u32;
@@ -499,8 +538,15 @@ impl CodeGenerator {
                 let mut methods = Vec::new();
                 for member in body {
                     match member {
-                        ClassMember::Method { name: mname, params, body: mbody, is_static, is_async: _ } => {
-                            let func_idx = self.compile_function(Some(mname.clone()), params, mbody)?;
+                        ClassMember::Method {
+                            name: mname,
+                            params,
+                            body: mbody,
+                            is_static,
+                            is_async: _,
+                        } => {
+                            let func_idx =
+                                self.compile_function(Some(mname.clone()), params, mbody)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -508,8 +554,16 @@ impl CodeGenerator {
                                 kind: ClassMethodKind::Method,
                             });
                         }
-                        ClassMember::Getter { name: mname, body: mbody, is_static } => {
-                            let func_idx = self.compile_function(Some(format!("get_{}", mname)), &vec![], mbody)?;
+                        ClassMember::Getter {
+                            name: mname,
+                            body: mbody,
+                            is_static,
+                        } => {
+                            let func_idx = self.compile_function(
+                                Some(format!("get_{}", mname)),
+                                &vec![],
+                                mbody,
+                            )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -517,8 +571,17 @@ impl CodeGenerator {
                                 kind: ClassMethodKind::Getter,
                             });
                         }
-                        ClassMember::Setter { name: mname, param, body: mbody, is_static } => {
-                            let func_idx = self.compile_function(Some(format!("set_{}", mname)), &vec![param.clone()], mbody)?;
+                        ClassMember::Setter {
+                            name: mname,
+                            param,
+                            body: mbody,
+                            is_static,
+                        } => {
+                            let func_idx = self.compile_function(
+                                Some(format!("set_{}", mname)),
+                                &vec![param.clone()],
+                                mbody,
+                            )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -549,7 +612,8 @@ impl CodeGenerator {
                     self.generate_expression(superclass.as_ref().unwrap())?;
                 }
 
-                self.instructions.push(Instruction::MakeClass(class_info_idx));
+                self.instructions
+                    .push(Instruction::MakeClass(class_info_idx));
 
                 if self.scope_depth == 0 {
                     self.instructions.push(Instruction::StoreGlobal(class_name));
@@ -562,16 +626,28 @@ impl CodeGenerator {
             }
             Statement::ImportDeclaration { specifiers, source } => {
                 if specifiers.is_empty() {
-                    self.instructions.push(Instruction::ImportModule(source.clone()));
+                    self.instructions
+                        .push(Instruction::ImportModule(source.clone()));
                 } else if specifiers.len() == 1 && specifiers[0].imported.as_deref() == Some("*") {
-                    self.instructions.push(Instruction::ImportAll(source.clone(), specifiers[0].local.clone()));
+                    self.instructions.push(Instruction::ImportAll(
+                        source.clone(),
+                        specifiers[0].local.clone(),
+                    ));
                 } else {
                     for spec in specifiers {
-                        let imported_name = spec.imported.clone().unwrap_or_else(|| spec.local.clone());
+                        let imported_name =
+                            spec.imported.clone().unwrap_or_else(|| spec.local.clone());
                         if imported_name == "default" {
-                            self.instructions.push(Instruction::ImportDefault(source.clone(), spec.local.clone()));
+                            self.instructions.push(Instruction::ImportDefault(
+                                source.clone(),
+                                spec.local.clone(),
+                            ));
                         } else {
-                            self.instructions.push(Instruction::ImportNamed(source.clone(), imported_name, spec.local.clone()));
+                            self.instructions.push(Instruction::ImportNamed(
+                                source.clone(),
+                                imported_name,
+                                spec.local.clone(),
+                            ));
                         }
                     }
                 }
@@ -580,19 +656,23 @@ impl CodeGenerator {
             Statement::ExportDeclaration { declaration } => {
                 match declaration.as_ref() {
                     Statement::VariableDeclaration { declarations, .. } => {
-                        let names: Vec<String> = declarations.iter().map(|d| d.id.clone()).collect();
+                        let names: Vec<String> =
+                            declarations.iter().map(|d| d.id.clone()).collect();
                         self.generate_statement(declaration, false)?;
                         for name in &names {
-                            self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                            self.instructions
+                                .push(Instruction::StoreModuleExport(name.clone()));
                         }
                     }
                     Statement::FunctionDeclaration { name, .. } => {
                         self.generate_statement(declaration, false)?;
-                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                        self.instructions
+                            .push(Instruction::StoreModuleExport(name.clone()));
                     }
                     Statement::ClassDeclaration { name, .. } => {
                         self.generate_statement(declaration, false)?;
-                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
+                        self.instructions
+                            .push(Instruction::StoreModuleExport(name.clone()));
                     }
                     _ => {
                         self.generate_statement(declaration, false)?;
@@ -607,14 +687,18 @@ impl CodeGenerator {
                 match declaration.as_ref() {
                     Statement::FunctionDeclaration { name, .. } => {
                         self.generate_statement(declaration, false)?;
-                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
-                        self.instructions.push(Instruction::LoadGlobal(name.clone()));
+                        self.instructions
+                            .push(Instruction::StoreModuleExport(name.clone()));
+                        self.instructions
+                            .push(Instruction::LoadGlobal(name.clone()));
                         self.instructions.push(Instruction::ExportDefault);
                     }
                     Statement::ClassDeclaration { name, .. } => {
                         self.generate_statement(declaration, false)?;
-                        self.instructions.push(Instruction::StoreModuleExport(name.clone()));
-                        self.instructions.push(Instruction::LoadGlobal(name.clone()));
+                        self.instructions
+                            .push(Instruction::StoreModuleExport(name.clone()));
+                        self.instructions
+                            .push(Instruction::LoadGlobal(name.clone()));
                         self.instructions.push(Instruction::ExportDefault);
                     }
                     _ => {
@@ -638,7 +722,14 @@ impl CodeGenerator {
                 self.scope_depth -= 1;
                 Ok(())
             }
-            Statement::FunctionDeclaration { name, params, body, is_async: _, param_types: _, return_type: _ } => {
+            Statement::FunctionDeclaration {
+                name,
+                params,
+                body,
+                is_async: _,
+                param_types: _,
+                return_type: _,
+            } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
                 let outer_refs = closures::find_outer_refs(body, params, &parent_locals_snapshot);
@@ -686,12 +777,14 @@ impl CodeGenerator {
 
                 if num_captures > 0 {
                     let capture_slots: Vec<u16> = outer_refs.iter().map(|(_, s)| *s).collect();
-                    self.instructions.push(Instruction::MakeClosure(func_idx, capture_slots));
+                    self.instructions
+                        .push(Instruction::MakeClosure(func_idx, capture_slots));
                 } else {
                     self.instructions.push(Instruction::MakeFunction(func_idx));
                 }
                 if self.scope_depth == 0 {
-                    self.instructions.push(Instruction::StoreGlobal(name.clone()));
+                    self.instructions
+                        .push(Instruction::StoreGlobal(name.clone()));
                 } else {
                     self.locals.push(name.clone());
                     let slot = (self.locals.len() - 1) as u16;
@@ -702,10 +795,17 @@ impl CodeGenerator {
         }
     }
 
-    pub(crate) fn compile_class_constructor(&mut self, body: &[ClassMember]) -> Result<Option<u32>> {
+    pub(crate) fn compile_class_constructor(
+        &mut self,
+        body: &[ClassMember],
+    ) -> Result<Option<u32>> {
         for member in body {
             if let ClassMember::Constructor { params, body } = member {
-                return Ok(Some(self.compile_function(Some("constructor".to_string()), params, body)?));
+                return Ok(Some(self.compile_function(
+                    Some("constructor".to_string()),
+                    params,
+                    body,
+                )?));
             }
         }
         Ok(None)

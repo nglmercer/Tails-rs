@@ -12,19 +12,20 @@ impl NativeRegistry {
             functions: Vec::new(),
         }
     }
-    
+
     pub fn register(&mut self, func: NativeFunction) -> usize {
         let id = self.functions.len();
         self.functions.push(func);
         id
     }
-    
+
     pub fn get(&self, id: usize) -> Option<&NativeFunction> {
         self.functions.get(id)
     }
-    
+
     pub fn call(&self, id: usize, args: &[Value]) -> Result<Value, String> {
-        let func = self.get(id)
+        let func = self
+            .get(id)
             .ok_or_else(|| "Function not found".to_string())?;
         func(args)
     }
@@ -45,7 +46,7 @@ pub extern "C" fn tails_register_native(
     if registry.is_null() {
         return usize::MAX;
     }
-    
+
     let registry = unsafe { &mut *registry };
     registry.register(func)
 }
@@ -58,30 +59,22 @@ pub extern "C" fn tails_call_native(
     args_len: usize,
 ) -> TailsValue {
     if registry.is_null() {
-        return TailsValue {
-            tag: 0,
-            data: 0,
-        };
+        return TailsValue { tag: 0, data: 0 };
     }
-    
+
     let registry = unsafe { &*registry };
     let args = if args.is_null() || args_len == 0 {
         &[]
     } else {
         unsafe { std::slice::from_raw_parts(args, args_len) }
     };
-    
-    let values: Vec<Value> = args.iter()
-        .map(|v| tails_value_to_value(*v))
-        .collect();
-    
+
+    let values: Vec<Value> = args.iter().map(|v| tails_value_to_value(*v)).collect();
+
     match registry.call(id, &values) {
         Ok(value) => value_to_tails_value(value),
-        Err(_) => TailsValue {
-            tag: 0,
-            data: 0,
-        },
+        Err(_) => TailsValue { tag: 0, data: 0 },
     }
 }
 
-use super::{TailsValue, value_to_tails_value, tails_value_to_value};
+use super::{tails_value_to_value, value_to_tails_value, TailsValue};

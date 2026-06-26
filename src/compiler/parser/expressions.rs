@@ -12,42 +12,74 @@ impl<'a> Parser<'a> {
             Token::Assign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: None })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: None,
+                })
             }
             Token::PlusAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::AddAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::AddAssign),
+                })
             }
             Token::MinusAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::SubAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::SubAssign),
+                })
             }
             Token::StarAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::MulAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::MulAssign),
+                })
             }
             Token::SlashAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::DivAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::DivAssign),
+                })
             }
             Token::PercentAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::ModAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::ModAssign),
+                })
             }
             Token::AndAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::AndAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::AndAssign),
+                })
             }
             Token::OrAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment { target: Box::new(left), value: Box::new(value), op: Some(CompoundAssignmentOp::OrAssign) })
+                Ok(Expression::Assignment {
+                    target: Box::new(left),
+                    value: Box::new(value),
+                    op: Some(CompoundAssignmentOp::OrAssign),
+                })
             }
             _ => Ok(left),
         }
@@ -75,7 +107,11 @@ impl<'a> Parser<'a> {
         while self.peek() == &Token::Or {
             self.advance();
             let right = self.parse_and()?;
-            left = Expression::BinaryOp { op: BinaryOperator::Or, left: Box::new(left), right: Box::new(right) };
+            left = Expression::BinaryOp {
+                op: BinaryOperator::Or,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -85,7 +121,11 @@ impl<'a> Parser<'a> {
         while self.peek() == &Token::And {
             self.advance();
             let right = self.parse_equality()?;
-            left = Expression::BinaryOp { op: BinaryOperator::And, left: Box::new(left), right: Box::new(right) };
+            left = Expression::BinaryOp {
+                op: BinaryOperator::And,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -103,7 +143,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_instanceof()?;
-                left = Expression::BinaryOp { op, left: Box::new(left), right: Box::new(right) };
+                left = Expression::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }
@@ -116,7 +160,11 @@ impl<'a> Parser<'a> {
         while self.peek() == &Token::Instanceof {
             self.advance();
             let right = self.parse_in()?;
-            left = Expression::BinaryOp { op: BinaryOperator::Instanceof, left: Box::new(left), right: Box::new(right) };
+            left = Expression::BinaryOp {
+                op: BinaryOperator::Instanceof,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -126,7 +174,11 @@ impl<'a> Parser<'a> {
         while self.peek() == &Token::In {
             self.advance();
             let right = self.parse_comparison()?;
-            left = Expression::BinaryOp { op: BinaryOperator::In, left: Box::new(left), right: Box::new(right) };
+            left = Expression::BinaryOp {
+                op: BinaryOperator::In,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -144,7 +196,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_shift()?;
-                left = Expression::BinaryOp { op, left: Box::new(left), right: Box::new(right) };
+                left = Expression::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }
@@ -163,7 +219,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_additive()?;
-                left = Expression::BinaryOp { op, left: Box::new(left), right: Box::new(right) };
+                left = Expression::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }
@@ -182,7 +242,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_multiplicative()?;
-                left = Expression::BinaryOp { op, left: Box::new(left), right: Box::new(right) };
+                left = Expression::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }
@@ -202,7 +266,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_power()?;
-                left = Expression::BinaryOp { op, left: Box::new(left), right: Box::new(right) };
+                left = Expression::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }
@@ -215,7 +283,11 @@ impl<'a> Parser<'a> {
         if self.peek() == &Token::Power {
             self.advance();
             let right = self.parse_unary()?;
-            Ok(Expression::BinaryOp { op: BinaryOperator::Power, left: Box::new(left), right: Box::new(right) })
+            Ok(Expression::BinaryOp {
+                op: BinaryOperator::Power,
+                left: Box::new(left),
+                right: Box::new(right),
+            })
         } else {
             Ok(left)
         }
@@ -226,48 +298,76 @@ impl<'a> Parser<'a> {
             Token::Minus => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::Negate, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::Negate,
+                    operand: Box::new(operand),
+                })
             }
             Token::Not => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::Not, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::Not,
+                    operand: Box::new(operand),
+                })
             }
             Token::Typeof => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::Typeof, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::Typeof,
+                    operand: Box::new(operand),
+                })
             }
             Token::Void => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::Void, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::Void,
+                    operand: Box::new(operand),
+                })
             }
             Token::Delete => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::Delete, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::Delete,
+                    operand: Box::new(operand),
+                })
             }
             Token::BitNot => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp { op: UnaryOperator::BitNot, operand: Box::new(operand) })
+                Ok(Expression::UnaryOp {
+                    op: UnaryOperator::BitNot,
+                    operand: Box::new(operand),
+                })
             }
             Token::Increment => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UpdateExpression { op: UpdateOperator::Increment, operand: Box::new(operand), prefix: true })
+                Ok(Expression::UpdateExpression {
+                    op: UpdateOperator::Increment,
+                    operand: Box::new(operand),
+                    prefix: true,
+                })
             }
             Token::Decrement => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UpdateExpression { op: UpdateOperator::Decrement, operand: Box::new(operand), prefix: true })
+                Ok(Expression::UpdateExpression {
+                    op: UpdateOperator::Decrement,
+                    operand: Box::new(operand),
+                    prefix: true,
+                })
             }
             Token::New => self.parse_new_expression(),
             Token::Await => {
                 self.advance();
                 let argument = self.parse_unary()?;
-                Ok(Expression::AwaitExpression { argument: Box::new(argument) })
+                Ok(Expression::AwaitExpression {
+                    argument: Box::new(argument),
+                })
             }
             _ => self.parse_postfix(),
         }
@@ -279,16 +379,27 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Token::Increment => {
                     self.advance();
-                    expr = Expression::UpdateExpression { op: UpdateOperator::Increment, operand: Box::new(expr), prefix: false };
+                    expr = Expression::UpdateExpression {
+                        op: UpdateOperator::Increment,
+                        operand: Box::new(expr),
+                        prefix: false,
+                    };
                 }
                 Token::Decrement => {
                     self.advance();
-                    expr = Expression::UpdateExpression { op: UpdateOperator::Decrement, operand: Box::new(expr), prefix: false };
+                    expr = Expression::UpdateExpression {
+                        op: UpdateOperator::Decrement,
+                        operand: Box::new(expr),
+                        prefix: false,
+                    };
                 }
                 Token::As => {
                     self.advance();
                     let type_annotation = self.parse_type_annotation()?;
-                    expr = Expression::TypeAssertion { expression: Box::new(expr), type_annotation };
+                    expr = Expression::TypeAssertion {
+                        expression: Box::new(expr),
+                        type_annotation,
+                    };
                 }
                 _ => break,
             }
@@ -307,7 +418,10 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
-        Ok(Expression::NewExpression { callee: Box::new(callee), args })
+        Ok(Expression::NewExpression {
+            callee: Box::new(callee),
+            args,
+        })
     }
 
     fn parse_new_target(&mut self) -> Result<Expression> {
@@ -318,11 +432,18 @@ impl<'a> Parser<'a> {
                 while self.peek() == &Token::Dot {
                     self.advance();
                     let prop_name = self.token_to_property_name()?;
-                    expr = Expression::Member { object: Box::new(expr), property: Box::new(prop_name), computed: false };
+                    expr = Expression::Member {
+                        object: Box::new(expr),
+                        property: Box::new(prop_name),
+                        computed: false,
+                    };
                 }
                 Ok(expr)
             }
-            _ => Err(Error::ParseError(format!("Expected identifier after 'new', got {:?}", self.peek()))),
+            _ => Err(Error::ParseError(format!(
+                "Expected identifier after 'new', got {:?}",
+                self.peek()
+            ))),
         }
     }
 
@@ -333,16 +454,27 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let args = self.parse_args()?;
                 self.expect(&Token::RightParen)?;
-                expr = Expression::Call { callee: Box::new(expr), args };
+                expr = Expression::Call {
+                    callee: Box::new(expr),
+                    args,
+                };
             } else if self.peek() == &Token::Dot {
                 self.advance();
                 let property = self.token_to_property_name()?;
-                expr = Expression::Member { object: Box::new(expr), property: Box::new(property), computed: false };
+                expr = Expression::Member {
+                    object: Box::new(expr),
+                    property: Box::new(property),
+                    computed: false,
+                };
             } else if self.peek() == &Token::LeftBracket {
                 self.advance();
                 let property = self.parse_expression()?;
                 self.expect(&Token::RightBracket)?;
-                expr = Expression::Member { object: Box::new(expr), property: Box::new(property), computed: true };
+                expr = Expression::Member {
+                    object: Box::new(expr),
+                    property: Box::new(property),
+                    computed: true,
+                };
             } else {
                 break;
             }
@@ -408,7 +540,10 @@ impl<'a> Parser<'a> {
                 }
                 if let Token::Identifier(_) = self.peek().clone() {
                     let saved = self.pos;
-                    let first = match self.advance() { Token::Identifier(n) => n, _ => unreachable!() };
+                    let first = match self.advance() {
+                        Token::Identifier(n) => n,
+                        _ => unreachable!(),
+                    };
                     if self.peek() == &Token::Arrow {
                         self.advance();
                         return self.parse_arrow_body(vec![first], None, None, false);
@@ -416,12 +551,21 @@ impl<'a> Parser<'a> {
                     if self.peek() == &Token::Comma {
                         let mut params = vec![first];
                         loop {
-                            if self.peek() != &Token::Comma { break; }
+                            if self.peek() != &Token::Comma {
+                                break;
+                            }
                             self.advance();
-                            if self.peek() == &Token::RightParen { break; }
+                            if self.peek() == &Token::RightParen {
+                                break;
+                            }
                             match self.advance() {
                                 Token::Identifier(n) => params.push(n),
-                                t => return Err(Error::ParseError(format!("Expected parameter, got {:?}", t))),
+                                t => {
+                                    return Err(Error::ParseError(format!(
+                                        "Expected parameter, got {:?}",
+                                        t
+                                    )))
+                                }
                             }
                         }
                         self.expect(&Token::RightParen)?;
@@ -439,7 +583,11 @@ impl<'a> Parser<'a> {
                 if self.peek() == &Token::Arrow {
                     let params = match &expr {
                         Expression::Identifier(name) => vec![name.clone()],
-                        _ => return Err(Error::ParseError("Invalid arrow function parameter".into())),
+                        _ => {
+                            return Err(Error::ParseError(
+                                "Invalid arrow function parameter".into(),
+                            ))
+                        }
                     };
                     self.advance();
                     return self.parse_arrow_body(params, None, None, false);
@@ -449,7 +597,10 @@ impl<'a> Parser<'a> {
             Token::Function => {
                 self.advance();
                 let name = if let Token::Identifier(_) = self.peek().clone() {
-                    match self.advance() { Token::Identifier(n) => Some(n), _ => unreachable!() }
+                    match self.advance() {
+                        Token::Identifier(n) => Some(n),
+                        _ => unreachable!(),
+                    }
                 } else {
                     None
                 };
@@ -465,14 +616,24 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::FunctionExpression { name, params, param_types: Some(param_types), return_type, body, is_async: false })
+                Ok(Expression::FunctionExpression {
+                    name,
+                    params,
+                    param_types: Some(param_types),
+                    return_type,
+                    body,
+                    is_async: false,
+                })
             }
             Token::Async => {
                 self.advance();
                 if self.peek() == &Token::Function {
                     self.advance();
                     let name = if let Token::Identifier(_) = self.peek().clone() {
-                        match self.advance() { Token::Identifier(n) => Some(n), _ => unreachable!() }
+                        match self.advance() {
+                            Token::Identifier(n) => Some(n),
+                            _ => unreachable!(),
+                        }
                     } else {
                         None
                     };
@@ -488,7 +649,14 @@ impl<'a> Parser<'a> {
                     self.expect(&Token::LeftBrace)?;
                     let body = self.parse_block_body()?;
                     self.expect(&Token::RightBrace)?;
-                    Ok(Expression::FunctionExpression { name, params, param_types: Some(param_types), return_type, body, is_async: true })
+                    Ok(Expression::FunctionExpression {
+                        name,
+                        params,
+                        param_types: Some(param_types),
+                        return_type,
+                        body,
+                        is_async: true,
+                    })
                 } else {
                     self.expect(&Token::LeftParen)?;
                     let (params, param_types) = self.parse_typed_params()?;
@@ -503,14 +671,19 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.parse_arrow_body(params, Some(param_types), return_type, true)
                     } else {
-                        Err(Error::ParseError("Expected '=>' after async parameters".into()))
+                        Err(Error::ParseError(
+                            "Expected '=>' after async parameters".into(),
+                        ))
                     }
                 }
             }
             Token::Class => {
                 self.advance();
                 let name = if let Token::Identifier(_) = self.peek().clone() {
-                    match self.advance() { Token::Identifier(n) => Some(n), _ => unreachable!() }
+                    match self.advance() {
+                        Token::Identifier(n) => Some(n),
+                        _ => unreachable!(),
+                    }
                 } else {
                     None
                 };
@@ -523,7 +696,11 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_class_body()?;
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::ClassExpression { name, superclass: superclass.map(Box::new), body })
+                Ok(Expression::ClassExpression {
+                    name,
+                    superclass: superclass.map(Box::new),
+                    body,
+                })
             }
             Token::Super => {
                 self.advance();
@@ -536,16 +713,29 @@ impl<'a> Parser<'a> {
                     self.advance();
                     let property = match self.advance() {
                         Token::Identifier(name) => Expression::Identifier(name),
-                        t => return Err(Error::ParseError(format!("Expected property name after 'super', got {:?}", t))),
+                        t => {
+                            return Err(Error::ParseError(format!(
+                                "Expected property name after 'super', got {:?}",
+                                t
+                            )))
+                        }
                     };
-                    Ok(Expression::SuperMember { property: Box::new(property), computed: false })
+                    Ok(Expression::SuperMember {
+                        property: Box::new(property),
+                        computed: false,
+                    })
                 } else if self.peek() == &Token::LeftBracket {
                     self.advance();
                     let property = self.parse_expression()?;
                     self.expect(&Token::RightBracket)?;
-                    Ok(Expression::SuperMember { property: Box::new(property), computed: true })
+                    Ok(Expression::SuperMember {
+                        property: Box::new(property),
+                        computed: true,
+                    })
                 } else {
-                    Err(Error::ParseError("Expected '.' or '(' after 'super'".into()))
+                    Err(Error::ParseError(
+                        "Expected '.' or '(' after 'super'".into(),
+                    ))
                 }
             }
             Token::This => {
@@ -558,9 +748,13 @@ impl<'a> Parser<'a> {
                 if self.peek() != &Token::RightBracket {
                     loop {
                         elements.push(self.parse_expression()?);
-                        if self.peek() != &Token::Comma { break; }
+                        if self.peek() != &Token::Comma {
+                            break;
+                        }
                         self.advance();
-                        if self.peek() == &Token::RightBracket { break; }
+                        if self.peek() == &Token::RightBracket {
+                            break;
+                        }
                     }
                 }
                 self.expect(&Token::RightBracket)?;
@@ -575,9 +769,13 @@ impl<'a> Parser<'a> {
                         self.expect(&Token::Colon)?;
                         let value = self.parse_expression()?;
                         properties.push((key, value));
-                        if self.peek() != &Token::Comma { break; }
+                        if self.peek() != &Token::Comma {
+                            break;
+                        }
                         self.advance();
-                        if self.peek() == &Token::RightBrace { break; }
+                        if self.peek() == &Token::RightBrace {
+                            break;
+                        }
                     }
                 }
                 self.expect(&Token::RightBrace)?;
@@ -587,7 +785,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn parse_template_literal(&mut self, parts: Vec<TemplatePart>) -> Result<Expression> {
+    pub(crate) fn parse_template_literal(
+        &mut self,
+        parts: Vec<TemplatePart>,
+    ) -> Result<Expression> {
         let mut quasis = Vec::new();
         let mut expressions = Vec::new();
         let mut text_buf = String::new();
@@ -604,18 +805,39 @@ impl<'a> Parser<'a> {
             }
         }
         quasis.push(text_buf);
-        Ok(Expression::TemplateLiteral { quasis, expressions })
+        Ok(Expression::TemplateLiteral {
+            quasis,
+            expressions,
+        })
     }
 
-    pub(crate) fn parse_arrow_body(&mut self, params: Vec<String>, param_types: Option<Vec<Option<TypeAnnotation>>>, return_type: Option<TypeAnnotation>, is_async: bool) -> Result<Expression> {
+    pub(crate) fn parse_arrow_body(
+        &mut self,
+        params: Vec<String>,
+        param_types: Option<Vec<Option<TypeAnnotation>>>,
+        return_type: Option<TypeAnnotation>,
+        is_async: bool,
+    ) -> Result<Expression> {
         if self.peek() == &Token::LeftBrace {
             self.advance();
             let body = self.parse_block_body()?;
             self.expect(&Token::RightBrace)?;
-            Ok(Expression::ArrowFunction { params, param_types, return_type, body: Box::new(ArrowFunctionBody::Block(body)), is_async })
+            Ok(Expression::ArrowFunction {
+                params,
+                param_types,
+                return_type,
+                body: Box::new(ArrowFunctionBody::Block(body)),
+                is_async,
+            })
         } else {
             let expr = self.parse_assignment()?;
-            Ok(Expression::ArrowFunction { params, param_types, return_type, body: Box::new(ArrowFunctionBody::Expression(expr)), is_async })
+            Ok(Expression::ArrowFunction {
+                params,
+                param_types,
+                return_type,
+                body: Box::new(ArrowFunctionBody::Expression(expr)),
+                is_async,
+            })
         }
     }
 }

@@ -36,7 +36,8 @@ impl CodeGenerator {
                 } else if let Some(local_idx) = self.resolve_local(name) {
                     self.instructions.push(Instruction::LoadLocal(local_idx));
                 } else {
-                    self.instructions.push(Instruction::LoadGlobal(name.clone()));
+                    self.instructions
+                        .push(Instruction::LoadGlobal(name.clone()));
                 }
                 Ok(())
             }
@@ -49,7 +50,12 @@ impl CodeGenerator {
             Expression::UnaryOp { op, operand } => {
                 match op {
                     UnaryOperator::Delete => {
-                        if let Expression::Member { object, property, computed } = operand.as_ref() {
+                        if let Expression::Member {
+                            object,
+                            property,
+                            computed,
+                        } = operand.as_ref()
+                        {
                             self.generate_expression(object)?;
                             if *computed {
                                 self.generate_expression(property)?;
@@ -66,7 +72,9 @@ impl CodeGenerator {
                             self.instructions.push(Instruction::LoadTrue);
                         }
                     }
-                    UnaryOperator::Void if matches!(operand.as_ref(), Expression::Assignment { .. }) => {
+                    UnaryOperator::Void
+                        if matches!(operand.as_ref(), Expression::Assignment { .. }) =>
+                    {
                         self.generate_expression(operand)?;
                         self.instructions.push(Instruction::Pop);
                         self.instructions.push(Instruction::LoadUndefined);
@@ -102,9 +110,15 @@ impl CodeGenerator {
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions.push(Instruction::StoreGlobal(name.clone()));
+                            self.instructions
+                                .push(Instruction::StoreGlobal(name.clone()));
                         }
-                    } else if let Expression::Member { object, property, computed } = target.as_ref() {
+                    } else if let Expression::Member {
+                        object,
+                        property,
+                        computed,
+                    } = target.as_ref()
+                    {
                         self.generate_expression(object)?;
                         if *computed {
                             self.generate_expression(property)?;
@@ -117,10 +131,17 @@ impl CodeGenerator {
                         self.instructions.push(Instruction::SetProperty);
                         self.instructions.push(Instruction::Pop);
                     } else {
-                        return Err(crate::errors::Error::RuntimeError("Invalid assignment target".into()));
+                        return Err(crate::errors::Error::RuntimeError(
+                            "Invalid assignment target".into(),
+                        ));
                     }
                 } else {
-                    if let Expression::Member { object, property, computed } = target.as_ref() {
+                    if let Expression::Member {
+                        object,
+                        property,
+                        computed,
+                    } = target.as_ref()
+                    {
                         self.generate_expression(object)?;
                         if *computed {
                             self.generate_expression(property)?;
@@ -137,16 +158,24 @@ impl CodeGenerator {
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions.push(Instruction::StoreGlobal(name.clone()));
+                            self.instructions
+                                .push(Instruction::StoreGlobal(name.clone()));
                         }
                     } else {
-                        return Err(crate::errors::Error::RuntimeError("Invalid assignment target".into()));
+                        return Err(crate::errors::Error::RuntimeError(
+                            "Invalid assignment target".into(),
+                        ));
                     }
                 }
                 Ok(())
             }
             Expression::Call { callee, args } => {
-                if let Expression::Member { object, property, computed } = callee.as_ref() {
+                if let Expression::Member {
+                    object,
+                    property,
+                    computed,
+                } = callee.as_ref()
+                {
                     self.generate_expression(object)?;
                     if *computed {
                         self.generate_expression(property)?;
@@ -159,7 +188,8 @@ impl CodeGenerator {
                     for arg in args {
                         self.generate_expression(arg)?;
                     }
-                    self.instructions.push(Instruction::CallMethod(args.len() as u16));
+                    self.instructions
+                        .push(Instruction::CallMethod(args.len() as u16));
                 } else {
                     for arg in args {
                         self.generate_expression(arg)?;
@@ -169,7 +199,11 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Expression::Member { object, property, computed } => {
+            Expression::Member {
+                object,
+                property,
+                computed,
+            } => {
                 self.generate_expression(object)?;
                 if *computed {
                     self.generate_expression(property)?;
@@ -182,10 +216,18 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::GetProperty);
                 Ok(())
             }
-            Expression::FunctionExpression { name: _, params, body, is_async: _, param_types: _, return_type: _ } => {
+            Expression::FunctionExpression {
+                name: _,
+                params,
+                body,
+                is_async: _,
+                param_types: _,
+                return_type: _,
+            } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
-                let outer_refs = super::closures::find_outer_refs(body, params, &parent_locals_snapshot);
+                let outer_refs =
+                    super::closures::find_outer_refs(body, params, &parent_locals_snapshot);
                 let num_captures = outer_refs.len();
 
                 self.functions.push(CompiledFunction {
@@ -230,26 +272,32 @@ impl CodeGenerator {
 
                 if num_captures > 0 {
                     let capture_slots: Vec<u16> = outer_refs.iter().map(|(_, s)| *s).collect();
-                    self.instructions.push(Instruction::MakeClosure(func_idx, capture_slots));
+                    self.instructions
+                        .push(Instruction::MakeClosure(func_idx, capture_slots));
                 } else {
                     self.instructions.push(Instruction::MakeFunction(func_idx));
                 }
                 Ok(())
             }
-            Expression::ArrowFunction { params, body, is_async: _, param_types: _, return_type: _ } => {
+            Expression::ArrowFunction {
+                params,
+                body,
+                is_async: _,
+                param_types: _,
+                return_type: _,
+            } => {
                 let func_idx = self.functions.len() as u32;
 
                 let (body_stmts, is_expr) = match body.as_ref() {
                     ArrowFunctionBody::Expression(expr) => {
                         (vec![Statement::ReturnStatement(Some(expr.clone()))], true)
                     }
-                    ArrowFunctionBody::Block(stmts) => {
-                        (stmts.clone(), false)
-                    }
+                    ArrowFunctionBody::Block(stmts) => (stmts.clone(), false),
                 };
 
                 let parent_locals_snapshot = self.locals.clone();
-                let outer_refs = super::closures::find_outer_refs(&body_stmts, params, &parent_locals_snapshot);
+                let outer_refs =
+                    super::closures::find_outer_refs(&body_stmts, params, &parent_locals_snapshot);
                 let num_captures = outer_refs.len();
 
                 self.functions.push(CompiledFunction {
@@ -298,7 +346,8 @@ impl CodeGenerator {
 
                 if num_captures > 0 {
                     let capture_slots: Vec<u16> = outer_refs.iter().map(|(_, s)| *s).collect();
-                    self.instructions.push(Instruction::MakeClosure(func_idx, capture_slots));
+                    self.instructions
+                        .push(Instruction::MakeClosure(func_idx, capture_slots));
                 } else {
                     self.instructions.push(Instruction::MakeFunction(func_idx));
                 }
@@ -309,10 +358,15 @@ impl CodeGenerator {
                 for arg in args {
                     self.generate_expression(arg)?;
                 }
-                self.instructions.push(Instruction::Construct(args.len() as u16));
+                self.instructions
+                    .push(Instruction::Construct(args.len() as u16));
                 Ok(())
             }
-            Expression::ConditionalExpression { test, consequent, alternate } => {
+            Expression::ConditionalExpression {
+                test,
+                consequent,
+                alternate,
+            } => {
                 self.generate_expression(test)?;
                 let jump_if_not = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfNot(0));
@@ -324,7 +378,11 @@ impl CodeGenerator {
                 self.patch_jump(jump_to_end, self.instructions.len());
                 Ok(())
             }
-            Expression::UpdateExpression { op, operand, prefix } => {
+            Expression::UpdateExpression {
+                op,
+                operand,
+                prefix,
+            } => {
                 if let Expression::Identifier(name) = operand.as_ref() {
                     if *prefix {
                         self.generate_expression(operand)?;
@@ -337,14 +395,16 @@ impl CodeGenerator {
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions.push(Instruction::StoreGlobal(name.clone()));
+                            self.instructions
+                                .push(Instruction::StoreGlobal(name.clone()));
                         }
                     } else {
                         self.generate_expression(operand)?;
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::LoadLocal(local_idx));
                         } else {
-                            self.instructions.push(Instruction::LoadGlobal(name.clone()));
+                            self.instructions
+                                .push(Instruction::LoadGlobal(name.clone()));
                         }
                         let one = self.add_constant(Value::Float(1.0));
                         self.instructions.push(Instruction::LoadConst(one));
@@ -355,7 +415,8 @@ impl CodeGenerator {
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.instructions.push(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions.push(Instruction::StoreGlobal(name.clone()));
+                            self.instructions
+                                .push(Instruction::StoreGlobal(name.clone()));
                         }
                     }
                 } else {
@@ -363,7 +424,10 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Expression::TemplateLiteral { quasis, expressions } => {
+            Expression::TemplateLiteral {
+                quasis,
+                expressions,
+            } => {
                 if expressions.is_empty() {
                     let s = quasis.join("");
                     let idx = self.add_constant(Value::String(s));
@@ -394,7 +458,11 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Expression::ClassExpression { name, superclass, body } => {
+            Expression::ClassExpression {
+                name,
+                superclass,
+                body,
+            } => {
                 let class_info_idx = self.class_infos.len() as u32;
                 let class_name = name.clone().unwrap_or_else(|| "anonymous".to_string());
 
@@ -403,8 +471,15 @@ impl CodeGenerator {
                 let mut methods = Vec::new();
                 for member in body {
                     match member {
-                        ClassMember::Method { name: mname, params, body: mbody, is_static, is_async: _ } => {
-                            let func_idx = self.compile_function(Some(mname.clone()), params, mbody)?;
+                        ClassMember::Method {
+                            name: mname,
+                            params,
+                            body: mbody,
+                            is_static,
+                            is_async: _,
+                        } => {
+                            let func_idx =
+                                self.compile_function(Some(mname.clone()), params, mbody)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -412,8 +487,16 @@ impl CodeGenerator {
                                 kind: ClassMethodKind::Method,
                             });
                         }
-                        ClassMember::Getter { name: mname, body: mbody, is_static } => {
-                            let func_idx = self.compile_function(Some(format!("get_{}", mname)), &vec![], mbody)?;
+                        ClassMember::Getter {
+                            name: mname,
+                            body: mbody,
+                            is_static,
+                        } => {
+                            let func_idx = self.compile_function(
+                                Some(format!("get_{}", mname)),
+                                &vec![],
+                                mbody,
+                            )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -421,8 +504,17 @@ impl CodeGenerator {
                                 kind: ClassMethodKind::Getter,
                             });
                         }
-                        ClassMember::Setter { name: mname, param, body: mbody, is_static } => {
-                            let func_idx = self.compile_function(Some(format!("set_{}", mname)), &vec![param.clone()], mbody)?;
+                        ClassMember::Setter {
+                            name: mname,
+                            param,
+                            body: mbody,
+                            is_static,
+                        } => {
+                            let func_idx = self.compile_function(
+                                Some(format!("set_{}", mname)),
+                                &vec![param.clone()],
+                                mbody,
+                            )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -453,7 +545,8 @@ impl CodeGenerator {
                     self.generate_expression(superclass.as_ref().unwrap())?;
                 }
 
-                self.instructions.push(Instruction::MakeClass(class_info_idx));
+                self.instructions
+                    .push(Instruction::MakeClass(class_info_idx));
                 Ok(())
             }
             Expression::AwaitExpression { argument } => {
@@ -466,7 +559,8 @@ impl CodeGenerator {
                 for arg in args {
                     self.generate_expression(arg)?;
                 }
-                self.instructions.push(Instruction::SuperConstruct(args.len() as u16));
+                self.instructions
+                    .push(Instruction::SuperConstruct(args.len() as u16));
                 Ok(())
             }
             Expression::SuperMember { property, computed } => {
@@ -486,7 +580,8 @@ impl CodeGenerator {
                 for elem in elements.iter().rev() {
                     self.generate_expression(elem)?;
                 }
-                self.instructions.push(Instruction::NewArray(elements.len() as u32));
+                self.instructions
+                    .push(Instruction::NewArray(elements.len() as u32));
                 Ok(())
             }
             Expression::ObjectLiteral { properties } => {
@@ -499,7 +594,10 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
-            Expression::TypeAssertion { expression, type_annotation: _ } => {
+            Expression::TypeAssertion {
+                expression,
+                type_annotation: _,
+            } => {
                 self.generate_expression(expression)?;
                 Ok(())
             }

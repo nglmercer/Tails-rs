@@ -109,7 +109,9 @@ pub enum TemplatePart {
     Expression(Vec<Token>),
 }
 
-fn tokenize_template_literal(chars: &mut std::iter::Peekable<std::str::CharIndices>) -> Result<Vec<TemplatePart>> {
+fn tokenize_template_literal(
+    chars: &mut std::iter::Peekable<std::str::CharIndices>,
+) -> Result<Vec<TemplatePart>> {
     let mut parts = Vec::new();
     let mut text_buf = String::new();
 
@@ -133,18 +135,28 @@ fn tokenize_template_literal(chars: &mut std::iter::Peekable<std::str::CharIndic
                     let mut expr_src = String::new();
                     loop {
                         match chars.next() {
-                            Some((_, '{')) => { depth += 1; expr_src.push('{'); }
+                            Some((_, '{')) => {
+                                depth += 1;
+                                expr_src.push('{');
+                            }
                             Some((_, '}')) => {
                                 depth -= 1;
-                                if depth == 0 { break; }
+                                if depth == 0 {
+                                    break;
+                                }
                                 expr_src.push('}');
                             }
                             Some((_, c)) => expr_src.push(c),
-                            None => return Err(Error::ParseError("Unterminated template expression".into())),
+                            None => {
+                                return Err(Error::ParseError(
+                                    "Unterminated template expression".into(),
+                                ))
+                            }
                         }
                     }
                     let inner_tokens = tokenize(&expr_src)?;
-                    let filtered: Vec<Token> = inner_tokens.into_iter()
+                    let filtered: Vec<Token> = inner_tokens
+                        .into_iter()
                         .filter(|t| *t != Token::Eof)
                         .collect();
                     parts.push(TemplatePart::Expression(filtered));
@@ -163,7 +175,10 @@ fn tokenize_template_literal(chars: &mut std::iter::Peekable<std::str::CharIndic
                         '"' => text_buf.push('"'),
                         '`' => text_buf.push('`'),
                         '$' => text_buf.push('$'),
-                        _ => { text_buf.push('\\'); text_buf.push(c); }
+                        _ => {
+                            text_buf.push('\\');
+                            text_buf.push(c);
+                        }
                     }
                 }
             }
@@ -179,13 +194,19 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
 
     while let Some(&(_pos, ch)) = chars.peek() {
         match ch {
-            ' ' | '\t' | '\r' => { chars.next(); }
-            '\n' => { chars.next(); }
+            ' ' | '\t' | '\r' => {
+                chars.next();
+            }
+            '\n' => {
+                chars.next();
+            }
             '/' => {
                 chars.next();
                 if let Some(&(_, '/')) = chars.peek() {
                     while let Some(&(_, c)) = chars.peek() {
-                        if c == '\n' { break; }
+                        if c == '\n' {
+                            break;
+                        }
                         chars.next();
                     }
                 } else if let Some(&(_, '*')) = chars.peek() {
@@ -367,17 +388,50 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     tokens.push(Token::Percent);
                 }
             }
-            '(' => { chars.next(); tokens.push(Token::LeftParen); }
-            ')' => { chars.next(); tokens.push(Token::RightParen); }
-            '{' => { chars.next(); tokens.push(Token::LeftBrace); }
-            '}' => { chars.next(); tokens.push(Token::RightBrace); }
-            '[' => { chars.next(); tokens.push(Token::LeftBracket); }
-            ']' => { chars.next(); tokens.push(Token::RightBracket); }
-            ';' => { chars.next(); tokens.push(Token::Semicolon); }
-            ':' => { chars.next(); tokens.push(Token::Colon); }
-            ',' => { chars.next(); tokens.push(Token::Comma); }
-            '.' => { chars.next(); tokens.push(Token::Dot); }
-            '?' => { chars.next(); tokens.push(Token::Question); }
+            '(' => {
+                chars.next();
+                tokens.push(Token::LeftParen);
+            }
+            ')' => {
+                chars.next();
+                tokens.push(Token::RightParen);
+            }
+            '{' => {
+                chars.next();
+                tokens.push(Token::LeftBrace);
+            }
+            '}' => {
+                chars.next();
+                tokens.push(Token::RightBrace);
+            }
+            '[' => {
+                chars.next();
+                tokens.push(Token::LeftBracket);
+            }
+            ']' => {
+                chars.next();
+                tokens.push(Token::RightBracket);
+            }
+            ';' => {
+                chars.next();
+                tokens.push(Token::Semicolon);
+            }
+            ':' => {
+                chars.next();
+                tokens.push(Token::Colon);
+            }
+            ',' => {
+                chars.next();
+                tokens.push(Token::Comma);
+            }
+            '.' => {
+                chars.next();
+                tokens.push(Token::Dot);
+            }
+            '?' => {
+                chars.next();
+                tokens.push(Token::Question);
+            }
             '=' => {
                 chars.next();
                 if let Some(&(_, '=')) = chars.peek() {
@@ -461,8 +515,14 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     tokens.push(Token::BitOr);
                 }
             }
-            '^' => { chars.next(); tokens.push(Token::BitXor); }
-            '~' => { chars.next(); tokens.push(Token::BitNot); }
+            '^' => {
+                chars.next();
+                tokens.push(Token::BitXor);
+            }
+            '~' => {
+                chars.next();
+                tokens.push(Token::BitNot);
+            }
             _ => {
                 chars.next();
             }

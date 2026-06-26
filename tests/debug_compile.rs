@@ -14,8 +14,11 @@ export function getCount() {
 "#;
     let compiler = Compiler::new(false);
     let compiled = compiler.compile(source).unwrap();
-    
-    eprintln!("=== Instructions ({} total) ===", compiled.instructions.len());
+
+    eprintln!(
+        "=== Instructions ({} total) ===",
+        compiled.instructions.len()
+    );
     for (i, inst) in compiled.instructions.iter().enumerate() {
         eprintln!("  {:3}: {:?}", i, inst);
     }

@@ -47,13 +47,13 @@ impl TypeChecker {
                     return_type,
                 } = callee_type
                 {
-                    for (i, (param_ty, arg_ty)) in
-                        params.iter().zip(arg_types.iter()).enumerate()
-                    {
+                    for (i, (param_ty, arg_ty)) in params.iter().zip(arg_types.iter()).enumerate() {
                         if !self.is_compatible(param_ty, arg_ty) {
                             return Err(Error::TypeError(format!(
                                 "Argument {} type mismatch: expected {:?}, got {:?}",
-                                i + 1, param_ty, arg_ty
+                                i + 1,
+                                param_ty,
+                                arg_ty
                             )));
                         }
                     }
@@ -235,9 +235,7 @@ impl TypeChecker {
                     Ok(Type::Union(vec![cons_type, alt_type]))
                 }
             }
-            Expression::TemplateLiteral {
-                expressions, ..
-            } => {
+            Expression::TemplateLiteral { expressions, .. } => {
                 for expr in expressions {
                     self.check_expression(expr)?;
                 }
@@ -279,11 +277,8 @@ impl TypeChecker {
                 }
                 self.enter_scope();
                 for member in body {
-                    if let crate::compiler::parser::ClassMember::Method {
-                        params,
-                        body,
-                        ..
-                    } = member
+                    if let crate::compiler::parser::ClassMember::Method { params, body, .. } =
+                        member
                     {
                         self.enter_scope();
                         for param in params {

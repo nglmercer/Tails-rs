@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use crate::objects::Value;
+use super::{HeapValue, Interpreter, JsFunction, JsObject};
 use crate::objects::js_promise::PromiseState;
-use super::{Interpreter, HeapValue, JsObject, JsFunction};
+use crate::objects::Value;
+use std::collections::HashMap;
 
 impl Interpreter {
     pub(crate) fn drain_microtasks(&mut self) {
@@ -11,34 +11,44 @@ impl Interpreter {
     }
 
     pub(crate) fn create_resolve_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
-            name: Some("resolve".into()),
-            params: vec!["value".into()],
-            bytecode_index: usize::MAX,
-            closure: vec![Value::Promise(promise_idx)],
-            prototype: Some(proto_idx),
-            super_class: None,
-            properties: HashMap::new(),
-            owner_module: None,
-            module_scope: None,
-        }));
+        let proto_idx = self
+            .gc
+            .allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
+        let heap_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Function(JsFunction {
+                name: Some("resolve".into()),
+                params: vec!["value".into()],
+                bytecode_index: usize::MAX,
+                closure: vec![Value::Promise(promise_idx)],
+                prototype: Some(proto_idx),
+                super_class: None,
+                properties: HashMap::new(),
+                owner_module: None,
+                module_scope: None,
+            }),
+        );
         Value::Function(heap_idx)
     }
 
     pub(crate) fn create_reject_fn(&mut self, promise_idx: usize) -> Value {
-        let proto_idx = self.gc.allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
-        let heap_idx = self.gc.allocate(&mut self.heap, HeapValue::Function(JsFunction {
-            name: Some("reject".into()),
-            params: vec!["reason".into()],
-            bytecode_index: usize::MAX,
-            closure: vec![Value::Promise(promise_idx)],
-            prototype: Some(proto_idx),
-            super_class: None,
-            properties: HashMap::new(),
-            owner_module: None,
-            module_scope: None,
-        }));
+        let proto_idx = self
+            .gc
+            .allocate(&mut self.heap, HeapValue::Object(JsObject::new()));
+        let heap_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Function(JsFunction {
+                name: Some("reject".into()),
+                params: vec!["reason".into()],
+                bytecode_index: usize::MAX,
+                closure: vec![Value::Promise(promise_idx)],
+                prototype: Some(proto_idx),
+                super_class: None,
+                properties: HashMap::new(),
+                owner_module: None,
+                module_scope: None,
+            }),
+        );
         Value::Function(heap_idx)
     }
 
@@ -46,14 +56,19 @@ impl Interpreter {
         if let HeapValue::Promise(promise) = &mut self.heap[promise_idx] {
             if promise.state == PromiseState::Pending {
                 promise.state = PromiseState::Fulfilled(value.clone());
-                let handlers: Vec<Value> = promise.then_handlers.iter()
+                let handlers: Vec<Value> = promise
+                    .then_handlers
+                    .iter()
                     .map(|h| Value::Function(h.callback))
                     .collect();
                 promise.then_handlers.clear();
                 for handler in handlers {
-                    self.async_runtime.enqueue_microtask_with_arg(handler, value.clone());
+                    self.async_runtime
+                        .enqueue_microtask_with_arg(handler, value.clone());
                 }
-                let finally_handlers: Vec<Value> = promise.finally_handlers.iter()
+                let finally_handlers: Vec<Value> = promise
+                    .finally_handlers
+                    .iter()
                     .map(|h| Value::Function(h.callback))
                     .collect();
                 promise.finally_handlers.clear();
@@ -68,14 +83,19 @@ impl Interpreter {
         if let HeapValue::Promise(promise) = &mut self.heap[promise_idx] {
             if promise.state == PromiseState::Pending {
                 promise.state = PromiseState::Rejected(reason.clone());
-                let handlers: Vec<Value> = promise.catch_handlers.iter()
+                let handlers: Vec<Value> = promise
+                    .catch_handlers
+                    .iter()
                     .map(|h| Value::Function(h.callback))
                     .collect();
                 promise.catch_handlers.clear();
                 for handler in handlers {
-                    self.async_runtime.enqueue_microtask_with_arg(handler, reason.clone());
+                    self.async_runtime
+                        .enqueue_microtask_with_arg(handler, reason.clone());
                 }
-                let finally_handlers: Vec<Value> = promise.finally_handlers.iter()
+                let finally_handlers: Vec<Value> = promise
+                    .finally_handlers
+                    .iter()
                     .map(|h| Value::Function(h.callback))
                     .collect();
                 promise.finally_handlers.clear();

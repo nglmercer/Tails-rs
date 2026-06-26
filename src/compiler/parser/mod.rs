@@ -1,8 +1,8 @@
-mod statements;
 mod expressions;
+mod statements;
 mod types;
 
-use crate::compiler::lexer::{Token, TemplatePart};
+use crate::compiler::lexer::{TemplatePart, Token};
 use crate::errors::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -165,10 +165,7 @@ pub enum ForInit {
 #[derive(Debug, Clone)]
 pub enum ForInLeft {
     Identifier(String),
-    VariableDeclaration {
-        kind: VarKind,
-        id: String,
-    },
+    VariableDeclaration { kind: VarKind, id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -416,7 +413,10 @@ impl<'a> Parser<'a> {
         if token == *expected {
             Ok(())
         } else {
-            Err(Error::ParseError(format!("Expected {:?}, got {:?}", expected, token)))
+            Err(Error::ParseError(format!(
+                "Expected {:?}, got {:?}",
+                expected, token
+            )))
         }
     }
 
@@ -439,8 +439,16 @@ impl<'a> Parser<'a> {
             Token::For => self.parse_for_statement(),
             Token::Do => self.parse_do_while_statement(),
             Token::Switch => self.parse_switch_statement(),
-            Token::Break => { self.advance(); self.expect(&Token::Semicolon)?; Ok(Statement::BreakStatement) }
-            Token::Continue => { self.advance(); self.expect(&Token::Semicolon)?; Ok(Statement::ContinueStatement) }
+            Token::Break => {
+                self.advance();
+                self.expect(&Token::Semicolon)?;
+                Ok(Statement::BreakStatement)
+            }
+            Token::Continue => {
+                self.advance();
+                self.expect(&Token::Semicolon)?;
+                Ok(Statement::ContinueStatement)
+            }
             Token::Try => self.parse_try_statement(),
             Token::Throw => self.parse_throw_statement(),
             Token::Class => self.parse_class_declaration(),
@@ -475,7 +483,12 @@ impl<'a> Parser<'a> {
             loop {
                 let param = match self.advance() {
                     Token::Identifier(name) => name,
-                    token => return Err(Error::ParseError(format!("Expected parameter name, got {:?}", token))),
+                    token => {
+                        return Err(Error::ParseError(format!(
+                            "Expected parameter name, got {:?}",
+                            token
+                        )))
+                    }
                 };
                 params.push(param);
                 if self.peek() == &Token::Comma {
@@ -488,14 +501,21 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    pub(crate) fn parse_typed_params(&mut self) -> Result<(Vec<String>, Vec<Option<TypeAnnotation>>)> {
+    pub(crate) fn parse_typed_params(
+        &mut self,
+    ) -> Result<(Vec<String>, Vec<Option<TypeAnnotation>>)> {
         let mut params = Vec::new();
         let mut param_types = Vec::new();
         if self.peek() != &Token::RightParen {
             loop {
                 let param = match self.advance() {
                     Token::Identifier(name) => name,
-                    token => return Err(Error::ParseError(format!("Expected parameter name, got {:?}", token))),
+                    token => {
+                        return Err(Error::ParseError(format!(
+                            "Expected parameter name, got {:?}",
+                            token
+                        )))
+                    }
                 };
                 let ty = if self.peek() == &Token::Colon {
                     self.advance();
@@ -560,7 +580,10 @@ impl<'a> Parser<'a> {
             Token::Try => Ok("try".to_string()),
             Token::Constructor => Ok("constructor".to_string()),
             Token::Of => Ok("of".to_string()),
-            t => Err(Error::ParseError(format!("Expected property key, got {:?}", t))),
+            t => Err(Error::ParseError(format!(
+                "Expected property key, got {:?}",
+                t
+            ))),
         }
     }
 
@@ -607,7 +630,10 @@ impl<'a> Parser<'a> {
             Token::Try => Ok(Expression::Identifier("try".to_string())),
             Token::Constructor => Ok(Expression::Identifier("constructor".to_string())),
             Token::Of => Ok(Expression::Identifier("of".to_string())),
-            t => Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
+            t => Err(Error::ParseError(format!(
+                "Expected property name, got {:?}",
+                t
+            ))),
         }
     }
 }

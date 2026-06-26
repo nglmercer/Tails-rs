@@ -2,14 +2,22 @@ use crate::errors::{Error, Result};
 use crate::objects::Value;
 use crate::vm::interpreter::Interpreter;
 
-pub(super) fn native_reflect_get(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_get(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = args.get(1).cloned().unwrap_or(Value::Undefined);
     let receiver = args.get(2).cloned().unwrap_or(target.clone());
     interp.get_property_with_this(&target, &property, &receiver)
 }
 
-pub(super) fn native_reflect_set(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_set(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = args.get(1).cloned().unwrap_or(Value::Undefined);
     let value = args.get(2).cloned().unwrap_or(Value::Undefined);
@@ -38,19 +46,31 @@ pub(super) fn native_reflect_set(interp: &mut Interpreter, _this: &Value, args: 
     }
 }
 
-pub(super) fn native_reflect_has(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_has(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = args.get(1).cloned().unwrap_or(Value::Undefined);
     interp.in_check_mut(&property, &target)
 }
 
-pub(super) fn native_reflect_delete_property(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_delete_property(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = args.get(1).cloned().unwrap_or(Value::Undefined);
     Ok(interp.delete_property(&target, &property))
 }
 
-pub(super) fn native_reflect_apply(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_apply(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let this_arg = args.get(1).cloned().unwrap_or(Value::Undefined);
     let arguments_list = match args.get(2) {
@@ -66,7 +86,11 @@ pub(super) fn native_reflect_apply(interp: &mut Interpreter, _this: &Value, args
     interp.call_value(&target, &this_arg, &arguments_list)
 }
 
-pub(super) fn native_reflect_construct(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_construct(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let arguments_list = match args.get(1) {
         Some(Value::Array(arr_idx)) => {
@@ -82,7 +106,8 @@ pub(super) fn native_reflect_construct(interp: &mut Interpreter, _this: &Value, 
 
     match &target {
         Value::Function(func_idx) => {
-            let f = if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*func_idx] {
+            let f = if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*func_idx]
+            {
                 f.clone()
             } else {
                 return Err(Error::TypeError("Not a constructor".into()));
@@ -99,7 +124,9 @@ pub(super) fn native_reflect_construct(interp: &mut Interpreter, _this: &Value, 
                 return Ok(this_val);
             }
 
-            let return_address = interp.current_module.as_ref()
+            let return_address = interp
+                .current_module
+                .as_ref()
                 .map(|m| m.instructions.len())
                 .unwrap_or(0);
             let base_pointer = interp.stack.len();
@@ -136,7 +163,9 @@ pub(super) fn native_reflect_construct(interp: &mut Interpreter, _this: &Value, 
             let this_val = Value::Object(new_obj_heap_idx);
             let result = interp.call_native(*native_idx, &this_val, &arguments_list)?;
             match result {
-                Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Promise(_) => Ok(result),
+                Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Promise(_) => {
+                    Ok(result)
+                }
                 _ => Ok(this_val),
             }
         }
@@ -144,7 +173,11 @@ pub(super) fn native_reflect_construct(interp: &mut Interpreter, _this: &Value, 
     }
 }
 
-pub(super) fn native_reflect_own_keys(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_own_keys(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let mut keys = Vec::new();
     match &target {
@@ -179,7 +212,11 @@ pub(super) fn native_reflect_own_keys(interp: &mut Interpreter, _this: &Value, a
     Ok(Value::Array(heap_idx))
 }
 
-pub(super) fn native_reflect_get_own_property_descriptor(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_get_own_property_descriptor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = match args.get(1) {
         Some(Value::String(s)) => s.clone(),
@@ -197,7 +234,10 @@ pub(super) fn native_reflect_get_own_property_descriptor(interp: &mut Interprete
                     descriptor.insert("configurable".to_string(), Value::Boolean(true));
                     let desc_idx = interp.heap.len();
                     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
-                        crate::vm::interpreter::JsObject { properties: descriptor, prototype: None },
+                        crate::vm::interpreter::JsObject {
+                            properties: descriptor,
+                            prototype: None,
+                        },
                     ));
                     return Ok(Value::Object(desc_idx));
                 }
@@ -212,7 +252,10 @@ pub(super) fn native_reflect_get_own_property_descriptor(interp: &mut Interprete
                     descriptor.insert("configurable".to_string(), Value::Boolean(false));
                     let desc_idx = interp.heap.len();
                     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
-                        crate::vm::interpreter::JsObject { properties: descriptor, prototype: None },
+                        crate::vm::interpreter::JsObject {
+                            properties: descriptor,
+                            prototype: None,
+                        },
                     ));
                     return Ok(Value::Object(desc_idx));
                 }
@@ -224,7 +267,10 @@ pub(super) fn native_reflect_get_own_property_descriptor(interp: &mut Interprete
                         descriptor.insert("configurable".to_string(), Value::Boolean(true));
                         let desc_idx = interp.heap.len();
                         interp.heap.push(crate::vm::interpreter::HeapValue::Object(
-                            crate::vm::interpreter::JsObject { properties: descriptor, prototype: None },
+                            crate::vm::interpreter::JsObject {
+                                properties: descriptor,
+                                prototype: None,
+                            },
                         ));
                         return Ok(Value::Object(desc_idx));
                     }
@@ -236,7 +282,11 @@ pub(super) fn native_reflect_get_own_property_descriptor(interp: &mut Interprete
     Ok(Value::Undefined)
 }
 
-pub(super) fn native_reflect_define_property(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_define_property(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let property = match args.get(1) {
         Some(Value::String(s)) => s.clone(),
@@ -267,7 +317,8 @@ pub(super) fn native_reflect_define_property(interp: &mut Interpreter, _this: &V
         }
         Value::Function(func_idx) => {
             if let Some(val) = value {
-                if let crate::vm::interpreter::HeapValue::Function(f) = &mut interp.heap[*func_idx] {
+                if let crate::vm::interpreter::HeapValue::Function(f) = &mut interp.heap[*func_idx]
+                {
                     f.properties.insert(property, val);
                     return Ok(Value::Boolean(true));
                 }
@@ -278,7 +329,11 @@ pub(super) fn native_reflect_define_property(interp: &mut Interpreter, _this: &V
     }
 }
 
-pub(super) fn native_reflect_get_prototype_of(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_get_prototype_of(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     match &target {
         Value::Object(obj_idx) => {
@@ -295,7 +350,11 @@ pub(super) fn native_reflect_get_prototype_of(interp: &mut Interpreter, _this: &
     }
 }
 
-pub(super) fn native_reflect_set_prototype_of(interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_set_prototype_of(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     let proto = args.get(1).cloned().unwrap_or(Value::Null);
 
@@ -316,14 +375,24 @@ pub(super) fn native_reflect_set_prototype_of(interp: &mut Interpreter, _this: &
     }
 }
 
-pub(super) fn native_reflect_is_extensible(_interp: &mut Interpreter, _this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_is_extensible(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     match &target {
-        Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Proxy(_) => Ok(Value::Boolean(true)),
+        Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Proxy(_) => {
+            Ok(Value::Boolean(true))
+        }
         _ => Ok(Value::Boolean(false)),
     }
 }
 
-pub(super) fn native_reflect_prevent_extensions(_interp: &mut Interpreter, _this: &Value, _args: &[Value]) -> Result<Value> {
+pub(super) fn native_reflect_prevent_extensions(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
     Ok(Value::Boolean(true))
 }

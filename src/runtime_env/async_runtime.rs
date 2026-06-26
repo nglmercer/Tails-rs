@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 use crate::objects::Value;
+use std::collections::VecDeque;
 
 pub struct Microtask {
     pub callback: Value,
@@ -35,10 +35,7 @@ impl AsyncRuntime {
     }
 
     pub fn enqueue_microtask_with_arg(&mut self, callback: Value, arg: Value) {
-        self.microtask_queue.push_back(Microtask {
-            callback,
-            arg,
-        });
+        self.microtask_queue.push_back(Microtask { callback, arg });
     }
 
     pub fn dequeue_microtask(&mut self) -> Option<Microtask> {

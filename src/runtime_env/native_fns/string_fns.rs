@@ -2,9 +2,13 @@ use crate::errors::Result;
 use crate::objects::Value;
 use crate::vm::interpreter::Interpreter;
 
-use super::helpers::{to_f64, to_string_value, get_string};
+use super::helpers::{get_string, to_f64, to_string_value};
 
-pub(super) fn native_string_char_at(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_char_at(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let idx = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
     match s.chars().nth(idx) {
@@ -13,7 +17,11 @@ pub(super) fn native_string_char_at(_interp: &mut Interpreter, this: &Value, arg
     }
 }
 
-pub(super) fn native_string_char_code_at(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_char_code_at(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let idx = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
     match s.chars().nth(idx) {
@@ -22,32 +30,66 @@ pub(super) fn native_string_char_code_at(_interp: &mut Interpreter, this: &Value
     }
 }
 
-pub(super) fn native_string_slice(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_slice(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let chars: Vec<char> = s.chars().collect();
     let len = chars.len() as i64;
     let start_raw = args.first().map(|v| to_f64(v) as i64).unwrap_or(0);
     let end_raw = args.get(1).map(|v| to_f64(v) as i64).unwrap_or(len);
 
-    let start = if start_raw < 0 { (len + start_raw).max(0) } else { start_raw.min(len) } as usize;
-    let end = if end_raw < 0 { (len + end_raw).max(0) } else { end_raw.min(len) } as usize;
+    let start = if start_raw < 0 {
+        (len + start_raw).max(0)
+    } else {
+        start_raw.min(len)
+    } as usize;
+    let end = if end_raw < 0 {
+        (len + end_raw).max(0)
+    } else {
+        end_raw.min(len)
+    } as usize;
 
     let result: String = chars[start..end].iter().collect();
     Ok(Value::String(result))
 }
 
-pub(super) fn native_string_substring(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_substring(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let chars: Vec<char> = s.chars().collect();
     let len = chars.len() as i64;
-    let start = args.first().map(|v| to_f64(v) as i64).unwrap_or(0).max(0).min(len) as usize;
-    let end = args.get(1).map(|v| to_f64(v) as i64).unwrap_or(len).max(0).min(len) as usize;
-    let (start, end) = if start <= end { (start, end) } else { (end, start) };
+    let start = args
+        .first()
+        .map(|v| to_f64(v) as i64)
+        .unwrap_or(0)
+        .max(0)
+        .min(len) as usize;
+    let end = args
+        .get(1)
+        .map(|v| to_f64(v) as i64)
+        .unwrap_or(len)
+        .max(0)
+        .min(len) as usize;
+    let (start, end) = if start <= end {
+        (start, end)
+    } else {
+        (end, start)
+    };
     let result: String = chars[start..end].iter().collect();
     Ok(Value::String(result))
 }
 
-pub(super) fn native_string_index_of(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_index_of(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let search = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
@@ -59,7 +101,11 @@ pub(super) fn native_string_index_of(_interp: &mut Interpreter, this: &Value, ar
     }
 }
 
-pub(super) fn native_string_includes(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_includes(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let search = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
@@ -68,7 +114,11 @@ pub(super) fn native_string_includes(_interp: &mut Interpreter, this: &Value, ar
     Ok(Value::Boolean(s.contains(search)))
 }
 
-pub(super) fn native_string_replace(interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_replace(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let pattern = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
@@ -88,17 +138,25 @@ pub(super) fn native_string_replace(interp: &mut Interpreter, this: &Value, args
     }
 }
 
-pub(super) fn native_string_split(interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_split(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let sep = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
-        _ => return {
-            let heap_idx = interp.heap.len();
-            interp.heap.push(crate::vm::interpreter::HeapValue::Array(
-                crate::vm::interpreter::JsArray { elements: vec![Value::String(s)] },
-            ));
-            Ok(Value::Array(heap_idx))
-        },
+        _ => {
+            return {
+                let heap_idx = interp.heap.len();
+                interp.heap.push(crate::vm::interpreter::HeapValue::Array(
+                    crate::vm::interpreter::JsArray {
+                        elements: vec![Value::String(s)],
+                    },
+                ));
+                Ok(Value::Array(heap_idx))
+            }
+        }
     };
     let parts: Vec<Value> = s.split(sep).map(|p| Value::String(p.to_string())).collect();
     let heap_idx = interp.heap.len();
@@ -108,22 +166,38 @@ pub(super) fn native_string_split(interp: &mut Interpreter, this: &Value, args: 
     Ok(Value::Array(heap_idx))
 }
 
-pub(super) fn native_string_trim(_interp: &mut Interpreter, this: &Value, _args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_trim(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     Ok(Value::String(s.trim().to_string()))
 }
 
-pub(super) fn native_string_to_lower_case(_interp: &mut Interpreter, this: &Value, _args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_to_lower_case(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     Ok(Value::String(s.to_lowercase()))
 }
 
-pub(super) fn native_string_to_upper_case(_interp: &mut Interpreter, this: &Value, _args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_to_upper_case(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     Ok(Value::String(s.to_uppercase()))
 }
 
-pub(super) fn native_string_starts_with(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_starts_with(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let prefix = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
@@ -132,7 +206,11 @@ pub(super) fn native_string_starts_with(_interp: &mut Interpreter, this: &Value,
     Ok(Value::Boolean(s.starts_with(prefix)))
 }
 
-pub(super) fn native_string_ends_with(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_ends_with(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let suffix = match args.first() {
         Some(Value::String(ss)) => ss.as_str(),
@@ -141,7 +219,11 @@ pub(super) fn native_string_ends_with(_interp: &mut Interpreter, this: &Value, a
     Ok(Value::Boolean(s.ends_with(suffix)))
 }
 
-pub(super) fn native_string_repeat(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_repeat(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let count = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
     if count == 0 || s.is_empty() {
@@ -151,7 +233,11 @@ pub(super) fn native_string_repeat(_interp: &mut Interpreter, this: &Value, args
     Ok(Value::String(result))
 }
 
-pub(super) fn native_string_pad_start(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_pad_start(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let target_len = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
     let pad_char = match args.get(1) {
@@ -166,7 +252,11 @@ pub(super) fn native_string_pad_start(_interp: &mut Interpreter, this: &Value, a
     Ok(Value::String(format!("{}{}", padding, s)))
 }
 
-pub(super) fn native_string_pad_end(_interp: &mut Interpreter, this: &Value, args: &[Value]) -> Result<Value> {
+pub(super) fn native_string_pad_end(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
     let s = get_string(this).unwrap_or_default();
     let target_len = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
     let pad_char = match args.get(1) {

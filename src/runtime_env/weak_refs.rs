@@ -24,31 +24,31 @@ impl WeakRefManager {
             next_id: 0,
         }
     }
-    
+
     pub fn create_weak_ref(&mut self, target: usize) -> usize {
         let id = self.next_id;
         self.next_id += 1;
-        
-        self.refs.insert(id, WeakRef {
+
+        self.refs.insert(
             id,
-            target: Some(target),
-        });
-        
+            WeakRef {
+                id,
+                target: Some(target),
+            },
+        );
+
         id
     }
-    
+
     pub fn deref(&self, id: usize) -> Option<usize> {
-        self.refs.get(&id)
-            .and_then(|r| r.target)
+        self.refs.get(&id).and_then(|r| r.target)
     }
-    
+
     pub fn register_finalizer(&mut self, target: usize, callback: usize) {
-        self.finalizers.push(FinalizationRegistry {
-            target,
-            callback,
-        });
+        self.finalizers
+            .push(FinalizationRegistry { target, callback });
     }
-    
+
     pub fn cleanup(&mut self) {
         self.refs.retain(|_, r| r.target.is_some());
     }

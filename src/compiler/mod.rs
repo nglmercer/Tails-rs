@@ -1,10 +1,10 @@
 use crate::errors::Result;
 use crate::objects::Value;
 
+pub mod bytecode;
 pub mod lexer;
 pub mod parser;
 pub mod type_checker;
-pub mod bytecode;
 
 pub struct Compiler {
     type_checking: bool,

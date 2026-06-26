@@ -1,10 +1,12 @@
-use tails::TailsRuntime;
 use std::path::Path;
+use tails::TailsRuntime;
 
 #[test]
 fn test_basic_call() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("function add(a, b) { return a + b; } add(2, 3)").unwrap();
+    let result = runtime
+        .eval("function add(a, b) { return a + b; } add(2, 3)")
+        .unwrap();
     assert_eq!(result, tails::Value::Float(5.0));
 }
 

@@ -1,11 +1,16 @@
-use std::collections::HashSet;
 use super::CodeGenerator;
-use crate::compiler::parser::{Statement, Expression, ForInit};
+use crate::compiler::parser::{Expression, ForInit, Statement};
 use crate::compiler::CompiledFunction;
 use crate::errors::Result;
+use std::collections::HashSet;
 
 impl CodeGenerator {
-    pub(crate) fn compile_function(&mut self, name: Option<String>, params: &[String], body: &[Statement]) -> Result<u32> {
+    pub(crate) fn compile_function(
+        &mut self,
+        name: Option<String>,
+        params: &[String],
+        body: &[Statement],
+    ) -> Result<u32> {
         let func_idx = self.functions.len() as u32;
         let parent_locals_snapshot = self.locals.clone();
         let outer_refs = find_outer_refs(body, params, &parent_locals_snapshot);
@@ -20,7 +25,8 @@ impl CodeGenerator {
         });
 
         let jump_over = self.instructions.len();
-        self.instructions.push(crate::compiler::Instruction::Jump(0));
+        self.instructions
+            .push(crate::compiler::Instruction::Jump(0));
 
         let func_start = self.instructions.len();
         self.functions[func_idx as usize].bytecode_index = func_start;
@@ -41,7 +47,8 @@ impl CodeGenerator {
             self.generate_statement(stmt, false)?;
         }
 
-        self.instructions.push(crate::compiler::Instruction::LoadUndefined);
+        self.instructions
+            .push(crate::compiler::Instruction::LoadUndefined);
         self.instructions.push(crate::compiler::Instruction::Return);
 
         self.scope_depth -= 1;
@@ -54,7 +61,11 @@ impl CodeGenerator {
     }
 }
 
-pub(crate) fn find_outer_refs(body: &[Statement], inner_params: &[String], parent_locals: &[String]) -> Vec<(String, u16)> {
+pub(crate) fn find_outer_refs(
+    body: &[Statement],
+    inner_params: &[String],
+    parent_locals: &[String],
+) -> Vec<(String, u16)> {
     let mut names = Vec::new();
     collect_identifiers_body(body, &mut names);
 
@@ -100,7 +111,11 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
         }
         Statement::ReturnStatement(Some(expr)) => collect_identifiers_expr(expr, out),
         Statement::ReturnStatement(None) => {}
-        Statement::IfStatement { condition, consequent, alternate } => {
+        Statement::IfStatement {
+            condition,
+            consequent,
+            alternate,
+        } => {
             collect_identifiers_expr(condition, out);
             collect_identifiers_stmt(consequent, out);
             if let Some(alt) = alternate {
@@ -116,7 +131,12 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
                 collect_identifiers_stmt(s, out);
             }
         }
-        Statement::ForStatement { init, condition, update, body } => {
+        Statement::ForStatement {
+            init,
+            condition,
+            update,
+            body,
+        } => {
             if let Some(for_init) = init {
                 match for_init.as_ref() {
                     ForInit::Variable(stmt) => collect_identifiers_stmt(stmt, out),
@@ -131,7 +151,8 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
             }
             collect_identifiers_stmt(body, out);
         }
-        Statement::ForInStatement { right, body, .. } | Statement::ForOfStatement { right, body, .. } => {
+        Statement::ForInStatement { right, body, .. }
+        | Statement::ForOfStatement { right, body, .. } => {
             collect_identifiers_expr(right, out);
             collect_identifiers_stmt(body, out);
         }
@@ -139,7 +160,10 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
             collect_identifiers_expr(condition, out);
             collect_identifiers_stmt(body, out);
         }
-        Statement::SwitchStatement { discriminant, cases } => {
+        Statement::SwitchStatement {
+            discriminant,
+            cases,
+        } => {
             collect_identifiers_expr(discriminant, out);
             for case in cases {
                 if let Some(test) = &case.test {
@@ -149,7 +173,11 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
             }
         }
         Statement::ThrowStatement(expr) => collect_identifiers_expr(expr, out),
-        Statement::TryStatement { block, handler, finalizer } => {
+        Statement::TryStatement {
+            block,
+            handler,
+            finalizer,
+        } => {
             collect_identifiers_body(block, out);
             if let Some(h) = handler {
                 collect_identifiers_body(&h.body, out);
@@ -182,11 +210,17 @@ fn collect_identifiers_expr(expr: &Expression, out: &mut Vec<String>) {
                 collect_identifiers_expr(arg, out);
             }
         }
-        Expression::Member { object, property, .. } => {
+        Expression::Member {
+            object, property, ..
+        } => {
             collect_identifiers_expr(object, out);
             collect_identifiers_expr(property, out);
         }
-        Expression::ConditionalExpression { test, consequent, alternate } => {
+        Expression::ConditionalExpression {
+            test,
+            consequent,
+            alternate,
+        } => {
             collect_identifiers_expr(test, out);
             collect_identifiers_expr(consequent, out);
             collect_identifiers_expr(alternate, out);
@@ -194,12 +228,14 @@ fn collect_identifiers_expr(expr: &Expression, out: &mut Vec<String>) {
         Expression::UpdateExpression { operand, .. } => {
             collect_identifiers_expr(operand, out);
         }
-        Expression::ArrowFunction { body, .. } => {
-            match body.as_ref() {
-                crate::compiler::parser::ArrowFunctionBody::Expression(expr) => collect_identifiers_expr(expr, out),
-                crate::compiler::parser::ArrowFunctionBody::Block(stmts) => collect_identifiers_body(stmts, out),
+        Expression::ArrowFunction { body, .. } => match body.as_ref() {
+            crate::compiler::parser::ArrowFunctionBody::Expression(expr) => {
+                collect_identifiers_expr(expr, out)
             }
-        }
+            crate::compiler::parser::ArrowFunctionBody::Block(stmts) => {
+                collect_identifiers_body(stmts, out)
+            }
+        },
         Expression::NewExpression { callee, args } => {
             collect_identifiers_expr(callee, out);
             for arg in args {

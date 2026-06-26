@@ -99,7 +99,12 @@ impl<'a> Parser<'a> {
                     loop {
                         let name = match self.advance() {
                             Token::Identifier(n) => n,
-                            t => return Err(Error::ParseError(format!("Expected property name, got {:?}", t))),
+                            t => {
+                                return Err(Error::ParseError(format!(
+                                    "Expected property name, got {:?}",
+                                    t
+                                )))
+                            }
                         };
                         let optional = if self.peek() == &Token::Question {
                             self.advance();
@@ -149,7 +154,10 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::RightParen)?;
                 self.expect(&Token::Arrow)?;
                 let return_type = Box::new(self.parse_type_annotation()?);
-                Ok(TypeAnnotation::Function { params: param_types, return_type })
+                Ok(TypeAnnotation::Function {
+                    params: param_types,
+                    return_type,
+                })
             }
             _ => Ok(TypeAnnotation::Any),
         }?;

@@ -7,15 +7,15 @@ impl TypeChecker {
         _cond_type: &Type,
         is_true_branch: bool,
     ) {
-        if let Expression::BinaryOp {
-            op,
-            left,
-            right,
-        } = condition
-        {
+        if let Expression::BinaryOp { op, left, right } = condition {
             if matches!(op, BinaryOperator::StrictEq) || matches!(op, BinaryOperator::Eq) {
-                if let (Expression::UnaryOp { op: crate::compiler::parser::UnaryOperator::Typeof, operand }, Expression::StringLiteral(lit)) =
-                    (left.as_ref(), right.as_ref())
+                if let (
+                    Expression::UnaryOp {
+                        op: crate::compiler::parser::UnaryOperator::Typeof,
+                        operand,
+                    },
+                    Expression::StringLiteral(lit),
+                ) = (left.as_ref(), right.as_ref())
                 {
                     if let Expression::Identifier(name) = operand.as_ref() {
                         if let Some(orig) = self.get_variable_type(name) {
@@ -83,13 +83,14 @@ impl TypeChecker {
                     (left.as_ref(), right.as_ref())
                 {
                     if is_true_branch {
-                        self.narrowed_types
-                            .insert(name.clone(), Type::Null);
+                        self.narrowed_types.insert(name.clone(), Type::Null);
                     } else if let Some(orig) = self.get_variable_type(name) {
                         self.narrowed_types.insert(name.clone(), orig);
                     }
                 }
-            } else if matches!(op, BinaryOperator::StrictNotEqual) || matches!(op, BinaryOperator::NotEqual) {
+            } else if matches!(op, BinaryOperator::StrictNotEqual)
+                || matches!(op, BinaryOperator::NotEqual)
+            {
                 if let (Expression::Identifier(name), Expression::NullLiteral) =
                     (left.as_ref(), right.as_ref())
                 {
@@ -120,9 +121,7 @@ impl TypeChecker {
                             if is_true_branch {
                                 let narrowed: Vec<Type> = variants
                                     .iter()
-                                    .filter(|v| {
-                                        self.type_matches_typeof(v, condition)
-                                    })
+                                    .filter(|v| self.type_matches_typeof(v, condition))
                                     .cloned()
                                     .collect();
                                 if !narrowed.is_empty() {
@@ -136,9 +135,7 @@ impl TypeChecker {
                             } else {
                                 let narrowed: Vec<Type> = variants
                                     .iter()
-                                    .filter(|v| {
-                                        !self.type_matches_typeof(v, condition)
-                                    })
+                                    .filter(|v| !self.type_matches_typeof(v, condition))
                                     .cloned()
                                     .collect();
                                 if !narrowed.is_empty() {
@@ -162,7 +159,10 @@ impl TypeChecker {
             "number" => matches!(ty, Type::Number | Type::NumberLiteral(_)),
             "string" => matches!(ty, Type::String | Type::StringLiteral(_)),
             "boolean" => matches!(ty, Type::Boolean | Type::BooleanLiteral(_)),
-            "object" => matches!(ty, Type::Object(_) | Type::Null | Type::Array(_) | Type::Tuple(_)),
+            "object" => matches!(
+                ty,
+                Type::Object(_) | Type::Null | Type::Array(_) | Type::Tuple(_)
+            ),
             "function" => matches!(ty, Type::Function { .. }),
             "undefined" => matches!(ty, Type::Undefined),
             "bigint" => false,

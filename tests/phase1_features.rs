@@ -3,13 +3,15 @@ use tails::TailsRuntime;
 #[test]
 fn test_for_loop_basic() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let sum = 0;
         for (let i = 0; i <= 5; i = i + 1) {
             sum = sum + i;
         }
         sum;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(15.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -19,13 +21,15 @@ fn test_for_loop_basic() {
 #[test]
 fn test_for_loop_counter() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let count = 0;
         for (let i = 0; i < 10; i = i + 1) {
             count = count + 1;
         }
         count;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(10.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -35,7 +39,8 @@ fn test_for_loop_counter() {
 #[test]
 fn test_do_while_loop() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let sum = 0;
         let i = 1;
         do {
@@ -43,7 +48,8 @@ fn test_do_while_loop() {
             i = i + 1;
         } while (i <= 5);
         sum;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(15.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -53,7 +59,8 @@ fn test_do_while_loop() {
 #[test]
 fn test_switch_case() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 2;
         let result = 0;
         switch (x) {
@@ -65,7 +72,8 @@ fn test_switch_case() {
                 result = 30;
         }
         result;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(30.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -75,7 +83,8 @@ fn test_switch_case() {
 #[test]
 fn test_switch_default() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 99;
         let result = 0;
         switch (x) {
@@ -85,7 +94,8 @@ fn test_switch_default() {
                 result = 999;
         }
         result;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(999.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -95,33 +105,39 @@ fn test_switch_default() {
 #[test]
 fn test_ternary_operator() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const x = 10;
         const result = x > 5 ? "big" : "small";
         result;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_ternary_nested() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const x = 15;
         const result = x > 20 ? "high" : (x > 10 ? "medium" : "low");
         result;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_increment_postfix() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 5;
         x++;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(6.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -131,11 +147,13 @@ fn test_increment_postfix() {
 #[test]
 fn test_decrement_postfix() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 5;
         x--;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(4.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -145,11 +163,13 @@ fn test_decrement_postfix() {
 #[test]
 fn test_increment_prefix() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 5;
         ++x;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(6.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -159,11 +179,13 @@ fn test_increment_prefix() {
 #[test]
 fn test_decrement_prefix() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 5;
         --x;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(4.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -173,11 +195,13 @@ fn test_decrement_prefix() {
 #[test]
 fn test_compound_assignment_add() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 10;
         x += 5;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(15.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -187,11 +211,13 @@ fn test_compound_assignment_add() {
 #[test]
 fn test_compound_assignment_sub() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 10;
         x -= 3;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(7.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -201,11 +227,13 @@ fn test_compound_assignment_sub() {
 #[test]
 fn test_compound_assignment_mul() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 10;
         x *= 2;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(20.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -215,11 +243,13 @@ fn test_compound_assignment_mul() {
 #[test]
 fn test_compound_assignment_div() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 10;
         x /= 2;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(5.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -229,11 +259,13 @@ fn test_compound_assignment_div() {
 #[test]
 fn test_compound_assignment_mod() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 10;
         x %= 3;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(1.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -243,11 +275,13 @@ fn test_compound_assignment_mod() {
 #[test]
 fn test_compound_assignment_and() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = true;
         x &&= false;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Boolean(false)),
         Err(e) => panic!("Error: {:?}", e),
@@ -257,11 +291,13 @@ fn test_compound_assignment_and() {
 #[test]
 fn test_compound_assignment_or() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = false;
         x ||= true;
         x;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Boolean(true)),
         Err(e) => panic!("Error: {:?}", e),
@@ -271,10 +307,12 @@ fn test_compound_assignment_or() {
 #[test]
 fn test_arrow_function_expression() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const add = (a, b) => a + b;
         add(3, 4);
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(7.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -284,12 +322,14 @@ fn test_arrow_function_expression() {
 #[test]
 fn test_arrow_function_block() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const add = (a, b) => {
             return a + b;
         };
         add(5, 6);
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(11.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -299,10 +339,12 @@ fn test_arrow_function_block() {
 #[test]
 fn test_arrow_function_single_param() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const double = x => x * 2;
         double(7);
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(14.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -312,10 +354,12 @@ fn test_arrow_function_single_param() {
 #[test]
 fn test_arrow_function_no_params() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const getFourtyTwo = () => 42;
         getFourtyTwo();
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(42.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -342,10 +386,12 @@ fn test_template_literal_simple() {
 #[test]
 fn test_template_literal_interpolation() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const name = "World";
         `Hello ${name}`;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::String("Hello World".to_string())),
         Err(e) => panic!("Error: {:?}", e),
@@ -355,10 +401,12 @@ fn test_template_literal_interpolation() {
 #[test]
 fn test_template_literal_expression() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const x = 10;
         `The value is ${x * 2}`;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::String("The value is 20".to_string())),
         Err(e) => panic!("Error: {:?}", e),
@@ -368,11 +416,13 @@ fn test_template_literal_expression() {
 #[test]
 fn test_template_literal_multiple() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const a = "Hello";
         const b = "World";
         `${a}, ${b}!`;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::String("Hello, World!".to_string())),
         Err(e) => panic!("Error: {:?}", e),
@@ -382,7 +432,8 @@ fn test_template_literal_multiple() {
 #[test]
 fn test_class_parses() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         class MyClass {
             constructor() {
                 this.x = 10;
@@ -391,27 +442,31 @@ fn test_class_parses() {
                 return this.x;
             }
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_try_catch() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         try {
             const x = 10;
         } catch (e) {
             const y = 20;
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_try_catch_finally() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         try {
             const x = 10;
         } catch (e) {
@@ -419,7 +474,8 @@ fn test_try_catch_finally() {
         } finally {
             const z = 30;
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
@@ -433,34 +489,40 @@ fn test_throw_statement() {
 #[test]
 fn test_async_function_parses() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         async function fetchData() {
             return 42;
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_async_arrow_parses() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const fetchData = async () => {
             return 42;
         };
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_await_parses() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         async function main() {
             const result = await 42;
             return result;
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
@@ -488,32 +550,37 @@ fn test_export_parses() {
 #[test]
 fn test_export_default_parses() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         export default function hello() {
             return 42;
         }
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_for_in_object() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let count = 0;
         let obj = [1, 2, 3];
         for (let key in obj) {
             count = count + 1;
         }
         count;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_break_statement() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let count = 0;
         let i = 0;
         while (i < 10) {
@@ -524,7 +591,8 @@ fn test_break_statement() {
             i = i + 1;
         }
         count;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(5.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -534,7 +602,8 @@ fn test_break_statement() {
 #[test]
 fn test_continue_statement() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let sum = 0;
         let i = 0;
         while (i < 5) {
@@ -545,19 +614,22 @@ fn test_continue_statement() {
             sum = sum + i;
         }
         sum;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_function_expression() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         const add = function(a, b) {
             return a + b;
         };
         add(3, 4);
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(7.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -567,7 +639,8 @@ fn test_function_expression() {
 #[test]
 fn test_closures_with_arrow() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         function makeCounter() {
             let count = 0;
             return () => {
@@ -577,7 +650,8 @@ fn test_closures_with_arrow() {
         }
         const counter = makeCounter();
         counter();
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(1.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -632,22 +706,26 @@ fn test_instanceof_operator() {
 #[test]
 fn test_in_operator() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         "a" in this;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_complex_for_loop() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let factorial = 1;
         for (let i = 1; i <= 5; i = i + 1) {
             factorial = factorial * i;
         }
         factorial;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(120.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -657,7 +735,8 @@ fn test_complex_for_loop() {
 #[test]
 fn test_nested_switch() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let x = 1;
         let y = 2;
         let result = 0;
@@ -673,7 +752,8 @@ fn test_nested_switch() {
                 result = 20;
         }
         result;
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(20.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -683,13 +763,15 @@ fn test_nested_switch() {
 #[test]
 fn test_arrow_closure_capture() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         function createMultiplier(factor) {
             return (x) => x * factor;
         }
         const double = createMultiplier(2);
         double(5);
-    "#);
+    "#,
+    );
     match &result {
         Ok(v) => assert_eq!(*v, tails::Value::Float(10.0)),
         Err(e) => panic!("Error: {:?}", e),
@@ -699,9 +781,11 @@ fn test_arrow_closure_capture() {
 #[test]
 fn test_template_literal_empty() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         ``;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 

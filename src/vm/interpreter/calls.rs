@@ -1,8 +1,8 @@
-use std::rc::Rc;
 use super::*;
 use crate::errors::{Error, Result};
 use crate::objects::Value;
 use crate::runtime_env::native_fns::NATIVE_TABLE;
+use std::rc::Rc;
 
 impl Interpreter {
     pub fn call_value(&mut self, callee: &Value, this: &Value, args: &[Value]) -> Result<Value> {
@@ -10,9 +10,12 @@ impl Interpreter {
             Value::Function(func_idx) => {
                 if let HeapValue::Function(f) = &self.heap[*func_idx] {
                     let f_clone = f.clone();
-                    let func_module: Option<Rc<CompiledModule>> = f_clone.owner_module.clone()
+                    let func_module: Option<Rc<CompiledModule>> = f_clone
+                        .owner_module
+                        .clone()
                         .or_else(|| self.current_module.clone());
-                    let return_address = func_module.as_ref()
+                    let return_address = func_module
+                        .as_ref()
                         .map(|m| m.instructions.len())
                         .unwrap_or(0);
                     let base_pointer = self.stack.len();
@@ -51,28 +54,49 @@ impl Interpreter {
                     Err(Error::TypeError("Not a function".into()))
                 }
             }
-            Value::NativeFunction(native_idx) => {
-                self.call_native(*native_idx, this, args)
-            }
+            Value::NativeFunction(native_idx) => self.call_native(*native_idx, this, args),
             Value::Proxy(proxy_idx) => {
                 if let HeapValue::Proxy(proxy) = &self.heap[*proxy_idx] {
                     let handler = proxy.handler.clone();
                     let target = proxy.target.clone();
-                    let arr_idx = self.gc.allocate(&mut self.heap, HeapValue::Array(JsArray { elements: args.to_vec() }));
-                    self.call_proxy_trap(&handler, "apply", &[target, this.clone(), Value::Array(arr_idx)])
+                    let arr_idx = self.gc.allocate(
+                        &mut self.heap,
+                        HeapValue::Array(JsArray {
+                            elements: args.to_vec(),
+                        }),
+                    );
+                    self.call_proxy_trap(
+                        &handler,
+                        "apply",
+                        &[target, this.clone(), Value::Array(arr_idx)],
+                    )
                 } else {
-                    Err(Error::TypeError(format!("{} is not a function", self.value_to_string(callee))))
+                    Err(Error::TypeError(format!(
+                        "{} is not a function",
+                        self.value_to_string(callee)
+                    )))
                 }
             }
-            _ => Err(Error::TypeError(format!("{} is not a function", self.value_to_string(callee)))),
+            _ => Err(Error::TypeError(format!(
+                "{} is not a function",
+                self.value_to_string(callee)
+            ))),
         }
     }
 
-    pub(crate) fn call_native(&mut self, idx: usize, this: &Value, args: &[Value]) -> Result<Value> {
+    pub(crate) fn call_native(
+        &mut self,
+        idx: usize,
+        this: &Value,
+        args: &[Value],
+    ) -> Result<Value> {
         if idx < NATIVE_TABLE.len() {
             NATIVE_TABLE[idx](self, this, args)
         } else {
-            Err(Error::RuntimeError(format!("Unknown native function index: {}", idx)))
+            Err(Error::RuntimeError(format!(
+                "Unknown native function index: {}",
+                idx
+            )))
         }
     }
 

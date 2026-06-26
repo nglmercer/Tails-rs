@@ -59,7 +59,8 @@ fn test_if_statement() {
 #[test]
 fn test_while_loop() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         let sum = 0;
         let i = 1;
         while (i <= 5) {
@@ -67,19 +68,22 @@ fn test_while_loop() {
             i = i + 1;
         }
         sum;
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_function_declaration() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         function add(a, b) {
             return a + b;
         }
         add(3, 4);
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }
 
@@ -94,7 +98,8 @@ fn test_global_variable() {
 #[test]
 fn test_complex_program() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         function factorial(n) {
             if (n <= 1) {
                 return 1;
@@ -102,6 +107,7 @@ fn test_complex_program() {
             return n * factorial(n - 1);
         }
         factorial(5);
-    "#);
+    "#,
+    );
     assert!(result.is_ok());
 }

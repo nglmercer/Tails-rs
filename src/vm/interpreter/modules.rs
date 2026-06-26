@@ -1,7 +1,7 @@
-use std::rc::Rc;
 use super::*;
 use crate::errors::Result;
 use crate::objects::Value;
+use std::rc::Rc;
 
 impl Interpreter {
     pub fn execute_module(&mut self, module: &CompiledModule) -> Result<Value> {
@@ -10,12 +10,30 @@ impl Interpreter {
         let prev_exports = std::mem::take(&mut self.module_exports);
         let saved_globals = std::mem::take(&mut self.globals);
         for key in saved_globals.keys() {
-            if key == "console" || key == "Object" || key == "JSON" || key == "Math"
-                || key == "Proxy" || key == "Reflect" || key == "Error" || key == "TypeError"
-                || key == "ReferenceError" || key == "SyntaxError" || key == "RangeError"
-                || key == "Array" || key == "String" || key == "Number" || key == "Boolean"
-                || key == "parseInt" || key == "parseFloat" || key == "isNaN" || key == "isFinite"
-                || key == "setTimeout" || key == "setInterval" || key == "clearTimeout" || key == "clearInterval" {
+            if key == "console"
+                || key == "Object"
+                || key == "JSON"
+                || key == "Math"
+                || key == "Proxy"
+                || key == "Reflect"
+                || key == "Error"
+                || key == "TypeError"
+                || key == "ReferenceError"
+                || key == "SyntaxError"
+                || key == "RangeError"
+                || key == "Array"
+                || key == "String"
+                || key == "Number"
+                || key == "Boolean"
+                || key == "parseInt"
+                || key == "parseFloat"
+                || key == "isNaN"
+                || key == "isFinite"
+                || key == "setTimeout"
+                || key == "setInterval"
+                || key == "clearTimeout"
+                || key == "clearInterval"
+            {
                 self.globals.insert(key.clone(), saved_globals[key].clone());
             }
         }
@@ -52,23 +70,11 @@ impl Interpreter {
         let compiled = compiler.compile(&source_code)?;
         let prev_path = self.current_module_path.take();
         self.current_module_path = Some(module_path.clone());
-        self.module_registry.insert(module_path.clone(), HashMap::new());
-        let saved_globals = std::mem::take(&mut self.globals);
-        for key in saved_globals.keys() {
-            if key == "console" || key == "Object" || key == "JSON" || key == "Math"
-                || key == "Proxy" || key == "Reflect" || key == "Error" || key == "TypeError"
-                || key == "ReferenceError" || key == "SyntaxError" || key == "RangeError"
-                || key == "Array" || key == "String" || key == "Number" || key == "Boolean"
-                || key == "parseInt" || key == "parseFloat" || key == "isNaN" || key == "isFinite"
-                || key == "setTimeout" || key == "setInterval" || key == "clearTimeout" || key == "clearInterval" {
-                self.globals.insert(key.clone(), saved_globals[key].clone());
-            }
-        }
+        self.module_registry
+            .insert(module_path.clone(), HashMap::new());
         let result = self.execute_module(&compiled);
-        let module_globals = std::mem::replace(&mut self.globals, saved_globals);
         let exports = std::mem::take(&mut self.module_exports);
         *self.module_registry.entry(module_path.clone()).or_default() = exports;
-        self.module_globals = Some(module_globals);
         self.current_module_path = prev_path;
         result?;
         Ok(Some(module_path))
@@ -101,6 +107,9 @@ impl Interpreter {
                 }
             }
         }
-        Err(crate::errors::Error::RuntimeError(format!("Module '{}' not found", source)))
+        Err(crate::errors::Error::RuntimeError(format!(
+            "Module '{}' not found",
+            source
+        )))
     }
 }

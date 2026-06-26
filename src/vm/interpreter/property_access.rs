@@ -1,14 +1,19 @@
+use super::{HeapValue, Interpreter};
 use crate::errors::{Error, Result};
-use crate::objects::Value;
 use crate::objects::js_promise::PromiseState;
-use super::{Interpreter, HeapValue};
+use crate::objects::Value;
 
 impl Interpreter {
     pub(super) fn get_property(&mut self, object: &Value, key: &Value) -> Result<Value> {
         self.get_property_with_this(object, key, object)
     }
 
-    pub(crate) fn get_property_with_this(&mut self, object: &Value, key: &Value, this: &Value) -> Result<Value> {
+    pub(crate) fn get_property_with_this(
+        &mut self,
+        object: &Value,
+        key: &Value,
+        this: &Value,
+    ) -> Result<Value> {
         match object {
             Value::Null | Value::Undefined => {
                 return Err(Error::TypeError(format!(
@@ -42,7 +47,11 @@ impl Interpreter {
                                 return Ok(Value::Float(arr.elements.len() as f64));
                             }
                             if let Ok(index) = key_str.parse::<usize>() {
-                                return Ok(arr.elements.get(index).cloned().unwrap_or(Value::Undefined));
+                                return Ok(arr
+                                    .elements
+                                    .get(index)
+                                    .cloned()
+                                    .unwrap_or(Value::Undefined));
                             }
                             return self.get_array_method(key_str);
                         }
@@ -133,7 +142,11 @@ impl Interpreter {
                     match &trap {
                         Ok(Value::Function(_)) | Ok(Value::NativeFunction(_)) => {
                             let trap_val = trap.unwrap();
-                            let trap_result = self.call_value(&trap_val, &handler, &[target, key.clone(), this.clone()]);
+                            let trap_result = self.call_value(
+                                &trap_val,
+                                &handler,
+                                &[target, key.clone(), this.clone()],
+                            );
                             match trap_result {
                                 Ok(v) => return Ok(v),
                                 Err(_) => {}
@@ -212,7 +225,11 @@ impl Interpreter {
         Ok(Value::NativeFunction(idx))
     }
 
-    pub(super) fn get_property_from_primitive_number(&self, _n: &Value, key: &Value) -> Result<Value> {
+    pub(super) fn get_property_from_primitive_number(
+        &self,
+        _n: &Value,
+        key: &Value,
+    ) -> Result<Value> {
         if let Value::String(key_str) = key {
             match key_str.as_str() {
                 "toString" | "toFixed" | "valueOf" => {
@@ -224,7 +241,11 @@ impl Interpreter {
         Ok(Value::Undefined)
     }
 
-    pub(super) fn get_property_from_primitive_boolean(&self, _b: &Value, key: &Value) -> Result<Value> {
+    pub(super) fn get_property_from_primitive_boolean(
+        &self,
+        _b: &Value,
+        key: &Value,
+    ) -> Result<Value> {
         if let Value::String(key_str) = key {
             match key_str.as_str() {
                 "toString" | "valueOf" => {
@@ -372,10 +393,18 @@ impl Interpreter {
         }
     }
 
-    pub(crate) fn call_proxy_trap(&mut self, handler: &Value, trap_name: &str, args: &[Value]) -> Result<Value> {
+    pub(crate) fn call_proxy_trap(
+        &mut self,
+        handler: &Value,
+        trap_name: &str,
+        args: &[Value],
+    ) -> Result<Value> {
         let trap = self.get_property(handler, &Value::String(trap_name.to_string()))?;
         if matches!(trap, Value::Undefined) {
-            return Err(Error::RuntimeError(format!("Proxy has no '{}' trap", trap_name)));
+            return Err(Error::RuntimeError(format!(
+                "Proxy has no '{}' trap",
+                trap_name
+            )));
         }
         self.call_value(&trap, handler, args)
     }

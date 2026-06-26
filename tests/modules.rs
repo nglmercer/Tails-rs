@@ -1,16 +1,16 @@
-use tails::TailsRuntime;
 use std::path::Path;
+use tails::TailsRuntime;
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/modules")
         .join(name);
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e))
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e))
 }
 
 fn module_dir() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/modules")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/modules")
 }
 
 #[test]
@@ -174,7 +174,9 @@ fn test_module_does_not_pollute_global() {
     let dir = module_dir();
     runtime.eval_module(&source, &dir).unwrap();
 
-    let result = runtime.eval("typeof mySecret !== 'undefined' ? 'leaked' : 'ok'").unwrap();
+    let result = runtime
+        .eval("typeof mySecret !== 'undefined' ? 'leaked' : 'ok'")
+        .unwrap();
     assert_eq!(result, tails::Value::String("ok".to_string()));
 }
 
@@ -196,9 +198,13 @@ fn test_import_multiple_modules_same_runtime() {
 #[test]
 fn test_missing_module_is_undefined() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         import foo from "./nonexistent_module.ts";
         typeof foo
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::String("undefined".to_string()));
 }

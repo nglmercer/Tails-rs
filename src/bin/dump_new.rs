@@ -1,6 +1,6 @@
+use tails::compiler::bytecode::generate;
 use tails::compiler::lexer::tokenize;
 use tails::compiler::parser::parse;
-use tails::compiler::bytecode::generate;
 
 fn main() {
     let source = r#"

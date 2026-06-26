@@ -1,8 +1,8 @@
+use crate::compiler::CompiledModule;
+use crate::objects::js_promise::JsPromise;
+use crate::objects::Value;
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::compiler::CompiledModule;
-use crate::objects::Value;
-use crate::objects::js_promise::JsPromise;
 
 #[derive(Debug, Clone)]
 pub struct JsObject {

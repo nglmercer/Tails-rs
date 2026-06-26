@@ -4,13 +4,17 @@ use tails::Value;
 #[test]
 fn test_promise_resolve_static() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.resolve(99);
         p.then(function(val) {
             result = val;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(99.0));
 }
@@ -18,13 +22,17 @@ fn test_promise_resolve_static() {
 #[test]
 fn test_promise_reject_static() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.reject("err");
         p.catch(function(val) {
             result = val;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::String("err".into()));
 }
@@ -32,7 +40,9 @@ fn test_promise_reject_static() {
 #[test]
 fn test_promise_all_resolved() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p1 = Promise.resolve(1);
         var p2 = Promise.resolve(2);
@@ -41,7 +51,9 @@ fn test_promise_all_resolved() {
         all.then(function(val) {
             result = val.length;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(3.0));
 }
@@ -49,7 +61,9 @@ fn test_promise_all_resolved() {
 #[test]
 fn test_promise_all_one_rejected() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p1 = Promise.resolve(1);
         var p2 = Promise.reject("fail");
@@ -58,7 +72,9 @@ fn test_promise_all_one_rejected() {
         all.catch(function(val) {
             result = val;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::String("fail".into()));
 }
@@ -66,12 +82,14 @@ fn test_promise_all_one_rejected() {
 #[test]
 fn test_promise_constructor_resolve() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime.eval(
+        r#"
         var p = new Promise(function(resolve, reject) {
             resolve(42);
         });
         p;
-    "#);
+    "#,
+    );
     eprintln!("new Promise result: {:?}", result);
     result.unwrap();
 }
@@ -79,12 +97,16 @@ fn test_promise_constructor_resolve() {
 #[test]
 fn test_set_timeout_schedules_callback() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         setTimeout(function() {
             result = 42;
         }, 0);
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(42.0));
 }
@@ -92,13 +114,17 @@ fn test_set_timeout_schedules_callback() {
 #[test]
 fn test_promise_chaining_then() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.resolve(10);
         p.then(function(val) {
             result = val + 5;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(15.0));
 }
@@ -106,7 +132,9 @@ fn test_promise_chaining_then() {
 #[test]
 fn test_promise_finally() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.resolve(1);
         p.then(function(val) {
@@ -114,7 +142,9 @@ fn test_promise_finally() {
         }).finally(function() {
             result = result + 10;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(11.0));
 }
@@ -122,7 +152,9 @@ fn test_promise_finally() {
 #[test]
 fn test_promise_chaining_multiple_thens() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.resolve(1);
         p.then(function(val) {
@@ -130,7 +162,9 @@ fn test_promise_chaining_multiple_thens() {
         }).then(function(val) {
             result = result + 10;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(11.0));
 }
@@ -138,31 +172,43 @@ fn test_promise_chaining_multiple_thens() {
 #[test]
 fn test_await_resolved_promise() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         var p = Promise.resolve(42);
         await p;
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, Value::Float(42.0));
 }
 
 #[test]
 fn test_await_non_promise_value() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         await 42;
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, Value::Float(42.0));
 }
 
 #[test]
 fn test_promise_basic_resolve() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         var p = Promise.resolve(42);
         p;
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     match &result {
-        Value::Promise(_) => {},
+        Value::Promise(_) => {}
         _other => panic!("Expected Promise, got {:?}", result),
     }
 }
@@ -170,13 +216,17 @@ fn test_promise_basic_resolve() {
 #[test]
 fn test_promise_reject_with_catch() {
     let mut runtime = TailsRuntime::default();
-    runtime.eval(r#"
+    runtime
+        .eval(
+            r#"
         var result = 0;
         var p = Promise.reject(10);
         p.catch(function(val) {
             result = val + 5;
         });
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     let result = runtime.get_global("result").unwrap();
     assert_eq!(result, Value::Float(15.0));
 }

@@ -1,9 +1,9 @@
 pub mod native;
 
-use std::os::raw::c_char;
-use std::ffi::CStr;
-use crate::TailsRuntime;
 use crate::objects::Value;
+use crate::TailsRuntime;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -45,10 +45,10 @@ pub extern "C" fn tails_eval(runtime: *mut TailsRuntime, source: *const c_char) 
             data: 0,
         };
     }
-    
+
     let runtime = unsafe { &mut *runtime };
     let source = unsafe { CStr::from_ptr(source) };
-    
+
     match source.to_str() {
         Ok(source_str) => match runtime.eval(source_str) {
             Ok(value) => value_to_tails_value(value),
@@ -72,10 +72,10 @@ pub extern "C" fn tails_get_global(runtime: *mut TailsRuntime, name: *const c_ch
             data: 0,
         };
     }
-    
+
     let runtime = unsafe { &*runtime };
     let name = unsafe { CStr::from_ptr(name) };
-    
+
     match name.to_str() {
         Ok(name_str) => match runtime.get_global(name_str) {
             Some(value) => value_to_tails_value(value),
@@ -100,10 +100,10 @@ pub extern "C" fn tails_set_global(
     if runtime.is_null() || name.is_null() {
         return;
     }
-    
+
     let runtime = unsafe { &mut *runtime };
     let name = unsafe { CStr::from_ptr(name) };
-    
+
     if let Ok(name_str) = name.to_str() {
         let value = tails_value_to_value(value);
         runtime.set_global(name_str, value);
@@ -139,12 +139,16 @@ fn value_to_tails_value(value: Value) -> TailsValue {
                 data: ptr,
             }
         }
-        Value::BigInt(_) | Value::Function(_) | Value::NativeFunction(_) | Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) => {
-            TailsValue {
-                tag: TailsValueType::Object as u32,
-                data: 0,
-            }
-        }
+        Value::BigInt(_)
+        | Value::Function(_)
+        | Value::NativeFunction(_)
+        | Value::Object(_)
+        | Value::Array(_)
+        | Value::Promise(_)
+        | Value::Proxy(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
     }
 }
 
