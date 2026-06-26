@@ -11,15 +11,7 @@ impl<'a> Parser<'a> {
         };
         let mut declarations = Vec::new();
         loop {
-            let id = match self.advance() {
-                Token::Identifier(name) => name,
-                token => {
-                    return Err(Error::ParseError(format!(
-                        "Expected identifier, got {:?}",
-                        token
-                    )))
-                }
-            };
+            let id = self.parse_binding_pattern()?;
             let type_annotation = if self.peek() == &Token::Colon {
                 self.advance();
                 Some(self.parse_type_annotation()?)
@@ -45,6 +37,107 @@ impl<'a> Parser<'a> {
         }
         self.expect(&Token::Semicolon)?;
         Ok(Statement::VariableDeclaration { kind, declarations })
+    }
+
+    pub(crate) fn parse_binding_pattern(&mut self) -> Result<BindingPattern> {
+        match self.peek().clone() {
+            Token::LeftBracket => self.parse_array_binding_pattern(),
+            Token::LeftBrace => self.parse_object_binding_pattern(),
+            _ => {
+                let id = match self.advance() {
+                    Token::Identifier(name) => name,
+                    token => {
+                        return Err(Error::ParseError(format!(
+                            "Expected identifier or pattern, got {:?}",
+                            token
+                        )))
+                    }
+                };
+                Ok(BindingPattern::Identifier(id))
+            }
+        }
+    }
+
+    pub(crate) fn parse_array_binding_pattern(&mut self) -> Result<BindingPattern> {
+        self.expect(&Token::LeftBracket)?;
+        let mut elements = Vec::new();
+        if self.peek() != &Token::RightBracket {
+            loop {
+                if self.peek() == &Token::Comma {
+                    elements.push(ArrayBindingElement::Skip);
+                    self.advance();
+                    continue;
+                }
+                if self.peek() == &Token::Ellipsis {
+                    self.advance();
+                    let rest = self.parse_binding_pattern()?;
+                    elements.push(ArrayBindingElement::Rest(Box::new(rest)));
+                    break;
+                }
+                let pattern = self.parse_binding_pattern()?;
+                elements.push(ArrayBindingElement::Pattern(pattern));
+                if self.peek() == &Token::Comma {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.expect(&Token::RightBracket)?;
+        Ok(BindingPattern::Array(elements))
+    }
+
+    pub(crate) fn parse_object_binding_pattern(&mut self) -> Result<BindingPattern> {
+        self.expect(&Token::LeftBrace)?;
+        let mut elements = Vec::new();
+        if self.peek() != &Token::RightBrace {
+            loop {
+                if self.peek() == &Token::Ellipsis {
+                    self.advance();
+                    let rest = self.parse_binding_pattern()?;
+                    elements.push(ObjectBindingElement {
+                        key: match &rest {
+                            BindingPattern::Identifier(name) => name.clone(),
+                            _ => return Err(Error::ParseError("Invalid rest pattern in object".into())),
+                        },
+                        value: rest,
+                        shorthand: true,
+                    });
+                    break;
+                }
+                let key = match self.advance() {
+                    Token::Identifier(name) => name,
+                    token => {
+                        return Err(Error::ParseError(format!(
+                            "Expected property name, got {:?}",
+                            token
+                        )))
+                    }
+                };
+                if self.peek() == &Token::Colon {
+                    self.advance();
+                    let value = self.parse_binding_pattern()?;
+                    elements.push(ObjectBindingElement {
+                        key: key.clone(),
+                        value,
+                        shorthand: false,
+                    });
+                } else {
+                    elements.push(ObjectBindingElement {
+                        key: key.clone(),
+                        value: BindingPattern::Identifier(key),
+                        shorthand: true,
+                    });
+                }
+                if self.peek() == &Token::Comma {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.expect(&Token::RightBrace)?;
+        Ok(BindingPattern::Object(elements))
     }
 
     pub(crate) fn parse_function_declaration(&mut self) -> Result<Statement> {
@@ -222,7 +315,7 @@ impl<'a> Parser<'a> {
                 None
             };
             declarations.push(VariableDeclarator {
-                id: decl_id,
+                id: BindingPattern::Identifier(decl_id),
                 type_annotation: None,
                 init: init_val,
             });

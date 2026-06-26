@@ -2,8 +2,9 @@ mod closures;
 mod expressions;
 
 use crate::compiler::parser::{
-    ArrowFunctionBody, AstNode, BinaryOperator, ClassMember, CompoundAssignmentOp, Expression,
-    ForInLeft, ForInit, Statement, UnaryOperator, UpdateOperator,
+    ArrowFunctionBody, ArrayBindingElement, AstNode, BinaryOperator, BindingPattern,
+    ClassMember, CompoundAssignmentOp, Expression, ForInLeft, ForInit, Statement,
+    UnaryOperator, UpdateOperator,
 };
 use crate::compiler::{
     ClassInfo, ClassMethodInfo, ClassMethodKind, CompiledFunction, CompiledModule, Instruction,
@@ -88,17 +89,25 @@ impl CodeGenerator {
                 for decl in declarations {
                     if let Some(init) = &decl.init {
                         self.generate_expression(init)?;
+                        self.generate_destructuring_pattern(&decl.id)?;
                     } else {
-                        self.instructions.push(Instruction::LoadUndefined);
-                    }
-
-                    if self.scope_depth == 0 {
-                        self.instructions
-                            .push(Instruction::StoreGlobal(decl.id.clone()));
-                    } else {
-                        self.locals.push(decl.id.clone());
-                        let slot = (self.locals.len() - 1) as u16;
-                        self.instructions.push(Instruction::StoreLocal(slot));
+                        match &decl.id {
+                            BindingPattern::Identifier(id) => {
+                                self.instructions.push(Instruction::LoadUndefined);
+                                if self.scope_depth == 0 {
+                                    self.instructions
+                                        .push(Instruction::StoreGlobal(id.clone()));
+                                } else {
+                                    self.locals.push(id.clone());
+                                    let slot = (self.locals.len() - 1) as u16;
+                                    self.instructions.push(Instruction::StoreLocal(slot));
+                                }
+                            }
+                            _ => {
+                                self.instructions.push(Instruction::LoadUndefined);
+                                self.generate_destructuring_pattern(&decl.id)?;
+                            }
+                        }
                     }
                 }
                 Ok(())
@@ -656,8 +665,10 @@ impl CodeGenerator {
             Statement::ExportDeclaration { declaration } => {
                 match declaration.as_ref() {
                     Statement::VariableDeclaration { declarations, .. } => {
-                        let names: Vec<String> =
-                            declarations.iter().map(|d| d.id.clone()).collect();
+                        let names: Vec<String> = declarations
+                            .iter()
+                            .filter_map(|d| Self::extract_identifier_from_pattern(&d.id))
+                            .collect();
                         self.generate_statement(declaration, false)?;
                         for name in &names {
                             self.instructions
@@ -795,6 +806,57 @@ impl CodeGenerator {
         }
     }
 
+    pub(crate) fn generate_destructuring_pattern(&mut self, pattern: &BindingPattern) -> Result<()> {
+        match pattern {
+            BindingPattern::Identifier(id) => {
+                if self.scope_depth == 0 {
+                    self.instructions
+                        .push(Instruction::StoreGlobal(id.clone()));
+                } else {
+                    self.locals.push(id.clone());
+                    let slot = (self.locals.len() - 1) as u16;
+                    self.instructions.push(Instruction::StoreLocal(slot));
+                }
+            }
+            BindingPattern::Array(elements) => {
+                for (i, element) in elements.iter().enumerate() {
+                    match element {
+                        ArrayBindingElement::Pattern(pat) => {
+                            self.instructions.push(Instruction::Dup);
+                            let idx = self.add_constant(Value::Integer(i as i64));
+                            self.instructions.push(Instruction::LoadConst(idx));
+                            self.instructions.push(Instruction::GetProperty);
+                            self.generate_destructuring_pattern(pat)?;
+                        }
+                        ArrayBindingElement::Rest(pat) => {
+                            self.instructions.push(Instruction::Dup);
+                            let idx = self.add_constant(Value::String("slice".to_string()));
+                            self.instructions.push(Instruction::LoadConst(idx));
+                            self.instructions.push(Instruction::GetProperty);
+                            let start_idx = self.add_constant(Value::Integer(i as i64));
+                            self.instructions.push(Instruction::LoadConst(start_idx));
+                            self.instructions.push(Instruction::Call(1));
+                            self.generate_destructuring_pattern(pat)?;
+                        }
+                        ArrayBindingElement::Skip => {
+                            // Skip element, do nothing
+                        }
+                    }
+                }
+            }
+            BindingPattern::Object(elements) => {
+                for element in elements {
+                    self.instructions.push(Instruction::Dup);
+                    let key_idx = self.add_constant(Value::String(element.key.clone()));
+                    self.instructions.push(Instruction::LoadConst(key_idx));
+                    self.instructions.push(Instruction::GetProperty);
+                    self.generate_destructuring_pattern(&element.value)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn compile_class_constructor(
         &mut self,
         body: &[ClassMember],
@@ -809,6 +871,13 @@ impl CodeGenerator {
             }
         }
         Ok(None)
+    }
+
+    fn extract_identifier_from_pattern(pattern: &BindingPattern) -> Option<String> {
+        match pattern {
+            BindingPattern::Identifier(name) => Some(name.clone()),
+            _ => None,
+        }
     }
 
     pub(crate) fn resolve_local(&self, name: &str) -> Option<u16> {

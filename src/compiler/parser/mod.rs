@@ -224,8 +224,29 @@ pub enum VarKind {
 }
 
 #[derive(Debug, Clone)]
+pub enum BindingPattern {
+    Identifier(String),
+    Array(Vec<ArrayBindingElement>),
+    Object(Vec<ObjectBindingElement>),
+}
+
+#[derive(Debug, Clone)]
+pub enum ArrayBindingElement {
+    Pattern(BindingPattern),
+    Rest(Box<BindingPattern>),
+    Skip,
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectBindingElement {
+    pub key: String,
+    pub value: BindingPattern,
+    pub shorthand: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct VariableDeclarator {
-    pub id: String,
+    pub id: BindingPattern,
     pub type_annotation: Option<TypeAnnotation>,
     pub init: Option<Expression>,
 }
@@ -313,12 +334,26 @@ pub enum Expression {
         elements: Vec<Expression>,
     },
     ObjectLiteral {
-        properties: Vec<(String, Expression)>,
+        properties: Vec<ObjectProperty>,
+    },
+    SpreadElement {
+        argument: Box<Expression>,
+    },
+    RestElement {
+        argument: Box<BindingPattern>,
     },
     TypeAssertion {
         expression: Box<Expression>,
         type_annotation: TypeAnnotation,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectProperty {
+    pub key: String,
+    pub value: Expression,
+    pub shorthand: bool,
+    pub computed: bool,
 }
 
 #[derive(Debug, Clone)]

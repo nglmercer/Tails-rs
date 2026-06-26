@@ -114,6 +114,33 @@ impl TypeChecker {
         }
     }
 
+    pub(crate) fn define_pattern_variables(&mut self, pattern: &crate::compiler::parser::BindingPattern, type_: &Type) {
+        use crate::compiler::parser::BindingPattern;
+        match pattern {
+            BindingPattern::Identifier(name) => {
+                self.define_variable(name, type_.clone());
+            }
+            BindingPattern::Array(elements) => {
+                for element in elements {
+                    match element {
+                        crate::compiler::parser::ArrayBindingElement::Pattern(pat) => {
+                            self.define_pattern_variables(pat, type_);
+                        }
+                        crate::compiler::parser::ArrayBindingElement::Rest(pat) => {
+                            self.define_pattern_variables(pat, type_);
+                        }
+                        crate::compiler::parser::ArrayBindingElement::Skip => {}
+                    }
+                }
+            }
+            BindingPattern::Object(elements) => {
+                for element in elements {
+                    self.define_pattern_variables(&element.value, type_);
+                }
+            }
+        }
+    }
+
     pub(crate) fn get_variable_type(&self, name: &str) -> Option<Type> {
         for scope in self.scopes.iter().rev() {
             if let Some(ty) = scope.get(name) {

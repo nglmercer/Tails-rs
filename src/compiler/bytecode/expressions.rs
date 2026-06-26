@@ -577,21 +577,75 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::ArrayLiteral { elements } => {
-                for elem in elements.iter().rev() {
-                    self.generate_expression(elem)?;
+                let has_spread = elements.iter().any(|e| matches!(e, Expression::SpreadElement { .. }));
+                if has_spread {
+                    self.instructions.push(Instruction::NewArray(0));
+                    for elem in elements {
+                        match elem {
+                            Expression::SpreadElement { argument } => {
+                                self.instructions.push(Instruction::Dup);
+                                self.generate_expression(argument)?;
+                                let key = self.add_constant(Value::String("push".to_string()));
+                                self.instructions.push(Instruction::LoadConst(key));
+                                self.instructions.push(Instruction::CallMethod(1));
+                                self.instructions.push(Instruction::Pop);
+                            }
+                            _ => {
+                                self.instructions.push(Instruction::Dup);
+                                self.generate_expression(elem)?;
+                                self.instructions.push(Instruction::ArrayPush);
+                            }
+                        }
+                    }
+                } else {
+                    for elem in elements.iter().rev() {
+                        self.generate_expression(elem)?;
+                    }
+                    self.instructions
+                        .push(Instruction::NewArray(elements.len() as u32));
                 }
-                self.instructions
-                    .push(Instruction::NewArray(elements.len() as u32));
                 Ok(())
             }
             Expression::ObjectLiteral { properties } => {
-                self.instructions.push(Instruction::NewObject);
-                for (key, value) in properties {
-                    let key_idx = self.add_constant(Value::String(key.clone()));
-                    self.instructions.push(Instruction::LoadConst(key_idx));
-                    self.generate_expression(value)?;
-                    self.instructions.push(Instruction::SetProperty);
+                let has_spread = properties.iter().any(|p| p.key.is_empty());
+                if has_spread {
+                    self.instructions.push(Instruction::NewObject);
+                    for prop in properties {
+                        if prop.key.is_empty() && matches!(prop.value, Expression::SpreadElement { .. }) {
+                            if let Expression::SpreadElement { argument } = &prop.value {
+                                self.instructions.push(Instruction::Dup);
+                                self.generate_expression(argument)?;
+                                let key = self.add_constant(Value::String("Object".to_string()));
+                                self.instructions.push(Instruction::LoadConst(key));
+                                self.instructions.push(Instruction::LoadGlobal("Object".to_string()));
+                                let assign_key = self.add_constant(Value::String("assign".to_string()));
+                                self.instructions.push(Instruction::LoadConst(assign_key));
+                                self.instructions.push(Instruction::CallMethod(2));
+                                self.instructions.push(Instruction::Pop);
+                            }
+                        } else {
+                            let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                            self.instructions.push(Instruction::LoadConst(key_idx));
+                            self.generate_expression(&prop.value)?;
+                            self.instructions.push(Instruction::SetProperty);
+                        }
+                    }
+                } else {
+                    self.instructions.push(Instruction::NewObject);
+                    for prop in properties {
+                        let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                        self.instructions.push(Instruction::LoadConst(key_idx));
+                        self.generate_expression(&prop.value)?;
+                        self.instructions.push(Instruction::SetProperty);
+                    }
                 }
+                Ok(())
+            }
+            Expression::SpreadElement { argument } => {
+                self.generate_expression(argument)?;
+                Ok(())
+            }
+            Expression::RestElement { .. } => {
                 Ok(())
             }
             Expression::TypeAssertion {

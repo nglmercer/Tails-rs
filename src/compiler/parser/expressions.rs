@@ -747,7 +747,13 @@ impl<'a> Parser<'a> {
                 let mut elements = Vec::new();
                 if self.peek() != &Token::RightBracket {
                     loop {
-                        elements.push(self.parse_expression()?);
+                        if self.peek() == &Token::Ellipsis {
+                            self.advance();
+                            let argument = Box::new(self.parse_expression()?);
+                            elements.push(Expression::SpreadElement { argument });
+                        } else {
+                            elements.push(self.parse_expression()?);
+                        }
                         if self.peek() != &Token::Comma {
                             break;
                         }
@@ -765,10 +771,35 @@ impl<'a> Parser<'a> {
                 let mut properties = Vec::new();
                 if self.peek() != &Token::RightBrace {
                     loop {
-                        let key = self.token_to_key_string()?;
-                        self.expect(&Token::Colon)?;
-                        let value = self.parse_expression()?;
-                        properties.push((key, value));
+                        if self.peek() == &Token::Ellipsis {
+                            self.advance();
+                            let argument = Box::new(self.parse_expression()?);
+                            properties.push(ObjectProperty {
+                                key: String::new(),
+                                value: Expression::SpreadElement { argument },
+                                shorthand: false,
+                                computed: false,
+                            });
+                        } else {
+                            let key = self.token_to_key_string()?;
+                            if self.peek() == &Token::Colon {
+                                self.expect(&Token::Colon)?;
+                                let value = self.parse_expression()?;
+                                properties.push(ObjectProperty {
+                                    key: key.clone(),
+                                    value,
+                                    shorthand: false,
+                                    computed: false,
+                                });
+                            } else {
+                                properties.push(ObjectProperty {
+                                    key: key.clone(),
+                                    value: Expression::Identifier(key),
+                                    shorthand: true,
+                                    computed: false,
+                                });
+                            }
+                        }
                         if self.peek() != &Token::Comma {
                             break;
                         }

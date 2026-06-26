@@ -20,9 +20,9 @@ impl TypeChecker {
                                     init_type, declared
                                 )));
                             }
-                            self.define_variable(&decl.id, declared);
+                            self.define_pattern_variables(&decl.id, &declared);
                         } else {
-                            self.define_variable(&decl.id, init_type);
+                            self.define_pattern_variables(&decl.id, &init_type);
                         }
                     } else if matches!(kind, VarKind::Const) {
                         return Err(Error::TypeError(
@@ -30,7 +30,7 @@ impl TypeChecker {
                         ));
                     } else if let Some(ann) = &decl.type_annotation {
                         let declared = self.resolve_annotation(ann)?;
-                        self.define_variable(&decl.id, declared);
+                        self.define_pattern_variables(&decl.id, &declared);
                     }
                 }
                 Ok(Type::Void)

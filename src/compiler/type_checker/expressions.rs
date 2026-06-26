@@ -204,15 +204,22 @@ impl TypeChecker {
             }
             Expression::ObjectLiteral { properties } => {
                 let mut obj_props = Vec::new();
-                for (key, value) in properties {
-                    let val_type = self.check_expression(value)?;
+                for prop in properties {
+                    if prop.key.is_empty() {
+                        continue;
+                    }
+                    let val_type = self.check_expression(&prop.value)?;
                     obj_props.push(ObjectProperty {
-                        name: key.clone(),
+                        name: prop.key.clone(),
                         ty: val_type,
                         optional: false,
                     });
                 }
                 Ok(Type::Object(obj_props))
+            }
+            Expression::SpreadElement { argument } => {
+                self.check_expression(argument)?;
+                Ok(Type::Any)
             }
             Expression::TypeAssertion {
                 expression,
@@ -289,6 +296,7 @@ impl TypeChecker {
                 self.exit_scope();
                 Ok(Type::Any)
             }
+            Expression::RestElement { .. } => Ok(Type::Any),
         }
     }
 }
