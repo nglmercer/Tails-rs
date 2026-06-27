@@ -27,6 +27,17 @@ impl Interpreter {
                 self.stack.push(Value::Boolean(false));
             }
             Instruction::LoadGlobal(name) => {
+                let value = self.globals.get(name).cloned().or_else(|| {
+                    self.module_globals
+                        .as_ref()
+                        .and_then(|mg| mg.get(name).cloned())
+                });
+                match value {
+                    Some(v) => self.stack.push(v),
+                    None => return Err(Error::ReferenceError(format!("{} is not defined", name))),
+                }
+            }
+            Instruction::LoadGlobalOrUndefined(name) => {
                 let value = self
                     .globals
                     .get(name)
@@ -38,6 +49,33 @@ impl Interpreter {
                     })
                     .unwrap_or(Value::Undefined);
                 self.stack.push(value);
+            }
+            Instruction::TypeOfGlobal(name) => {
+                let value = self
+                    .globals
+                    .get(name)
+                    .cloned()
+                    .or_else(|| {
+                        self.module_globals
+                            .as_ref()
+                            .and_then(|mg| mg.get(name).cloned())
+                    })
+                    .unwrap_or(Value::Undefined);
+                let type_str = match &value {
+                    Value::Undefined => "undefined",
+                    Value::Null => "object",
+                    Value::Boolean(_) => "boolean",
+                    Value::Integer(_) | Value::Float(_) => "number",
+                    Value::String(_) => "string",
+                    Value::BigInt(_) => "bigint",
+                    Value::Function(_) | Value::NativeFunction(_) => "function",
+                    Value::Object(_)
+                    | Value::Array(_)
+                    | Value::Promise(_)
+                    | Value::Proxy(_)
+                    | Value::Generator(_) => "object",
+                };
+                self.stack.push(Value::String(type_str.to_string()));
             }
             Instruction::StoreGlobal(name) => {
                 let value = self
@@ -78,6 +116,26 @@ impl Interpreter {
                     .and_then(|f| f.this_value.clone())
                     .unwrap_or(Value::Undefined);
                 self.stack.push(this);
+            }
+            Instruction::BlockEnter => {
+                // Save the current stack length as the block scope base
+                self.block_scope_stack.push(self.stack.len());
+            }
+            Instruction::BlockExit => {
+                // Restore stack to the block scope base, but preserve the top value if any
+                if let Some(block_base) = self.block_scope_stack.pop() {
+                    if self.stack.len() > block_base {
+                        // Save the top value (result of last expression in block)
+                        let top_value = self.stack.pop().unwrap_or(Value::Undefined);
+                        // Truncate stack to block base
+                        self.stack.truncate(block_base);
+                        // Push the saved value back
+                        self.stack.push(top_value);
+                    } else {
+                        // Stack is at or below block base, just truncate
+                        self.stack.truncate(block_base);
+                    }
+                }
             }
             _ => return Ok(false),
         }

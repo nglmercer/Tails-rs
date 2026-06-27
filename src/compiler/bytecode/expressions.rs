@@ -85,6 +85,18 @@ impl CodeGenerator {
                         self.instructions.push(Instruction::LoadUndefined);
                     }
                     _ => {
+                        // Special handling for typeof of identifier - doesn't throw for undeclared variables
+                        if let UnaryOperator::Typeof = op {
+                            if let Expression::Identifier(name) = operand.as_ref() {
+                                if let Some(local_idx) = self.resolve_local(name) {
+                                    self.instructions.push(Instruction::LoadLocal(local_idx));
+                                } else {
+                                    self.instructions
+                                        .push(Instruction::TypeOfGlobal(name.clone()));
+                                }
+                                return Ok(());
+                            }
+                        }
                         self.generate_expression(operand)?;
                         match op {
                             UnaryOperator::Negate => self.instructions.push(Instruction::Negate),

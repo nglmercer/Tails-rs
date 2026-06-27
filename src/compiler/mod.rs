@@ -147,4 +147,8 @@ pub enum Instruction {
     PopModuleExports,
     Await,
     Yield,
+    BlockEnter,
+    BlockExit,
+    LoadGlobalOrUndefined(String),
+    TypeOfGlobal(String),
 }

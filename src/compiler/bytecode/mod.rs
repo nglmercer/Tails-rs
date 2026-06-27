@@ -138,12 +138,12 @@ impl CodeGenerator {
                 self.generate_expression(condition)?;
                 let jump_if_not = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfNot(0));
-                self.generate_statement(consequent, false)?;
+                self.generate_statement_in_branch(consequent.as_ref())?;
                 if let Some(alt) = alternate {
                     let jump_to_end = self.instructions.len();
                     self.instructions.push(Instruction::Jump(0));
                     self.patch_jump(jump_if_not, self.instructions.len());
-                    self.generate_statement(alt, false)?;
+                    self.generate_statement_in_branch(alt.as_ref())?;
                     self.patch_jump(jump_to_end, self.instructions.len());
                 } else {
                     self.patch_jump(jump_if_not, self.instructions.len());
@@ -846,6 +846,27 @@ impl CodeGenerator {
                 }
                 Ok(())
             }
+        }
+    }
+
+    fn generate_statement_in_branch(&mut self, stmt: &Statement) -> Result<()> {
+        match stmt {
+            Statement::BlockStatement(stmts) => {
+                self.scope_depth += 1;
+                let prev_locals_count = self.locals.len();
+                for (i, stmt) in stmts.iter().enumerate() {
+                    let is_last = i == stmts.len() - 1;
+                    self.generate_statement(stmt, is_last)?;
+                }
+                let locals_added = self.locals.len() - prev_locals_count;
+                for _ in 0..locals_added {
+                    self.locals.pop();
+                    self.instructions.push(Instruction::Pop);
+                }
+                self.scope_depth -= 1;
+                Ok(())
+            }
+            _ => self.generate_statement(stmt, true),
         }
     }
 

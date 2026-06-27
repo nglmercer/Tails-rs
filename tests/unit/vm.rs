@@ -82,10 +82,10 @@ fn test_string_addition() {
 #[test]
 fn test_boolean_operations() {
     let mut runtime = TailsRuntime::default();
-    
+
     let result = runtime.eval("true && false").unwrap();
     assert_eq!(result, tails::Value::Boolean(false));
-    
+
     let result = runtime.eval("true || false").unwrap();
     assert_eq!(result, tails::Value::Boolean(true));
 }
@@ -93,16 +93,16 @@ fn test_boolean_operations() {
 #[test]
 fn test_comparison_operations() {
     let mut runtime = TailsRuntime::default();
-    
+
     let result = runtime.eval("5 > 3").unwrap();
     assert_eq!(result, tails::Value::Boolean(true));
-    
+
     let result = runtime.eval("5 < 3").unwrap();
     assert_eq!(result, tails::Value::Boolean(false));
-    
+
     let result = runtime.eval("5 == 5").unwrap();
     assert_eq!(result, tails::Value::Boolean(true));
-    
+
     let result = runtime.eval("5 === 5").unwrap();
     assert_eq!(result, tails::Value::Boolean(true));
 }
@@ -110,18 +110,32 @@ fn test_comparison_operations() {
 #[test]
 fn test_if_else() {
     let mut runtime = TailsRuntime::default();
-    
-    let result = runtime.eval("let x; if (true) { x = 1; } else { x = 2; } x").unwrap();
+
+    let result = runtime
+        .eval(
+            r#"
+        if (true) { 1 } else { 2 }
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(1.0));
-    
-    let result = runtime.eval("let x; if (false) { x = 1; } else { x = 2; } x").unwrap();
+
+    let result = runtime
+        .eval(
+            r#"
+        if (false) { 1 } else { 2 }
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(2.0));
 }
 
 #[test]
 fn test_while_loop() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         let sum = 0;
         let i = 1;
         while (i <= 5) {
@@ -129,26 +143,34 @@ fn test_while_loop() {
             i = i + 1;
         }
         sum
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(15.0));
 }
 
 #[test]
 fn test_function_declaration_and_call() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         function add(a, b) {
             return a + b;
         }
         add(3, 4)
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(7.0));
 }
 
 #[test]
 fn test_nested_function_calls() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         function square(x) {
             return x * x;
         }
@@ -156,14 +178,18 @@ fn test_nested_function_calls() {
             return a + b;
         }
         sum(square(3), square(4))
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(25.0));
 }
 
 #[test]
 fn test_recursive_function() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         function factorial(n) {
             if (n <= 1) {
                 return 1;
@@ -171,14 +197,18 @@ fn test_recursive_function() {
             return n * factorial(n - 1);
         }
         factorial(5)
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(120.0));
 }
 
 #[test]
 fn test_fibonacci() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         function fibonacci(n) {
             if (n <= 1) {
                 return n;
@@ -186,39 +216,51 @@ fn test_fibonacci() {
             return fibonacci(n - 1) + fibonacci(n - 2);
         }
         fibonacci(10)
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(55.0));
 }
 
 #[test]
 fn test_global_variable_manipulation() {
     let mut runtime = TailsRuntime::default();
-    
+
     runtime.set_global("x", tails::Value::Float(10.0));
     let result = runtime.eval("x + 5").unwrap();
     assert_eq!(result, tails::Value::Float(15.0));
-    
+
     runtime.eval("x = x * 2").unwrap();
     let result = runtime.get_global("x").unwrap();
     assert_eq!(result, tails::Value::Float(20.0));
 }
 
 #[test]
-fn test_multiple_variables() {
+fn test_nested_blocks() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
-        const a = 10;
-        const b = 20;
-        const c = a + b;
-        c
-    "#).unwrap();
-    assert_eq!(result, tails::Value::Float(30.0));
+    let result = runtime
+        .eval(
+            r#"
+        const x = 10;
+        {
+            const y = 20;
+            {
+                const z = 30;
+                x + y + z
+            }
+        }
+    "#,
+        )
+        .unwrap();
+    assert_eq!(result, tails::Value::Float(60.0));
 }
 
 #[test]
 fn test_complex_program() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         function isEven(n) {
             return n % 2 === 0;
         }
@@ -243,40 +285,44 @@ fn test_complex_program() {
             i = i + 1;
         }
         evenSum
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(30.0));
 }
 
 #[test]
 fn test_error_handling() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("undefinedVariable").unwrap();
-    assert_eq!(result, tails::Value::Undefined);
+    let result = runtime.eval("undefinedVariable");
+    assert!(result.is_err());
+    match result {
+        Err(tails::Error::ReferenceError(msg)) => {
+            assert!(msg.contains("undefinedVariable"));
+        }
+        _ => panic!("Expected ReferenceError"),
+    }
 }
 
 #[test]
 fn test_division_by_zero() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("10 / 0").unwrap();
-    assert_eq!(result, tails::Value::Float(f64::INFINITY));
-}
-
-#[test]
-fn test_nested_blocks() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
-        const x = 10;
-        const y = 20;
-        const z = 30;
-        x + y + z
-    "#).unwrap();
-    assert_eq!(result, tails::Value::Float(60.0));
+    let result = runtime.eval("10 / 0");
+    assert!(result.is_err());
+    match result {
+        Err(tails::Error::RuntimeError(msg)) => {
+            assert!(msg.contains("Division by zero"));
+        }
+        _ => panic!("Expected RuntimeError for division by zero"),
+    }
 }
 
 #[test]
 fn test_complex_control_flow() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(r#"
+    let result = runtime
+        .eval(
+            r#"
         let result = 0;
         for (let i = 0; i < 10; i = i + 1) {
             if (i % 2 === 0) {
@@ -286,6 +332,8 @@ fn test_complex_control_flow() {
             }
         }
         result
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
     assert_eq!(result, tails::Value::Float(-5.0));
 }

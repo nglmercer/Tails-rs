@@ -35,6 +35,7 @@ pub struct Interpreter {
     pub(crate) module_exports: HashMap<String, Value>,
     pub(crate) current_module_path: Option<String>,
     pub(crate) module_globals: Option<HashMap<String, Value>>,
+    pub(crate) block_scope_stack: Vec<usize>,
 }
 
 impl Interpreter {
@@ -55,6 +56,7 @@ impl Interpreter {
             module_exports: HashMap::new(),
             module_globals: None,
             current_module_path: None,
+            block_scope_stack: Vec::new(),
         };
         interp.init_builtins();
         Ok(interp)

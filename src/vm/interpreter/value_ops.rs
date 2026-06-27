@@ -1,12 +1,16 @@
 use super::Interpreter;
-use crate::errors::Result;
+use crate::errors::{Error, Result};
 use crate::objects::Value;
 
 impl Interpreter {
     pub(super) fn add(&self, left: Value, right: Value) -> Result<Value> {
         match (&left, &right) {
-            (Value::String(a), r) => Ok(Value::String(format!("{}{}", a, self.to_string_coerce(r)))),
-            (l, Value::String(b)) => Ok(Value::String(format!("{}{}", self.to_string_coerce(l), b))),
+            (Value::String(a), r) => {
+                Ok(Value::String(format!("{}{}", a, self.to_string_coerce(r))))
+            }
+            (l, Value::String(b)) => {
+                Ok(Value::String(format!("{}{}", self.to_string_coerce(l), b)))
+            }
             _ => {
                 let l = self.to_number(&left)?;
                 let r = self.to_number(&right)?;
@@ -53,12 +57,18 @@ impl Interpreter {
     pub(super) fn div(&self, left: Value, right: Value) -> Result<Value> {
         let l = self.to_number(&left)?;
         let r = self.to_number(&right)?;
+        if r == 0.0 {
+            return Err(Error::RuntimeError("Division by zero".into()));
+        }
         Ok(Value::Float(l / r))
     }
 
     pub(super) fn modulo(&self, left: Value, right: Value) -> Result<Value> {
         let l = self.to_number(&left)?;
         let r = self.to_number(&right)?;
+        if r == 0.0 {
+            return Err(Error::RuntimeError("Division by zero".into()));
+        }
         Ok(Value::Float(l % r))
     }
 

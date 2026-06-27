@@ -1,11 +1,11 @@
 use tails::compiler::lexer::tokenize;
-use tails::compiler::parser::{parse, AstNode, Statement, Expression, BindingPattern};
+use tails::compiler::parser::{parse, AstNode, BindingPattern, Expression, Statement};
 
 #[test]
 fn test_number_literal() {
     let tokens = tokenize("42").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -24,7 +24,7 @@ fn test_number_literal() {
 fn test_string_literal() {
     let tokens = tokenize(r#""hello""#).unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -43,7 +43,7 @@ fn test_string_literal() {
 fn test_binary_operation() {
     let tokens = tokenize("2 + 3").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -62,7 +62,7 @@ fn test_binary_operation() {
 fn test_variable_declaration() {
     let tokens = tokenize("const x = 42;").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -86,12 +86,14 @@ fn test_variable_declaration() {
 fn test_function_declaration() {
     let tokens = tokenize("function add(a, b) { return a + b; }").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
             match &stmts[0] {
-                Statement::FunctionDeclaration { name, params, body, .. } => {
+                Statement::FunctionDeclaration {
+                    name, params, body, ..
+                } => {
                     assert_eq!(name, "add");
                     assert_eq!(params, &vec!["a".to_string(), "b".to_string()]);
                     assert_eq!(body.len(), 1);
@@ -107,12 +109,16 @@ fn test_function_declaration() {
 fn test_if_statement() {
     let tokens = tokenize("if (true) { 1 } else { 2 }").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
             match &stmts[0] {
-                Statement::IfStatement { condition, consequent: _, alternate } => {
+                Statement::IfStatement {
+                    condition,
+                    consequent: _,
+                    alternate,
+                } => {
                     assert!(matches!(condition, Expression::BooleanLiteral(true)));
                     assert!(alternate.is_some());
                 }
@@ -127,7 +133,7 @@ fn test_if_statement() {
 fn test_while_statement() {
     let tokens = tokenize("while (true) { 1 }").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -146,7 +152,7 @@ fn test_while_statement() {
 fn test_assignment() {
     let tokens = tokenize("x = 42").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -165,7 +171,7 @@ fn test_assignment() {
 fn test_function_call() {
     let tokens = tokenize("add(1, 2)").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -184,13 +190,19 @@ fn test_function_call() {
 fn test_member_access() {
     let tokens = tokenize("obj.prop").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
             match &stmts[0] {
                 Statement::Expression(expr) => {
-                    assert!(matches!(expr, Expression::Member { computed: false, .. }));
+                    assert!(matches!(
+                        expr,
+                        Expression::Member {
+                            computed: false,
+                            ..
+                        }
+                    ));
                 }
                 _ => panic!("Expected expression statement"),
             }
@@ -203,7 +215,7 @@ fn test_member_access() {
 fn test_computed_member_access() {
     let tokens = tokenize("obj[\"prop\"]").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -222,7 +234,7 @@ fn test_computed_member_access() {
 fn test_unary_operation() {
     let tokens = tokenize("-5").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -241,7 +253,7 @@ fn test_unary_operation() {
 fn test_complex_expression() {
     let tokens = tokenize("(2 + 3) * 4").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -260,7 +272,7 @@ fn test_complex_expression() {
 fn test_multiple_statements() {
     let tokens = tokenize("1; 2; 3").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 3);
@@ -273,7 +285,7 @@ fn test_multiple_statements() {
 fn test_block_statement() {
     let tokens = tokenize("{ 1; 2; 3 }").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -292,7 +304,7 @@ fn test_block_statement() {
 fn test_return_statement() {
     let tokens = tokenize("return 42;").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -311,7 +323,7 @@ fn test_return_statement() {
 fn test_return_without_value() {
     let tokens = tokenize("return;").unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
@@ -342,10 +354,10 @@ fn test_complex_program() {
             0
         }
     "#;
-    
+
     let tokens = tokenize(source).unwrap();
     let ast = parse(&tokens).unwrap();
-    
+
     match ast {
         AstNode::Program(stmts) => {
             assert!(stmts.len() >= 3);

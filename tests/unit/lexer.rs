@@ -1,4 +1,4 @@
-use tails::compiler::lexer::{tokenize, Token, TemplatePart};
+use tails::compiler::lexer::{tokenize, TemplatePart, Token};
 
 #[test]
 fn test_numbers() {
@@ -206,7 +206,7 @@ fn test_complex_program() {
         
         add(x, y.length)
     "#;
-    
+
     let tokens = tokenize(source).unwrap();
     assert!(tokens.len() > 20);
 }
