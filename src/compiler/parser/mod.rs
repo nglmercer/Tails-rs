@@ -75,8 +75,10 @@ pub enum Statement {
         return_type: Option<TypeAnnotation>,
         body: Vec<Statement>,
         is_async: bool,
+        is_generator: bool,
     },
     ReturnStatement(Option<Expression>),
+    YieldStatement(Option<Expression>),
     IfStatement {
         condition: Expression,
         consequent: Box<Statement>,
@@ -283,6 +285,15 @@ pub enum Expression {
         property: Box<Expression>,
         computed: bool,
     },
+    OptionalMember {
+        object: Box<Expression>,
+        property: Box<Expression>,
+        computed: bool,
+    },
+    OptionalCall {
+        callee: Box<Expression>,
+        args: Vec<Expression>,
+    },
     FunctionExpression {
         name: Option<String>,
         params: Vec<String>,
@@ -290,6 +301,7 @@ pub enum Expression {
         return_type: Option<TypeAnnotation>,
         body: Vec<Statement>,
         is_async: bool,
+        is_generator: bool,
     },
     ArrowFunction {
         params: Vec<String>,
@@ -355,6 +367,7 @@ pub struct ObjectProperty {
     pub value: Expression,
     pub shorthand: bool,
     pub computed: bool,
+    pub computed_key: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -405,6 +418,7 @@ pub enum BinaryOperator {
     Power,
     Instanceof,
     In,
+    NullishCoalescing,
 }
 
 #[derive(Debug, Clone)]
@@ -469,6 +483,7 @@ impl<'a> Parser<'a> {
             Token::Const | Token::Let | Token::Var => self.parse_variable_declaration(),
             Token::Function => self.parse_function_declaration(),
             Token::Return => self.parse_return_statement(),
+            Token::Yield => self.parse_yield_statement(),
             Token::If => self.parse_if_statement(),
             Token::While => self.parse_while_statement(),
             Token::LeftBrace => self.parse_block_statement(),

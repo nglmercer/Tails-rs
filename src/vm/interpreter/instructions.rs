@@ -201,7 +201,7 @@ impl Interpreter {
                     Value::String(_) => "string",
                     Value::BigInt(_) => "bigint",
                     Value::Function(_) | Value::NativeFunction(_) => "function",
-                    Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) => {
+                    Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) | Value::Generator(_) => {
                         "object"
                     }
                 };
@@ -447,6 +447,62 @@ impl Interpreter {
                 let result = self.get_property(&object, &key)?;
                 self.stack.push(result);
             }
+            Instruction::OptionalGetProperty => {
+                let key = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let object = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if matches!(object, Value::Undefined | Value::Null) {
+                    self.stack.push(Value::Undefined);
+                } else {
+                    let result = self.get_property(&object, &key)?;
+                    self.stack.push(result);
+                }
+            }
+            Instruction::OptionalCall(argc) => {
+                let mut args = Vec::new();
+                for _ in 0..*argc {
+                    args.push(
+                        self.stack
+                            .pop()
+                            .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?,
+                    );
+                }
+                args.reverse();
+                let this = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let callee = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if matches!(callee, Value::Undefined | Value::Null) {
+                    self.stack.push(Value::Undefined);
+                } else {
+                    let result = self.call_value(&callee, &this, &args)?;
+                    self.stack.push(result);
+                }
+            }
+            Instruction::NullishCoalescing => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                if matches!(left, Value::Undefined | Value::Null) {
+                    self.stack.push(right);
+                } else {
+                    self.stack.push(left);
+                }
+            }
             Instruction::NewArray(size) => {
                 let mut elements = Vec::new();
                 for _ in 0..*size {
@@ -522,6 +578,43 @@ impl Interpreter {
                     }
                 }
                 self.stack.push(array);
+            }
+            Instruction::GetKeys => {
+                let obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let keys: Vec<Value> = match &obj {
+                    Value::Object(idx) => {
+                        if let HeapValue::Object(o) = &self.heap[*idx] {
+                            o.properties
+                                .keys()
+                                .map(|k| Value::String(k.clone()))
+                                .collect()
+                        } else {
+                            vec![]
+                        }
+                    }
+                    Value::Array(idx) => {
+                        if let HeapValue::Array(arr) = &self.heap[*idx] {
+                            (0..arr.elements.len())
+                                .map(|i| Value::Float(i as f64))
+                                .collect()
+                        } else {
+                            vec![]
+                        }
+                    }
+                    Value::String(s) => {
+                        (0..s.len())
+                            .map(|i| Value::Float(i as f64))
+                            .collect()
+                    }
+                    _ => vec![],
+                };
+                let heap_idx = self
+                    .gc
+                    .allocate(&mut self.heap, HeapValue::Array(JsArray { elements: keys }));
+                self.stack.push(Value::Array(heap_idx));
             }
             Instruction::Delete => {
                 let key = self

@@ -216,6 +216,80 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::GetProperty);
                 Ok(())
             }
+            Expression::OptionalMember {
+                object,
+                property,
+                computed,
+            } => {
+                self.generate_expression(object)?;
+                self.instructions.push(Instruction::Dup);
+                let check_undef = self.instructions.len();
+                self.instructions.push(Instruction::JumpIfUndefined(0));
+                if *computed {
+                    self.generate_expression(property)?;
+                } else if let Expression::Identifier(name) = property.as_ref() {
+                    let idx = self.add_constant(Value::String(name.clone()));
+                    self.instructions.push(Instruction::LoadConst(idx));
+                } else {
+                    self.generate_expression(property)?;
+                }
+                self.instructions.push(Instruction::GetProperty);
+                let skip_end = self.instructions.len();
+                self.instructions.push(Instruction::Jump(0));
+                self.patch_jump(check_undef, self.instructions.len());
+                self.instructions.push(Instruction::Pop);
+                self.instructions.push(Instruction::LoadUndefined);
+                self.patch_jump(skip_end, self.instructions.len());
+                Ok(())
+            }
+            Expression::OptionalCall { callee, args } => {
+                if let Expression::Member {
+                    object,
+                    property,
+                    computed,
+                } = callee.as_ref()
+                {
+                    self.generate_expression(object)?;
+                    self.instructions.push(Instruction::Dup);
+                    let check_undef = self.instructions.len();
+                    self.instructions.push(Instruction::JumpIfUndefined(0));
+                    if *computed {
+                        self.generate_expression(property)?;
+                    } else if let Expression::Identifier(name) = property.as_ref() {
+                        let idx = self.add_constant(Value::String(name.clone()));
+                        self.instructions.push(Instruction::LoadConst(idx));
+                    } else {
+                        self.generate_expression(property)?;
+                    }
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.instructions
+                        .push(Instruction::CallMethod(args.len() as u16));
+                    let skip_end = self.instructions.len();
+                    self.instructions.push(Instruction::Jump(0));
+                    self.patch_jump(check_undef, self.instructions.len());
+                    self.instructions.push(Instruction::Pop);
+                    self.instructions.push(Instruction::LoadUndefined);
+                    self.patch_jump(skip_end, self.instructions.len());
+                } else {
+                    self.generate_expression(callee)?;
+                    self.instructions.push(Instruction::Dup);
+                    let check_undef = self.instructions.len();
+                    self.instructions.push(Instruction::JumpIfUndefined(0));
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.instructions.push(Instruction::Call(args.len() as u16));
+                    let skip_end = self.instructions.len();
+                    self.instructions.push(Instruction::Jump(0));
+                    self.patch_jump(check_undef, self.instructions.len());
+                    self.instructions.push(Instruction::Pop);
+                    self.instructions.push(Instruction::LoadUndefined);
+                    self.patch_jump(skip_end, self.instructions.len());
+                }
+                Ok(())
+            }
             Expression::FunctionExpression {
                 name: _,
                 params,
@@ -223,6 +297,7 @@ impl CodeGenerator {
                 is_async: _,
                 param_types: _,
                 return_type: _,
+                is_generator: _,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
@@ -616,8 +691,14 @@ impl CodeGenerator {
                                 self.instructions.push(Instruction::SpreadObject);
                             }
                         } else {
-                            let key_idx = self.add_constant(Value::String(prop.key.clone()));
-                            self.instructions.push(Instruction::LoadConst(key_idx));
+                            if prop.computed {
+                                if let Some(key_expr) = &prop.computed_key {
+                                    self.generate_expression(key_expr)?;
+                                }
+                            } else {
+                                let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                                self.instructions.push(Instruction::LoadConst(key_idx));
+                            }
                             self.generate_expression(&prop.value)?;
                             self.instructions.push(Instruction::SetProperty);
                         }
@@ -625,8 +706,15 @@ impl CodeGenerator {
                 } else {
                     self.instructions.push(Instruction::NewObject);
                     for prop in properties {
-                        let key_idx = self.add_constant(Value::String(prop.key.clone()));
-                        self.instructions.push(Instruction::LoadConst(key_idx));
+                        if prop.computed {
+                            if let Some(key_expr) = &prop.computed_key {
+                                self.generate_expression(key_expr)?;
+                                self.instructions.push(Instruction::ToString);
+                            }
+                        } else {
+                            let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                            self.instructions.push(Instruction::LoadConst(key_idx));
+                        }
                         self.generate_expression(&prop.value)?;
                         self.instructions.push(Instruction::SetProperty);
                     }
@@ -668,6 +756,9 @@ impl CodeGenerator {
             BinaryOperator::Or => self.instructions.push(Instruction::Or),
             BinaryOperator::Instanceof => self.instructions.push(Instruction::InstanceOf),
             BinaryOperator::In => self.instructions.push(Instruction::In),
+            BinaryOperator::NullishCoalescing => {
+                self.instructions.push(Instruction::NullishCoalescing)
+            }
             _ => {}
         }
         Ok(())

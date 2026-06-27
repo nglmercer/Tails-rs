@@ -247,6 +247,7 @@ impl Interpreter {
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),
             Value::Proxy(_) => "[Proxy]".to_string(),
+            Value::Generator(_) => "[Generator]".to_string(),
         }
     }
 
@@ -265,6 +266,7 @@ impl Interpreter {
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),
             Value::Proxy(_) => "[Proxy]".to_string(),
+            Value::Generator(_) => "[Generator]".to_string(),
         }
     }
 }

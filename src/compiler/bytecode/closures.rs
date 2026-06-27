@@ -216,6 +216,18 @@ fn collect_identifiers_expr(expr: &Expression, out: &mut Vec<String>) {
             collect_identifiers_expr(object, out);
             collect_identifiers_expr(property, out);
         }
+        Expression::OptionalMember {
+            object, property, ..
+        } => {
+            collect_identifiers_expr(object, out);
+            collect_identifiers_expr(property, out);
+        }
+        Expression::OptionalCall { callee, args } => {
+            collect_identifiers_expr(callee, out);
+            for arg in args {
+                collect_identifiers_expr(arg, out);
+            }
+        }
         Expression::ConditionalExpression {
             test,
             consequent,

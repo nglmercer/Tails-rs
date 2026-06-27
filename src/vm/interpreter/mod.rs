@@ -9,7 +9,7 @@ mod property_access;
 mod value_ops;
 
 pub(crate) use call_frame::{CallFrame, ExceptionHandler};
-pub use heap_types::{HeapValue, JsArray, JsFunction, JsObject, JsProxyData};
+pub use heap_types::{HeapValue, JsArray, JsFunction, JsGenerator, JsObject, JsProxyData};
 
 use crate::compiler::{CompiledModule, Instruction};
 use crate::errors::{Error, Result};
@@ -129,19 +129,20 @@ impl Interpreter {
                 Instruction::JumpIfUndefined(target) => {
                     let value = self
                         .stack
-                        .last()
+                        .pop()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    if matches!(value, Value::Undefined) {
+                    if matches!(value, Value::Undefined | Value::Null) {
                         pc = *target as usize;
                         continue;
                     }
+                    self.stack.push(value);
                 }
                 Instruction::JumpIfNotUndefined(target) => {
                     let value = self
                         .stack
                         .last()
                         .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                    if !matches!(value, Value::Undefined) {
+                    if !matches!(value, Value::Undefined | Value::Null) {
                         pc = *target as usize;
                         continue;
                     }
@@ -180,6 +181,25 @@ impl Interpreter {
                         continue;
                     } else {
                         return Ok(return_value);
+                    }
+                }
+                Instruction::Yield => {
+                    let yield_value = self.stack.pop().unwrap_or(Value::Undefined);
+                    if let Some(frame) = self.call_stack.last() {
+                        let saved_pc = pc + 1;
+                        let saved_stack: Vec<Value> =
+                            self.stack[frame.base_pointer..].to_vec();
+                        let saved_call_stack: Vec<CallFrame> =
+                            self.call_stack[..self.call_stack.len() - 1].to_vec();
+                        let generator_obj = self.create_generator_object(
+                            yield_value.clone(),
+                            saved_pc,
+                            saved_stack,
+                            saved_call_stack,
+                            frame.func_heap_idx,
+                        );
+                        self.stack.push(generator_obj);
+                        return Ok(yield_value);
                     }
                 }
                 Instruction::Call(argc) => {
@@ -916,6 +936,25 @@ impl Interpreter {
     ) -> Result<()> {
         // This is handled inline in execute_from() due to pc control flow
         Ok(())
+    }
+
+    fn create_generator_object(
+        &mut self,
+        yield_value: Value,
+        resume_pc: usize,
+        saved_stack: Vec<Value>,
+        saved_call_stack: Vec<CallFrame>,
+        func_heap_idx: Option<usize>,
+    ) -> Value {
+        let gen_idx = self.heap.len();
+        self.heap.push(HeapValue::Generator(JsGenerator {
+            yield_value,
+            resume_pc,
+            saved_stack,
+            saved_call_stack,
+            func_heap_idx,
+        }));
+        Value::Generator(gen_idx)
     }
 }
 

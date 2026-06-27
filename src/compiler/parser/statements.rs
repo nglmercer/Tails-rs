@@ -176,6 +176,12 @@ impl<'a> Parser<'a> {
             false
         };
         self.expect(&Token::Function)?;
+        let is_generator = if self.peek() == &Token::Star {
+            self.advance();
+            true
+        } else {
+            false
+        };
         let name = match self.advance() {
             Token::Identifier(name) => name,
             token => {
@@ -215,6 +221,7 @@ impl<'a> Parser<'a> {
             return_type,
             body,
             is_async,
+            is_generator,
         })
     }
 
@@ -227,6 +234,17 @@ impl<'a> Parser<'a> {
         };
         self.expect(&Token::Semicolon)?;
         Ok(Statement::ReturnStatement(value))
+    }
+
+    pub(crate) fn parse_yield_statement(&mut self) -> Result<Statement> {
+        self.expect(&Token::Yield)?;
+        let value = if self.peek() != &Token::Semicolon && self.peek() != &Token::RightBrace {
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+        self.expect(&Token::Semicolon)?;
+        Ok(Statement::YieldStatement(value))
     }
 
     pub(crate) fn parse_if_statement(&mut self) -> Result<Statement> {

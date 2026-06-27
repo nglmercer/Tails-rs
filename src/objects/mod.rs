@@ -17,6 +17,7 @@ pub enum Value {
     Array(usize),
     Promise(usize),
     Proxy(usize),
+    Generator(usize),
 }
 
 impl PartialEq for Value {
@@ -35,6 +36,7 @@ impl PartialEq for Value {
             (Value::Array(a), Value::Array(b)) => a == b,
             (Value::Promise(a), Value::Promise(b)) => a == b,
             (Value::Proxy(a), Value::Proxy(b)) => a == b,
+            (Value::Generator(a), Value::Generator(b)) => a == b,
             _ => false,
         }
     }
@@ -56,6 +58,7 @@ impl fmt::Display for Value {
             Value::Array(_) => write!(f, "[Array]"),
             Value::Promise(_) => write!(f, "[Promise]"),
             Value::Proxy(_) => write!(f, "[Proxy]"),
+            Value::Generator(_) => write!(f, "[Generator]"),
         }
     }
 }

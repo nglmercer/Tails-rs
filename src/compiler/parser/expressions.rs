@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ternary(&mut self) -> Result<Expression> {
-        let condition = self.parse_or()?;
+        let condition = self.parse_nullish()?;
         if self.peek() == &Token::Question {
             self.advance();
             let consequent = self.parse_assignment()?;
@@ -109,6 +109,20 @@ impl<'a> Parser<'a> {
             let right = self.parse_and()?;
             left = Expression::BinaryOp {
                 op: BinaryOperator::Or,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
+        }
+        Ok(left)
+    }
+
+    fn parse_nullish(&mut self) -> Result<Expression> {
+        let mut left = self.parse_or()?;
+        while self.peek() == &Token::NullishCoalescing {
+            self.advance();
+            let right = self.parse_or()?;
+            left = Expression::BinaryOp {
+                op: BinaryOperator::NullishCoalescing,
                 left: Box::new(left),
                 right: Box::new(right),
             };
@@ -454,10 +468,44 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let args = self.parse_args()?;
                 self.expect(&Token::RightParen)?;
-                expr = Expression::Call {
-                    callee: Box::new(expr),
-                    args,
-                };
+                if matches!(expr, Expression::OptionalMember { .. }) {
+                    expr = Expression::OptionalCall {
+                        callee: Box::new(expr),
+                        args,
+                    };
+                } else {
+                    expr = Expression::Call {
+                        callee: Box::new(expr),
+                        args,
+                    };
+                }
+            } else if self.peek() == &Token::QuestionDot {
+                self.advance();
+                if self.peek() == &Token::LeftParen {
+                    self.advance();
+                    let args = self.parse_args()?;
+                    self.expect(&Token::RightParen)?;
+                    expr = Expression::OptionalCall {
+                        callee: Box::new(expr),
+                        args,
+                    };
+                } else if self.peek() == &Token::LeftBracket {
+                    self.advance();
+                    let property = self.parse_expression()?;
+                    self.expect(&Token::RightBracket)?;
+                    expr = Expression::OptionalMember {
+                        object: Box::new(expr),
+                        property: Box::new(property),
+                        computed: true,
+                    };
+                } else {
+                    let property = self.token_to_property_name()?;
+                    expr = Expression::OptionalMember {
+                        object: Box::new(expr),
+                        property: Box::new(property),
+                        computed: false,
+                    };
+                }
             } else if self.peek() == &Token::Dot {
                 self.advance();
                 let property = self.token_to_property_name()?;
@@ -596,6 +644,10 @@ impl<'a> Parser<'a> {
             }
             Token::Function => {
                 self.advance();
+                let is_generator = self.peek() == &Token::Star;
+                if is_generator {
+                    self.advance();
+                }
                 let name = if let Token::Identifier(_) = self.peek().clone() {
                     match self.advance() {
                         Token::Identifier(n) => Some(n),
@@ -623,12 +675,17 @@ impl<'a> Parser<'a> {
                     return_type,
                     body,
                     is_async: false,
+                    is_generator,
                 })
             }
             Token::Async => {
                 self.advance();
                 if self.peek() == &Token::Function {
                     self.advance();
+                    let is_generator = self.peek() == &Token::Star;
+                    if is_generator {
+                        self.advance();
+                    }
                     let name = if let Token::Identifier(_) = self.peek().clone() {
                         match self.advance() {
                             Token::Identifier(n) => Some(n),
@@ -656,6 +713,7 @@ impl<'a> Parser<'a> {
                         return_type,
                         body,
                         is_async: true,
+                        is_generator,
                     })
                 } else {
                     self.expect(&Token::LeftParen)?;
@@ -779,6 +837,20 @@ impl<'a> Parser<'a> {
                                 value: Expression::SpreadElement { argument },
                                 shorthand: false,
                                 computed: false,
+                                computed_key: None,
+                            });
+                        } else if self.peek() == &Token::LeftBracket {
+                            self.advance();
+                            let key_expr = self.parse_expression()?;
+                            self.expect(&Token::RightBracket)?;
+                            self.expect(&Token::Colon)?;
+                            let value = self.parse_expression()?;
+                            properties.push(ObjectProperty {
+                                key: String::new(),
+                                value,
+                                shorthand: false,
+                                computed: true,
+                                computed_key: Some(key_expr),
                             });
                         } else {
                             let key = self.token_to_key_string()?;
@@ -790,6 +862,7 @@ impl<'a> Parser<'a> {
                                     value,
                                     shorthand: false,
                                     computed: false,
+                                    computed_key: None,
                                 });
                             } else {
                                 properties.push(ObjectProperty {
@@ -797,6 +870,7 @@ impl<'a> Parser<'a> {
                                     value: Expression::Identifier(key),
                                     shorthand: true,
                                     computed: false,
+                                    computed_key: None,
                                 });
                             }
                         }

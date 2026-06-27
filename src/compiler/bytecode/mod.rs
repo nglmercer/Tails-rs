@@ -119,6 +119,15 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Return);
                 Ok(())
             }
+            Statement::YieldStatement(value) => {
+                if let Some(expr) = value {
+                    self.generate_expression(expr)?;
+                } else {
+                    self.instructions.push(Instruction::LoadUndefined);
+                }
+                self.instructions.push(Instruction::Yield);
+                Ok(())
+            }
             Statement::IfStatement {
                 condition,
                 consequent,
@@ -195,6 +204,11 @@ impl CodeGenerator {
                 self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
 
+                // continue should jump to the update expression
+                let update_start = self.instructions.len() as u32;
+                self.continue_targets.pop();
+                self.continue_targets.push(update_start as usize);
+
                 if let Some(upd) = update {
                     let is_assignment = matches!(upd, Expression::Assignment { .. });
                     self.generate_expression(upd)?;
@@ -210,7 +224,6 @@ impl CodeGenerator {
                     let idx = self.break_targets.pop().unwrap();
                     self.patch_jump(idx, loop_end);
                 }
-                self.continue_targets.pop();
 
                 if let Some(j) = jump_to_end {
                     self.patch_jump(j, self.instructions.len());
@@ -236,36 +249,47 @@ impl CodeGenerator {
                 self.locals.push(var_name.clone());
                 let var_slot = (self.locals.len() - 1) as u16;
 
+                // Evaluate the object and get its keys
                 self.generate_expression(right)?;
-                let iter_slot = self.locals.len() as u16;
-                self.locals.push("__iter".to_string());
-                self.instructions.push(Instruction::StoreLocal(iter_slot));
+                self.instructions.push(Instruction::GetKeys);
+                let keys_slot = self.locals.len() as u16;
+                self.locals.push("__keys".to_string());
+                self.instructions.push(Instruction::StoreLocal(keys_slot));
 
+                // Initialize index
                 let idx_slot = self.locals.len() as u16;
                 self.locals.push("__idx".to_string());
                 let zero_idx = self.add_constant(Value::Float(0.0));
                 self.instructions.push(Instruction::LoadConst(zero_idx));
                 self.instructions.push(Instruction::StoreLocal(idx_slot));
 
+                // Get keys.length
+                let len_slot = self.locals.len() as u16;
+                self.locals.push("__len".to_string());
+                self.instructions.push(Instruction::LoadLocal(keys_slot));
+                let len_key = self.add_constant(Value::String("length".to_string()));
+                self.instructions.push(Instruction::LoadConst(len_key));
+                self.instructions.push(Instruction::GetProperty);
+                self.instructions.push(Instruction::StoreLocal(len_slot));
+
                 let loop_start = self.instructions.len() as u32;
 
-                self.instructions.push(Instruction::LoadLocal(iter_slot));
+                // Check if idx < len
                 self.instructions.push(Instruction::LoadLocal(idx_slot));
-                self.instructions.push(Instruction::GetProperty);
-                self.instructions.push(Instruction::TypeOf);
-                let undef_idx = self.add_constant(Value::String("undefined".to_string()));
-                self.instructions.push(Instruction::LoadConst(undef_idx));
-                self.instructions.push(Instruction::StrictEq);
+                self.instructions.push(Instruction::LoadLocal(len_slot));
+                self.instructions.push(Instruction::Less);
                 let jump_if_done = self.instructions.len();
-                self.instructions.push(Instruction::JumpIf(0));
+                self.instructions.push(Instruction::JumpIfNot(0));
 
-                self.instructions.push(Instruction::LoadLocal(iter_slot));
+                // Get keys[idx] and store in loop variable
+                self.instructions.push(Instruction::LoadLocal(keys_slot));
                 self.instructions.push(Instruction::LoadLocal(idx_slot));
                 self.instructions.push(Instruction::GetProperty);
                 self.instructions.push(Instruction::StoreLocal(var_slot));
 
                 self.generate_statement(body, false)?;
 
+                // Increment index
                 self.instructions.push(Instruction::LoadLocal(idx_slot));
                 let one_idx = self.add_constant(Value::Float(1.0));
                 self.instructions.push(Instruction::LoadConst(one_idx));
@@ -735,6 +759,7 @@ impl CodeGenerator {
                 is_async: _,
                 param_types: _,
                 return_type: _,
+                is_generator: _,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();

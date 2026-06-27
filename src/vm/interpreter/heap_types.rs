@@ -1,6 +1,7 @@
 use crate::compiler::CompiledModule;
 use crate::objects::js_promise::JsPromise;
 use crate::objects::Value;
+use crate::vm::interpreter::CallFrame;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -58,6 +59,16 @@ pub enum HeapValue {
     Function(JsFunction),
     Promise(JsPromise),
     Proxy(JsProxyData),
+    Generator(JsGenerator),
+}
+
+#[derive(Debug, Clone)]
+pub struct JsGenerator {
+    pub yield_value: Value,
+    pub resume_pc: usize,
+    pub saved_stack: Vec<Value>,
+    pub saved_call_stack: Vec<CallFrame>,
+    pub func_heap_idx: Option<usize>,
 }
 
 #[derive(Debug, Clone)]

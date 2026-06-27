@@ -64,6 +64,7 @@ impl TypeChecker {
             | BinaryOperator::BitXor
             | BinaryOperator::ShiftLeft
             | BinaryOperator::ShiftRight => Ok(Type::Number),
+            BinaryOperator::NullishCoalescing => Ok(Type::Any),
         }
     }
 

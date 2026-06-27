@@ -52,6 +52,7 @@ pub enum Token {
     Static,
     Get,
     Set,
+    Yield,
     Plus,
     Minus,
     Star,
@@ -98,6 +99,8 @@ pub enum Token {
     Comma,
     Dot,
     Question,
+    QuestionDot,
+    NullishCoalescing,
     Arrow,
     Ellipsis,
     Eof,
@@ -288,6 +291,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                     "enum" => tokens.push(Token::Enum),
                     "async" => tokens.push(Token::Async),
                     "await" => tokens.push(Token::Await),
+                    "yield" => tokens.push(Token::Yield),
                     "try" => tokens.push(Token::Try),
                     "catch" => tokens.push(Token::Catch),
                     "finally" => tokens.push(Token::Finally),
@@ -441,7 +445,15 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
             '?' => {
                 chars.next();
-                tokens.push(Token::Question);
+                if let Some(&(_, '.')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::QuestionDot);
+                } else if let Some(&(_, '?')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::NullishCoalescing);
+                } else {
+                    tokens.push(Token::Question);
+                }
             }
             '=' => {
                 chars.next();

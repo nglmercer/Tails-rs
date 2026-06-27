@@ -483,6 +483,10 @@ pub fn value_to_tails_value(value: Value) -> TailsValue {
             tag: TailsValueType::Proxy as u32,
             data: 0,
         },
+        Value::Generator(_) => TailsValue {
+            tag: TailsValueType::Function as u32,
+            data: 0,
+        },
     }
 }
 
