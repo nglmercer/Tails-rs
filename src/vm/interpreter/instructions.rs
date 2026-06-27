@@ -201,9 +201,11 @@ impl Interpreter {
                     Value::String(_) => "string",
                     Value::BigInt(_) => "bigint",
                     Value::Function(_) | Value::NativeFunction(_) => "function",
-                    Value::Object(_) | Value::Array(_) | Value::Promise(_) | Value::Proxy(_) | Value::Generator(_) => {
-                        "object"
-                    }
+                    Value::Object(_)
+                    | Value::Array(_)
+                    | Value::Promise(_)
+                    | Value::Proxy(_)
+                    | Value::Generator(_) => "object",
                 };
                 self.stack.push(Value::String(type_str.to_string()));
             }
@@ -608,11 +610,7 @@ impl Interpreter {
                             vec![]
                         }
                     }
-                    Value::String(s) => {
-                        (0..s.len())
-                            .map(|i| Value::Float(i as f64))
-                            .collect()
-                    }
+                    Value::String(s) => (0..s.len()).map(|i| Value::Float(i as f64)).collect(),
                     _ => vec![],
                 };
                 let heap_idx = self

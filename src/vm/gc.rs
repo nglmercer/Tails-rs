@@ -180,38 +180,38 @@ impl GarbageCollector {
                                 }
                             }
                         }
-                         for val in f.properties.values() {
-                             if let Some(child_idx) = heap_value_to_index(val) {
-                                 if !self.is_marked(child_idx, heap.len()) {
-                                     self.mark(child_idx, heap.len());
-                                     worklist.push(child_idx);
-                                 }
-                             }
-                         }
-                     }
-                     HeapValue::Generator(g) => {
-                         for val in &g.saved_stack {
-                             if let Some(child_idx) = heap_value_to_index(val) {
-                                 if !self.is_marked(child_idx, heap.len()) {
-                                     self.mark(child_idx, heap.len());
-                                     worklist.push(child_idx);
-                                 }
-                             }
-                         }
-                         if let Some(child_idx) = heap_value_to_index(&g.yield_value) {
-                             if !self.is_marked(child_idx, heap.len()) {
-                                 self.mark(child_idx, heap.len());
-                                 worklist.push(child_idx);
-                             }
-                         }
-                         if let Some(func_idx) = g.func_heap_idx {
-                             if !self.is_marked(func_idx, heap.len()) {
-                                 self.mark(func_idx, heap.len());
-                                 worklist.push(func_idx);
-                             }
-                         }
-                     }
-                     HeapValue::Promise(p) => match &p.state {
+                        for val in f.properties.values() {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                    }
+                    HeapValue::Generator(g) => {
+                        for val in &g.saved_stack {
+                            if let Some(child_idx) = heap_value_to_index(val) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
+                        if let Some(child_idx) = heap_value_to_index(&g.yield_value) {
+                            if !self.is_marked(child_idx, heap.len()) {
+                                self.mark(child_idx, heap.len());
+                                worklist.push(child_idx);
+                            }
+                        }
+                        if let Some(func_idx) = g.func_heap_idx {
+                            if !self.is_marked(func_idx, heap.len()) {
+                                self.mark(func_idx, heap.len());
+                                worklist.push(func_idx);
+                            }
+                        }
+                    }
+                    HeapValue::Promise(p) => match &p.state {
                         crate::objects::js_promise::PromiseState::Fulfilled(v)
                         | crate::objects::js_promise::PromiseState::Rejected(v) => {
                             if let Some(child_idx) = heap_value_to_index(v) {

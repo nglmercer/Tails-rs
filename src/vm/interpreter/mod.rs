@@ -187,8 +187,7 @@ impl Interpreter {
                     let yield_value = self.stack.pop().unwrap_or(Value::Undefined);
                     if let Some(frame) = self.call_stack.last() {
                         let saved_pc = pc + 1;
-                        let saved_stack: Vec<Value> =
-                            self.stack[frame.base_pointer..].to_vec();
+                        let saved_stack: Vec<Value> = self.stack[frame.base_pointer..].to_vec();
                         let saved_call_stack: Vec<CallFrame> =
                             self.call_stack[..self.call_stack.len() - 1].to_vec();
                         let generator_obj = self.create_generator_object(
