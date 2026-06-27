@@ -9,6 +9,7 @@ impl TypeChecker {
             Expression::BooleanLiteral(b) => Ok(Type::BooleanLiteral(*b)),
             Expression::NullLiteral => Ok(Type::Null),
             Expression::UndefinedLiteral => Ok(Type::Undefined),
+            Expression::NaNLiteral => Ok(Type::Number),
             Expression::Identifier(name) => {
                 if let Some(ty) = self.narrowed_types.get(name) {
                     return Ok(ty.clone());

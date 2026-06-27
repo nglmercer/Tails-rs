@@ -566,6 +566,7 @@ impl<'a> Parser<'a> {
                     "false" => Ok(Expression::BooleanLiteral(false)),
                     "null" => Ok(Expression::NullLiteral),
                     "undefined" => Ok(Expression::UndefinedLiteral),
+                    "NaN" => Ok(Expression::NaNLiteral),
                     _ => {
                         if self.peek() == &Token::Arrow {
                             self.advance();

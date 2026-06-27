@@ -241,12 +241,16 @@ p.fullName = "Jane Smith";
 console.log("setter:", p.fullName);
 
 // Class expressions
-var Anon = class {
+var AnonClass = class {
+    constructor() {
+        this.msg = "anonymous";
+    }
     greet() {
-        return "anonymous";
+        return this.msg;
     }
 };
-console.log("class expr:", new Anon().greet());
+let anonInst = new AnonClass();
+console.log("class expr:", anonInst.greet());
 
 // Multiple instances
 class Counter {
@@ -299,8 +303,8 @@ console.log("finally:", finallyResult);
 
 // Promise constructor
 var ctorResult = 0;
-new Promise(function(resolve) { resolve(42); })
-    .then(function(v) { ctorResult = v; });
+var ctorPromise = new Promise(function(resolve) { resolve(42); });
+ctorPromise.then(function(v) { ctorResult = v; });
 console.log("constructor:", ctorResult);
 
 // --- Timers ---

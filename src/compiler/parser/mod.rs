@@ -261,6 +261,7 @@ pub enum Expression {
     BooleanLiteral(bool),
     NullLiteral,
     UndefinedLiteral,
+    NaNLiteral,
     Identifier(String),
     BinaryOp {
         op: BinaryOperator,

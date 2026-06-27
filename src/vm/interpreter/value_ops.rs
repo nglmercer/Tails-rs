@@ -142,11 +142,13 @@ impl Interpreter {
         match (left, right) {
             (Value::Undefined, Value::Undefined) => true,
             (Value::Null, Value::Null) => true,
+            (Value::Null, Value::Undefined) => true,
+            (Value::Undefined, Value::Null) => true,
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Integer(a), Value::Float(b)) => *a as f64 == *b,
-            (Value::Float(a), Value::Integer(b)) => *a == *b as f64,
+            (Value::Float(a), Value::Float(b)) => a == b && !a.is_nan() && !b.is_nan(),
+            (Value::Integer(a), Value::Float(b)) => *a as f64 == *b && !b.is_nan(),
+            (Value::Float(a), Value::Integer(b)) => *a == *b as f64 && !a.is_nan(),
             (Value::String(a), Value::String(b)) => a == b,
             _ => false,
         }

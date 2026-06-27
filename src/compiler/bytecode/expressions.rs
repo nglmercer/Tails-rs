@@ -30,6 +30,11 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::LoadUndefined);
                 Ok(())
             }
+            Expression::NaNLiteral => {
+                let idx = self.add_constant(Value::Float(f64::NAN));
+                self.instructions.push(Instruction::LoadConst(idx));
+                Ok(())
+            }
             Expression::Identifier(name) => {
                 if name == "this" {
                     self.instructions.push(Instruction::LoadThis);

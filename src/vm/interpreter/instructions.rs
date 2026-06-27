@@ -243,7 +243,11 @@ impl Interpreter {
                     .stack
                     .pop()
                     .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                self.stack.push(Value::Boolean(left == right));
+                let eq = match (&left, &right) {
+                    (Value::Float(a), Value::Float(b)) => a == b && !a.is_nan() && !b.is_nan(),
+                    _ => left == right,
+                };
+                self.stack.push(Value::Boolean(eq));
             }
             Instruction::NotEqual => {
                 let right = self

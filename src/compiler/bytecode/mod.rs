@@ -26,6 +26,7 @@ pub(crate) struct CodeGenerator {
     local_start_idx: usize,
     break_targets: Vec<usize>,
     continue_targets: Vec<usize>,
+    continue_patches: Vec<usize>,
     class_infos: Vec<ClassInfo>,
 }
 
@@ -41,6 +42,7 @@ impl CodeGenerator {
             local_start_idx: 0,
             break_targets: Vec::new(),
             continue_targets: Vec::new(),
+            continue_patches: Vec::new(),
             class_infos: Vec::new(),
         }
     }
@@ -150,12 +152,12 @@ impl CodeGenerator {
             }
             Statement::WhileStatement { condition, body } => {
                 let loop_start = self.instructions.len() as u32;
+                let break_start = self.break_targets.len();
+                self.break_targets.push(usize::MAX);
                 self.generate_expression(condition)?;
                 let jump_if_not = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfNot(0));
                 self.continue_targets.push(loop_start as usize);
-                let break_start = self.break_targets.len();
-                self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
                 self.instructions.push(Instruction::Jump(loop_start));
                 let loop_end = self.instructions.len();
@@ -188,26 +190,26 @@ impl CodeGenerator {
                     }
                 }
 
-                let loop_start = self.instructions.len() as u32;
+                // Jump to condition check first
+                let jump_to_check = self.instructions.len();
+                self.instructions.push(Instruction::Jump(0));
 
-                let jump_to_end = if let Some(cond) = condition {
-                    self.generate_expression(cond)?;
-                    let j = self.instructions.len();
-                    self.instructions.push(Instruction::JumpIfNot(0));
-                    Some(j)
-                } else {
-                    None
-                };
+                // Body start (continue jumps here via patching)
+                let body_start = self.instructions.len() as u32;
 
-                self.continue_targets.push(loop_start as usize);
+                // Push placeholder for continue target
+                self.continue_targets.push(usize::MAX);
+                let cont_start = self.continue_patches.len();
                 let break_start = self.break_targets.len();
                 self.break_targets.push(usize::MAX);
                 self.generate_statement(body, false)?;
 
-                // continue should jump to the update expression
-                let update_start = self.instructions.len() as u32;
+                // Update expression (patch continues to here)
+                while self.continue_patches.len() > cont_start {
+                    let idx = self.continue_patches.pop().unwrap();
+                    self.patch_jump(idx, self.instructions.len());
+                }
                 self.continue_targets.pop();
-                self.continue_targets.push(update_start as usize);
 
                 if let Some(upd) = update {
                     let is_assignment = matches!(upd, Expression::Assignment { .. });
@@ -217,16 +219,28 @@ impl CodeGenerator {
                     }
                 }
 
-                self.instructions.push(Instruction::Jump(loop_start));
-
-                let loop_end = self.instructions.len();
-                while self.break_targets.len() > break_start {
-                    let idx = self.break_targets.pop().unwrap();
-                    self.patch_jump(idx, loop_end);
-                }
-
-                if let Some(j) = jump_to_end {
-                    self.patch_jump(j, self.instructions.len());
+                // Condition check (patched from jump_to_check)
+                self.patch_jump(jump_to_check, self.instructions.len());
+                if let Some(cond) = condition {
+                    self.generate_expression(cond)?;
+                    let j = self.instructions.len();
+                    self.instructions.push(Instruction::JumpIfNot(0));
+                    // If condition true, jump back to body
+                    self.instructions.push(Instruction::Jump(body_start));
+                    let loop_end = self.instructions.len();
+                    self.patch_jump(j, loop_end);
+                    while self.break_targets.len() > break_start {
+                        let idx = self.break_targets.pop().unwrap();
+                        self.patch_jump(idx, loop_end);
+                    }
+                } else {
+                    // No condition - infinite loop
+                    self.instructions.push(Instruction::Jump(body_start));
+                    let loop_end = self.instructions.len();
+                    while self.break_targets.len() > break_start {
+                        let idx = self.break_targets.pop().unwrap();
+                        self.patch_jump(idx, loop_end);
+                    }
                 }
 
                 let locals_added = self.locals.len() - prev_locals_count;
@@ -430,6 +444,7 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::Jump(0));
 
                 let break_start = self.break_targets.len();
+                self.break_targets.push(usize::MAX);
                 for case in cases {
                     if case.test.is_some() {
                         if !body_jumps.is_empty() {
@@ -469,7 +484,13 @@ impl CodeGenerator {
             }
             Statement::ContinueStatement => {
                 if let Some(target) = self.continue_targets.last().copied() {
-                    self.instructions.push(Instruction::Jump(target as u32));
+                    if target == usize::MAX {
+                        // placeholder - push Jump(0) and record for patching
+                        self.instructions.push(Instruction::Jump(0));
+                        self.continue_patches.push(self.instructions.len() - 1);
+                    } else {
+                        self.instructions.push(Instruction::Jump(target as u32));
+                    }
                 } else {
                     self.instructions.push(Instruction::LoadUndefined);
                     self.instructions.push(Instruction::Return);
