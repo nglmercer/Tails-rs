@@ -36,29 +36,29 @@ impl JsArray {
             length: 0,
         }
     }
-    
+
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             elements: Vec::with_capacity(capacity),
             length: 0,
         }
     }
-    
+
     pub fn push(&mut self, value: Value) {
         self.elements.push(value);
         self.length = self.elements.len();
     }
-    
+
     pub fn pop(&mut self) -> Option<Value> {
         let value = self.elements.pop();
         self.length = self.elements.len();
         value
     }
-    
+
     pub fn get(&self, index: usize) -> Option<&Value> {
         self.elements.get(index)
     }
-    
+
     pub fn set(&mut self, index: usize, value: Value) {
         if index >= self.elements.len() {
             self.elements.resize_with(index + 1, || Value::Undefined);
@@ -66,31 +66,31 @@ impl JsArray {
         self.elements[index] = value;
         self.length = self.elements.len();
     }
-    
+
     pub fn length(&self) -> usize {
         self.length
     }
-    
+
     pub fn slice(&self, start: usize, end: usize) -> JsArray {
         let end = end.min(self.elements.len());
         let start = start.min(end);
-        
+
         JsArray {
             elements: self.elements[start..end].to_vec(),
             length: end - start,
         }
     }
-    
+
     pub fn splice(&mut self, start: usize, delete_count: usize, items: Vec<Value>) -> Vec<Value> {
         let start = start.min(self.elements.len());
         let delete_count = delete_count.min(self.elements.len() - start);
-        
+
         let removed: Vec<Value> = self.elements.drain(start..start + delete_count).collect();
-        
+
         for (i, item) in items.into_iter().enumerate() {
             self.elements.insert(start + i, item);
         }
-        
+
         self.length = self.elements.len();
         removed
     }
@@ -100,7 +100,7 @@ impl TypedArray {
     pub fn new(kind: TypedArrayType, length: usize) -> Self {
         let element_size = Self::element_size(&kind);
         let byte_length = length * element_size;
-        
+
         Self {
             kind,
             buffer: vec![0; byte_length],
@@ -108,10 +108,10 @@ impl TypedArray {
             byte_offset: 0,
         }
     }
-    
+
     pub fn from_buffer(kind: TypedArrayType, buffer: Vec<u8>, byte_offset: usize) -> Self {
         let byte_length = buffer.len();
-        
+
         Self {
             kind,
             buffer,
@@ -119,43 +119,45 @@ impl TypedArray {
             byte_offset,
         }
     }
-    
+
     pub fn get<T: Copy>(&self, index: usize) -> Option<T> {
         let element_size = Self::element_size(&self.kind);
         let byte_index = index * element_size;
-        
+
         if byte_index + element_size > self.byte_length {
             return None;
         }
-        
+
         unsafe {
             let ptr = self.buffer.as_ptr().add(byte_index) as *const T;
             Some(ptr.read_unaligned())
         }
     }
-    
+
     pub fn set_value<T: Copy>(&mut self, index: usize, value: T) {
         let element_size = Self::element_size(&self.kind);
         let byte_index = index * element_size;
-        
+
         if byte_index + element_size > self.byte_length {
             self.buffer.resize(byte_index + element_size, 0);
             self.byte_length = self.buffer.len();
         }
-        
+
         unsafe {
             let ptr = self.buffer.as_mut_ptr().add(byte_index) as *mut T;
             ptr.write_unaligned(value);
         }
     }
-    
+
     pub fn fill(&mut self, value: i32) {
         let element_size = Self::element_size(&self.kind);
         let count = self.byte_length / element_size;
-        
+
         for i in 0..count {
             match &self.kind {
-                TypedArrayType::Int8Array | TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray => {
+                TypedArrayType::Int8Array
+                | TypedArrayType::Uint8Array
+                | TypedArrayType::Uint8ClampedArray => {
                     self.set_value(i, value as u8);
                 }
                 TypedArrayType::Int16Array | TypedArrayType::Uint16Array => {
@@ -174,13 +176,19 @@ impl TypedArray {
             }
         }
     }
-    
-    fn element_size(kind: &TypedArrayType) -> usize {
+
+    pub fn element_size(kind: &TypedArrayType) -> usize {
         match kind {
-            TypedArrayType::Int8Array | TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray => 1,
+            TypedArrayType::Int8Array
+            | TypedArrayType::Uint8Array
+            | TypedArrayType::Uint8ClampedArray => 1,
             TypedArrayType::Int16Array | TypedArrayType::Uint16Array => 2,
-            TypedArrayType::Int32Array | TypedArrayType::Uint32Array | TypedArrayType::Float32Array => 4,
-            TypedArrayType::Float64Array | TypedArrayType::BigInt64Array | TypedArrayType::BigUint64Array => 8,
+            TypedArrayType::Int32Array
+            | TypedArrayType::Uint32Array
+            | TypedArrayType::Float32Array => 4,
+            TypedArrayType::Float64Array
+            | TypedArrayType::BigInt64Array
+            | TypedArrayType::BigUint64Array => 8,
         }
     }
 }

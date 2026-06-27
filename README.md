@@ -99,6 +99,18 @@ cargo run --bin tails -- examples/all_features.ts
 - Inspection: `some()`, `every()`, `indexOf()`, `includes()`
 - Transformation: `join()`, `reverse()`, `sort()`, `concat()`, `slice()`, `flat()`
 
+**Typed Arrays**
+- Constructors: `Int8Array`, `Uint8Array`, `Uint8ClampedArray`, `Int16Array`, `Uint16Array`, `Int32Array`, `Uint32Array`, `Float32Array`, `Float64Array`, `BigInt64Array`, `BigUint64Array`
+- Static methods: `from()`, `of()`
+- Instance methods: `get()`, `set()`, `subarray()`, `slice()`
+- Properties: `length`, `byteLength`, `byteOffset`, `BYTES_PER_ELEMENT`
+
+**ES6+ Collections**
+- **Map**: `new Map()`, `get()`, `set()`, `has()`, `delete()`, `clear()`, `forEach()`, `keys()`, `values()`, `entries()`, `size`
+- **Set**: `new Set()`, `add()`, `has()`, `delete()`, `clear()`, `forEach()`, `keys()`, `values()`, `entries()`, `size`
+- **WeakMap**: `new WeakMap()`, `get()`, `set()`, `has()`, `delete()`
+- **WeakSet**: `new WeakSet()`, `add()`, `has()`, `delete()`
+
 ### Strings
 - `charAt()`, `charCodeAt()`
 - `slice()`, `substring()`
@@ -142,8 +154,54 @@ cargo run --bin tails -- examples/all_features.ts
 ### Other
 - **Proxy** objects with handlers
 - **ES Modules**: `import` / `export` (named, default, namespace)
-- **Reflect** API
+- **Reflect** API (static methods stubbed—needs implementation)
 - `in` operator, `instanceof` operator
+- **Optional chaining** (`?.`) and **nullish coalescing** (`??`)
+- **Type annotations** (TypeScript)
+- **Typed Arrays**: `Int8Array`, `Uint8Array`, `Float32Array`, etc. with full API
+- **ES6+ Collections**: `Map`, `Set`, `WeakMap`, `WeakSet` with full API
+
+## Roadmap
+
+> Based on current implementation status. Contributions welcome!
+
+### 🚧 In Progress / Next Up
+- **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, etc.
+- **Generators** — Runtime support for `function*`, `yield`, and `.next()`
+- **for...of loop** — Iterator protocol execution
+
+### 📅 Near-Term Goals
+- **Symbol** type and `Symbol.iterator`
+- **Function prototypes**
+  - `Function.prototype.bind()`, `.call()`, `.apply()`
+- **Array enhancements**
+  - `copyWithin`, `fill`, `findLast`, `findLastIndex`, `flatMap`, `lastIndexOf`
+  - Static methods: `Array.isArray()`, `Array.from()`, `Array.of()`
+- **Object methods**
+  - `Object.is()`, `Object.seal()`, `Object.isExtensible()`, `Object.preventExtensions()` (full API)
+- **Promise enhancements**
+  - `Promise.any()`, `Promise.allSettled()`, `Promise.race()` (complete)
+
+### 🔮 Future / Research
+- **Iteration & Generators**
+  - Async generators and `for await...of`
+  - Iterator helpers (`map`, `filter`, `take`, `drop` on iterables)
+- **Built-in Objects**
+  - `Date` and `RegExp` (full implementation)
+  - `BigInt` primitive type
+  - `Error` subclasses (`TypeError`, `ReferenceError`, `SyntaxError`, `RangeError`)
+- **Encoding & Intl**
+  - `atob()` / `btoa()`
+  - Basic Intl APIs (`Intl.DateTimeFormat`, `Intl.NumberFormat`)
+- **Web APIs & FFI**
+  - `fetch` and `Response`/`Request` types
+  - Enhanced FFI for Rust interop
+- **Performance**
+  - JIT compilation tier
+  - Optimized GC (generational, concurrent)
+- **Node.js Compatibility**
+  - `Buffer` and `Uint8Array` parity for Node-style APIs
+  - `process` global and core modules
 
 ## Architecture
 

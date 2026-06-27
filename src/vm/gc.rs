@@ -237,6 +237,11 @@ impl GarbageCollector {
                             }
                         }
                     }
+                    HeapValue::TypedArray(_) => {}
+                    HeapValue::Map(_) => {}
+                    HeapValue::Set(_) => {}
+                    HeapValue::WeakMap(_) => {}
+                    HeapValue::WeakSet(_) => {}
                 }
             }
         }
@@ -253,6 +258,11 @@ impl GarbageCollector {
             | Value::Function(idx)
             | Value::Promise(idx)
             | Value::Proxy(idx)
+            | Value::TypedArray(idx)
+            | Value::Map(idx)
+            | Value::Set(idx)
+            | Value::WeakMap(idx)
+            | Value::WeakSet(idx)
                 if *idx < self.marked.len() =>
             {
                 self.marked[*idx] = true;

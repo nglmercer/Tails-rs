@@ -209,6 +209,11 @@ impl Interpreter {
             Value::Promise(_) => "[Promise]".to_string(),
             Value::Proxy(_) => "[Proxy]".to_string(),
             Value::Generator(_) => "[Generator]".to_string(),
+            Value::TypedArray(_) => "[TypedArray]".to_string(),
+            Value::Map(_) => "[Map]".to_string(),
+            Value::Set(_) => "[Set]".to_string(),
+            Value::WeakMap(_) => "[WeakMap]".to_string(),
+            Value::WeakSet(_) => "[WeakSet]".to_string(),
         }
     }
 
@@ -228,6 +233,11 @@ impl Interpreter {
             Value::Promise(_) => "[Promise]".to_string(),
             Value::Proxy(_) => "[Proxy]".to_string(),
             Value::Generator(_) => "[Generator]".to_string(),
+            Value::TypedArray(_) => "[TypedArray]".to_string(),
+            Value::Map(_) => "[Map]".to_string(),
+            Value::Set(_) => "[Set]".to_string(),
+            Value::WeakMap(_) => "[WeakMap]".to_string(),
+            Value::WeakSet(_) => "[WeakSet]".to_string(),
         }
     }
 }

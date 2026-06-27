@@ -73,7 +73,12 @@ impl Interpreter {
                     | Value::Array(_)
                     | Value::Promise(_)
                     | Value::Proxy(_)
-                    | Value::Generator(_) => "object",
+                    | Value::Generator(_)
+                    | Value::TypedArray(_)
+                    | Value::Map(_)
+                    | Value::Set(_)
+                    | Value::WeakMap(_)
+                    | Value::WeakSet(_) => "object",
                 };
                 self.stack.push(Value::String(type_str.to_string()));
             }
@@ -263,7 +268,12 @@ impl Interpreter {
                     | Value::Array(_)
                     | Value::Promise(_)
                     | Value::Proxy(_)
-                    | Value::Generator(_) => "object",
+                    | Value::Generator(_)
+                    | Value::TypedArray(_)
+                    | Value::Map(_)
+                    | Value::Set(_)
+                    | Value::WeakMap(_)
+                    | Value::WeakSet(_) => "object",
                 };
                 self.stack.push(Value::String(type_str.to_string()));
             }

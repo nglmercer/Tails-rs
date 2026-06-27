@@ -1,4 +1,5 @@
 mod array_fns;
+mod collection_fns;
 mod console;
 mod error_fns;
 mod global_fns;
@@ -10,6 +11,7 @@ mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;
 mod string_fns;
+mod typed_array_fns;
 
 use crate::errors::Result;
 use crate::objects::Value;
@@ -120,4 +122,49 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     object_fns::native_object_define_property,
     object_fns::native_object_get_own_property_descriptor,
     object_fns::native_object_freeze,
+    // TypedArray
+    typed_array_fns::native_typed_array_constructor,
+    typed_array_fns::native_typed_array_from,
+    typed_array_fns::native_typed_array_of,
+    typed_array_fns::native_typed_array_get,
+    typed_array_fns::native_typed_array_set,
+    typed_array_fns::native_typed_array_length,
+    typed_array_fns::native_typed_array_byte_length,
+    typed_array_fns::native_typed_array_byte_offset,
+    typed_array_fns::native_typed_array_subarray,
+    typed_array_fns::native_typed_array_slice,
+    // Map
+    collection_fns::native_map_constructor,
+    collection_fns::native_map_get,
+    collection_fns::native_map_set,
+    collection_fns::native_map_has,
+    collection_fns::native_map_delete,
+    collection_fns::native_map_clear,
+    collection_fns::native_map_size,
+    collection_fns::native_map_for_each,
+    collection_fns::native_map_keys,
+    collection_fns::native_map_values,
+    collection_fns::native_map_entries,
+    // Set
+    collection_fns::native_set_constructor,
+    collection_fns::native_set_add,
+    collection_fns::native_set_has,
+    collection_fns::native_set_delete,
+    collection_fns::native_set_clear,
+    collection_fns::native_set_size,
+    collection_fns::native_set_for_each,
+    collection_fns::native_set_values,
+    collection_fns::native_set_keys,
+    collection_fns::native_set_entries,
+    // WeakMap
+    collection_fns::native_weakmap_constructor,
+    collection_fns::native_weakmap_get,
+    collection_fns::native_weakmap_set,
+    collection_fns::native_weakmap_has,
+    collection_fns::native_weakmap_delete,
+    // WeakSet
+    collection_fns::native_weakset_constructor,
+    collection_fns::native_weakset_add,
+    collection_fns::native_weakset_has,
+    collection_fns::native_weakset_delete,
 ];

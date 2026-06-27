@@ -1,4 +1,6 @@
 use crate::compiler::CompiledModule;
+use crate::objects::js_array::TypedArray;
+use crate::objects::js_collections::{JsMap, JsSet, JsWeakMap, JsWeakSet};
 use crate::objects::js_promise::JsPromise;
 use crate::objects::Value;
 use crate::vm::interpreter::CallFrame;
@@ -60,6 +62,11 @@ pub enum HeapValue {
     Promise(JsPromise),
     Proxy(JsProxyData),
     Generator(JsGenerator),
+    TypedArray(TypedArray),
+    Map(JsMap),
+    Set(JsSet),
+    WeakMap(JsWeakMap),
+    WeakSet(JsWeakSet),
 }
 
 #[derive(Debug, Clone)]

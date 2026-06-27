@@ -487,6 +487,26 @@ pub fn value_to_tails_value(value: Value) -> TailsValue {
             tag: TailsValueType::Function as u32,
             data: 0,
         },
+        Value::TypedArray(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
+        Value::Map(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
+        Value::Set(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
+        Value::WeakMap(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
+        Value::WeakSet(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
     }
 }
 

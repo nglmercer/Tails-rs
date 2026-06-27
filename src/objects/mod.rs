@@ -1,3 +1,5 @@
+pub mod js_array;
+pub mod js_collections;
 pub mod js_promise;
 pub mod js_proxy;
 use std::fmt;
@@ -18,6 +20,11 @@ pub enum Value {
     Promise(usize),
     Proxy(usize),
     Generator(usize),
+    TypedArray(usize),
+    Map(usize),
+    Set(usize),
+    WeakMap(usize),
+    WeakSet(usize),
 }
 
 impl PartialEq for Value {
@@ -39,6 +46,11 @@ impl PartialEq for Value {
             (Value::Promise(a), Value::Promise(b)) => a == b,
             (Value::Proxy(a), Value::Proxy(b)) => a == b,
             (Value::Generator(a), Value::Generator(b)) => a == b,
+            (Value::TypedArray(a), Value::TypedArray(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::WeakMap(a), Value::WeakMap(b)) => a == b,
+            (Value::WeakSet(a), Value::WeakSet(b)) => a == b,
             _ => false,
         }
     }
@@ -61,6 +73,11 @@ impl fmt::Display for Value {
             Value::Promise(_) => write!(f, "[Promise]"),
             Value::Proxy(_) => write!(f, "[Proxy]"),
             Value::Generator(_) => write!(f, "[Generator]"),
+            Value::TypedArray(_) => write!(f, "[TypedArray]"),
+            Value::Map(_) => write!(f, "[Map]"),
+            Value::Set(_) => write!(f, "[Set]"),
+            Value::WeakMap(_) => write!(f, "[WeakMap]"),
+            Value::WeakSet(_) => write!(f, "[WeakSet]"),
         }
     }
 }

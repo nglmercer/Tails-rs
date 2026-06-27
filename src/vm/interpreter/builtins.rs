@@ -1,4 +1,5 @@
 use super::{HeapValue, Interpreter, JsObject};
+use crate::objects::js_array::{TypedArray, TypedArrayType};
 use crate::objects::Value;
 use std::collections::HashMap;
 
@@ -280,5 +281,192 @@ impl Interpreter {
         );
         self.globals
             .insert("RangeError".into(), Value::NativeFunction(76));
+
+        // TypedArray constructors
+        let typed_array_names = [
+            "Int8Array",
+            "Uint8Array",
+            "Uint8ClampedArray",
+            "Int16Array",
+            "Uint16Array",
+            "Int32Array",
+            "Uint32Array",
+            "Float32Array",
+            "Float64Array",
+            "BigInt64Array",
+            "BigUint64Array",
+        ];
+
+        for name in typed_array_names.iter() {
+            // Create prototype
+            let mut proto_props = HashMap::new();
+            proto_props.insert(
+                "BYTES_PER_ELEMENT".into(),
+                Value::Integer(TypedArray::element_size(&parse_typed_array_type(name)) as i64),
+            );
+            proto_props.insert("length".into(), Value::NativeFunction(0)); // placeholder
+            proto_props.insert("get".into(), Value::NativeFunction(0));
+            proto_props.insert("set".into(), Value::NativeFunction(0));
+            proto_props.insert("subarray".into(), Value::NativeFunction(0));
+            proto_props.insert("slice".into(), Value::NativeFunction(0));
+            proto_props.insert("set".into(), Value::NativeFunction(0));
+            let proto_idx = self.gc.allocate(
+                &mut self.heap,
+                HeapValue::Object(JsObject {
+                    properties: proto_props,
+                    prototype: None,
+                }),
+            );
+
+            // Create constructor
+            let mut ctor_props = HashMap::new();
+            ctor_props.insert("prototype".into(), Value::Object(proto_idx));
+            ctor_props.insert(
+                "BYTES_PER_ELEMENT".into(),
+                Value::Integer(TypedArray::element_size(&parse_typed_array_type(name)) as i64),
+            );
+            ctor_props.insert("from".into(), Value::NativeFunction(0));
+            ctor_props.insert("of".into(), Value::NativeFunction(0));
+            let ctor_obj_idx = self.gc.allocate(
+                &mut self.heap,
+                HeapValue::Object(JsObject {
+                    properties: ctor_props,
+                    prototype: None,
+                }),
+            );
+            self.globals
+                .insert((*name).into(), Value::Object(ctor_obj_idx));
+        }
+
+        // Map
+        let mut map_proto_props = HashMap::new();
+        map_proto_props.insert("get".into(), Value::NativeFunction(0));
+        map_proto_props.insert("set".into(), Value::NativeFunction(0));
+        map_proto_props.insert("has".into(), Value::NativeFunction(0));
+        map_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        map_proto_props.insert("clear".into(), Value::NativeFunction(0));
+        map_proto_props.insert("forEach".into(), Value::NativeFunction(0));
+        map_proto_props.insert("keys".into(), Value::NativeFunction(0));
+        map_proto_props.insert("values".into(), Value::NativeFunction(0));
+        map_proto_props.insert("entries".into(), Value::NativeFunction(0));
+        map_proto_props.insert("size".into(), Value::NativeFunction(0));
+        let map_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: map_proto_props,
+                prototype: None,
+            }),
+        );
+
+        let mut map_ctor_props = HashMap::new();
+        map_ctor_props.insert("prototype".into(), Value::Object(map_proto_idx));
+        let map_ctor_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: map_ctor_props,
+                prototype: None,
+            }),
+        );
+        self.globals
+            .insert("Map".into(), Value::Object(map_ctor_idx));
+
+        // Set
+        let mut set_proto_props = HashMap::new();
+        set_proto_props.insert("add".into(), Value::NativeFunction(0));
+        set_proto_props.insert("has".into(), Value::NativeFunction(0));
+        set_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        set_proto_props.insert("clear".into(), Value::NativeFunction(0));
+        set_proto_props.insert("forEach".into(), Value::NativeFunction(0));
+        set_proto_props.insert("values".into(), Value::NativeFunction(0));
+        set_proto_props.insert("keys".into(), Value::NativeFunction(0));
+        set_proto_props.insert("entries".into(), Value::NativeFunction(0));
+        set_proto_props.insert("size".into(), Value::NativeFunction(0));
+        let set_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: set_proto_props,
+                prototype: None,
+            }),
+        );
+
+        let mut set_ctor_props = HashMap::new();
+        set_ctor_props.insert("prototype".into(), Value::Object(set_proto_idx));
+        let set_ctor_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: set_ctor_props,
+                prototype: None,
+            }),
+        );
+        self.globals
+            .insert("Set".into(), Value::Object(set_ctor_idx));
+
+        // WeakMap
+        let mut weakmap_proto_props = HashMap::new();
+        weakmap_proto_props.insert("get".into(), Value::NativeFunction(0));
+        weakmap_proto_props.insert("set".into(), Value::NativeFunction(0));
+        weakmap_proto_props.insert("has".into(), Value::NativeFunction(0));
+        weakmap_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        let weakmap_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: weakmap_proto_props,
+                prototype: None,
+            }),
+        );
+
+        let mut weakmap_ctor_props = HashMap::new();
+        weakmap_ctor_props.insert("prototype".into(), Value::Object(weakmap_proto_idx));
+        let weakmap_ctor_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: weakmap_ctor_props,
+                prototype: None,
+            }),
+        );
+        self.globals
+            .insert("WeakMap".into(), Value::Object(weakmap_ctor_idx));
+
+        // WeakSet
+        let mut weakset_proto_props = HashMap::new();
+        weakset_proto_props.insert("add".into(), Value::NativeFunction(0));
+        weakset_proto_props.insert("has".into(), Value::NativeFunction(0));
+        weakset_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        let weakset_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: weakset_proto_props,
+                prototype: None,
+            }),
+        );
+
+        let mut weakset_ctor_props = HashMap::new();
+        weakset_ctor_props.insert("prototype".into(), Value::Object(weakset_proto_idx));
+        let weakset_ctor_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: weakset_ctor_props,
+                prototype: None,
+            }),
+        );
+        self.globals
+            .insert("WeakSet".into(), Value::Object(weakset_ctor_idx));
+    }
+}
+
+fn parse_typed_array_type(name: &str) -> TypedArrayType {
+    match name {
+        "Int8Array" => TypedArrayType::Int8Array,
+        "Uint8Array" => TypedArrayType::Uint8Array,
+        "Uint8ClampedArray" => TypedArrayType::Uint8ClampedArray,
+        "Int16Array" => TypedArrayType::Int16Array,
+        "Uint16Array" => TypedArrayType::Uint16Array,
+        "Int32Array" => TypedArrayType::Int32Array,
+        "Uint32Array" => TypedArrayType::Uint32Array,
+        "Float32Array" => TypedArrayType::Float32Array,
+        "Float64Array" => TypedArrayType::Float64Array,
+        "BigInt64Array" => TypedArrayType::BigInt64Array,
+        "BigUint64Array" => TypedArrayType::BigUint64Array,
+        _ => TypedArrayType::Int8Array,
     }
 }
