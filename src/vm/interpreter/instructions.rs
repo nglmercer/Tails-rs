@@ -68,6 +68,7 @@ impl Interpreter {
                     Value::Integer(_) | Value::Float(_) => "number",
                     Value::String(_) => "string",
                     Value::BigInt(_) => "bigint",
+                    Value::Symbol(_) => "symbol",
                     Value::Function(_) | Value::NativeFunction(_) => "function",
                     Value::Object(_)
                     | Value::Array(_)
@@ -263,6 +264,7 @@ impl Interpreter {
                     Value::Integer(_) | Value::Float(_) => "number",
                     Value::String(_) => "string",
                     Value::BigInt(_) => "bigint",
+                    Value::Symbol(_) => "symbol",
                     Value::Function(_) | Value::NativeFunction(_) => "function",
                     Value::Object(_)
                     | Value::Array(_)
@@ -764,6 +766,7 @@ impl Interpreter {
                         properties: HashMap::new(),
                         owner_module: owner,
                         module_scope: Some(scope),
+                        is_generator: func_info.is_generator,
                     }),
                 );
                 self.stack.push(Value::Function(heap_idx));
@@ -798,6 +801,7 @@ impl Interpreter {
                         properties: HashMap::new(),
                         owner_module: owner,
                         module_scope: Some(scope),
+                        is_generator: func_info.is_generator,
                     }),
                 );
                 self.stack.push(Value::Function(heap_idx));

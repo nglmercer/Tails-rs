@@ -36,6 +36,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: console_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -53,11 +54,18 @@ impl Interpreter {
             Value::NativeFunction(100),
         );
         object_props.insert("freeze".into(), Value::NativeFunction(101));
+        object_props.insert("is".into(), Value::NativeFunction(145));
+        object_props.insert("preventExtensions".into(), Value::NativeFunction(146));
+        object_props.insert("isExtensible".into(), Value::NativeFunction(147));
+        object_props.insert("isSealed".into(), Value::NativeFunction(148));
+        object_props.insert("isFrozen".into(), Value::NativeFunction(149));
+        object_props.insert("seal".into(), Value::NativeFunction(150));
         let object_obj_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
                 properties: object_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -87,10 +95,15 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: reflect_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
             .insert("Reflect".into(), Value::Object(reflect_obj_idx));
+
+        // Symbol - registered as NativeFunction(151) with well-known symbols accessible via GetProperty
+        self.globals
+            .insert("Symbol".into(), Value::NativeFunction(151));
 
         // JSON
         let mut json_props = HashMap::new();
@@ -101,10 +114,27 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: json_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
             .insert("JSON".into(), Value::Object(json_obj_idx));
+
+        // Array
+        let mut array_props = HashMap::new();
+        array_props.insert("isArray".into(), Value::NativeFunction(163));
+        array_props.insert("from".into(), Value::NativeFunction(164));
+        array_props.insert("of".into(), Value::NativeFunction(165));
+        let array_obj_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: array_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+        self.globals
+            .insert("Array".into(), Value::Object(array_obj_idx));
 
         // Math
         let mut math_props = HashMap::new();
@@ -128,6 +158,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: math_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -144,6 +175,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: number_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -159,6 +191,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: promise_proto_props,
                 prototype: None,
+                extensible: true,
             }),
         );
 
@@ -173,6 +206,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: promise_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -189,6 +223,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: error_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -202,6 +237,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: type_error_proto_props,
                 prototype: Some(error_proto_idx),
+                extensible: true,
             }),
         );
         let mut type_error_ctor_props = HashMap::new();
@@ -211,6 +247,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: type_error_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -224,6 +261,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: ref_error_proto_props,
                 prototype: Some(error_proto_idx),
+                extensible: true,
             }),
         );
         let mut ref_error_ctor_props = HashMap::new();
@@ -233,6 +271,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: ref_error_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -246,6 +285,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: syntax_error_proto_props,
                 prototype: Some(error_proto_idx),
+                extensible: true,
             }),
         );
         let mut syntax_error_ctor_props = HashMap::new();
@@ -255,6 +295,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: syntax_error_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -268,6 +309,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: range_error_proto_props,
                 prototype: Some(error_proto_idx),
+                extensible: true,
             }),
         );
         let mut range_error_ctor_props = HashMap::new();
@@ -277,6 +319,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: range_error_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -315,6 +358,7 @@ impl Interpreter {
                 HeapValue::Object(JsObject {
                     properties: proto_props,
                     prototype: None,
+                extensible: true,
                 }),
             );
 
@@ -332,6 +376,7 @@ impl Interpreter {
                 HeapValue::Object(JsObject {
                     properties: ctor_props,
                     prototype: None,
+                extensible: true,
                 }),
             );
             self.globals
@@ -355,6 +400,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: map_proto_props,
                 prototype: None,
+                extensible: true,
             }),
         );
 
@@ -365,6 +411,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: map_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -386,6 +433,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: set_proto_props,
                 prototype: None,
+                extensible: true,
             }),
         );
 
@@ -396,6 +444,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: set_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -412,6 +461,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: weakmap_proto_props,
                 prototype: None,
+                extensible: true,
             }),
         );
 
@@ -422,6 +472,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: weakmap_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
@@ -437,6 +488,7 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: weakset_proto_props,
                 prototype: None,
+                extensible: true,
             }),
         );
 
@@ -447,10 +499,38 @@ impl Interpreter {
             HeapValue::Object(JsObject {
                 properties: weakset_ctor_props,
                 prototype: None,
+                extensible: true,
             }),
         );
         self.globals
             .insert("WeakSet".into(), Value::Object(weakset_ctor_idx));
+
+        // Generator
+        let mut generator_proto_props = HashMap::new();
+        generator_proto_props.insert("next".into(), Value::NativeFunction(0));
+        generator_proto_props.insert("return".into(), Value::NativeFunction(0));
+        generator_proto_props.insert("throw".into(), Value::NativeFunction(0));
+        let generator_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: generator_proto_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+
+        let mut generator_ctor_props = HashMap::new();
+        generator_ctor_props.insert("prototype".into(), Value::Object(generator_proto_idx));
+        let generator_ctor_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: generator_ctor_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+        self.globals
+            .insert("Generator".into(), Value::Object(generator_ctor_idx));
     }
 }
 

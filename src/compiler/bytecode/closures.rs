@@ -10,6 +10,7 @@ impl CodeGenerator {
         name: Option<String>,
         params: &[String],
         body: &[Statement],
+        is_generator: bool,
     ) -> Result<u32> {
         let func_idx = self.functions.len() as u32;
         let parent_locals_snapshot = self.locals.clone();
@@ -22,6 +23,7 @@ impl CodeGenerator {
             bytecode_index: 0,
             param_count: params.len(),
             closure_var_count: num_captures,
+            is_generator,
         });
 
         let jump_over = self.instructions.len();

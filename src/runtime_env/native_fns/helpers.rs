@@ -151,6 +151,7 @@ pub(super) fn from_json_value(interp: &mut Interpreter, val: serde_json::Value) 
                 crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
+                extensible: true,
                 },
             ));
             Value::Object(heap_idx)
@@ -205,4 +206,16 @@ pub(super) fn find_error_proto(interp: &Interpreter, type_name: &str) -> Option<
         }
     }
     None
+}
+
+pub(super) fn is_truthy(v: &Value) -> bool {
+    match v {
+        Value::Undefined | Value::Null => false,
+        Value::Boolean(b) => *b,
+        Value::Integer(n) => *n != 0,
+        Value::Float(n) => !n.is_nan() && *n != 0.0,
+        Value::String(s) => !s.is_empty(),
+        Value::BigInt(n) => *n != 0,
+        _ => true,
+    }
 }

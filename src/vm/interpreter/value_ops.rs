@@ -202,6 +202,7 @@ impl Interpreter {
             }
             Value::String(s) => s.clone(),
             Value::BigInt(n) => format!("{}n", n),
+            Value::Symbol(id) => format!("Symbol({})", id),
             Value::Function(_) => "[Function]".to_string(),
             Value::NativeFunction(_) => "[Native Function]".to_string(),
             Value::Object(_) => "[Object]".to_string(),
@@ -226,6 +227,7 @@ impl Interpreter {
             Value::Float(n) => n.to_string(),
             Value::String(s) => format!("\"{}\"", s),
             Value::BigInt(n) => format!("{}n", n),
+            Value::Symbol(id) => format!("Symbol({})", id),
             Value::Function(_) => "[Function]".to_string(),
             Value::NativeFunction(_) => "[Native Function]".to_string(),
             Value::Object(_) => "[Object]".to_string(),

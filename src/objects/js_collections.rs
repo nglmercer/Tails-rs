@@ -239,6 +239,7 @@ impl Hash for Value {
             Value::Float(f) => f.to_bits().hash(state),
             Value::String(s) => s.hash(state),
             Value::BigInt(i) => i.hash(state),
+            Value::Symbol(id) => id.hash(state),
             Value::Function(i) => i.hash(state),
             Value::NativeFunction(i) => i.hash(state),
             Value::Object(i) => i.hash(state),

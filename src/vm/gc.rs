@@ -457,6 +457,7 @@ mod tests {
                 properties: HashMap::new(),
                 owner_module: None,
                 module_scope: None,
+                is_generator: false,
             }),
         );
 

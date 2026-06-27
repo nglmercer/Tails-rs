@@ -154,33 +154,33 @@ cargo run --bin tails -- examples/all_features.ts
 ### Other
 - **Proxy** objects with handlers
 - **ES Modules**: `import` / `export` (named, default, namespace)
-- **Reflect** API (static methods stubbed—needs implementation)
+- **Reflect** API with native implementations
 - `in` operator, `instanceof` operator
 - **Optional chaining** (`?.`) and **nullish coalescing** (`??`)
 - **Type annotations** (TypeScript)
 - **Typed Arrays**: `Int8Array`, `Uint8Array`, `Float32Array`, etc. with full API
 - **ES6+ Collections**: `Map`, `Set`, `WeakMap`, `WeakSet` with full API
+- **Symbol**: `Symbol()`, `Symbol.for()`, `Symbol.keyFor()`, well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, etc.)
+- **for...of loop**: Iterator protocol with `Symbol.iterator`, built-in array/string iterators
+- **Function.prototype**: `.bind()`, `.call()`, `.apply()`
+- **Object methods**: `Object.is()`, `Object.freeze()`, `Object.seal()`, `Object.isExtensible()`, `Object.preventExtensions()`, `Object.isFrozen()`, `Object.isSealed()`
+- **Promise enhancements**: `Promise.allSettled()`, `Promise.any()`, `Promise.withResolvers()`
+- **Array enhancements**: `copyWithin()`, `fill()`, `findLast()`, `findLastIndex()`, `flatMap()`, `lastIndexOf()`, `Array.isArray()`, `Array.from()`, `Array.of()`
+- **Reflect API**: `Reflect.get()`, `Reflect.set()`, `Reflect.apply()`, `Reflect.construct()`, `Reflect.isExtensible()`, `Reflect.preventExtensions()`, etc.
 
 ## Roadmap
 
 > Based on current implementation status. Contributions welcome!
 
-### 🚧 In Progress / Next Up
-- **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, etc.
+### ✅ Recently Completed
+- **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, `isExtensible`, `preventExtensions`, etc.
 - **Generators** — Runtime support for `function*`, `yield`, and `.next()`
-- **for...of loop** — Iterator protocol execution
-
-### 📅 Near-Term Goals
-- **Symbol** type and `Symbol.iterator`
-- **Function prototypes**
-  - `Function.prototype.bind()`, `.call()`, `.apply()`
-- **Array enhancements**
-  - `copyWithin`, `fill`, `findLast`, `findLastIndex`, `flatMap`, `lastIndexOf`
-  - Static methods: `Array.isArray()`, `Array.from()`, `Array.of()`
-- **Object methods**
-  - `Object.is()`, `Object.seal()`, `Object.isExtensible()`, `Object.preventExtensions()` (full API)
-- **Promise enhancements**
-  - `Promise.any()`, `Promise.allSettled()`, `Promise.race()` (complete)
+- **for...of loop** — Iterator protocol execution with `Symbol.iterator`
+- **Symbol** type and well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, `Symbol.hasInstance`, etc.)
+- **Function prototypes** — `Function.prototype.bind()`, `.call()`, `.apply()`
+- **Array enhancements** — `copyWithin`, `fill`, `findLast`, `findLastIndex`, `flatMap`, `lastIndexOf`, `Array.isArray()`, `Array.from()`, `Array.of()`
+- **Object methods** — `Object.is()`, `Object.seal()`, `Object.isSealed()`, `Object.freeze()`, `Object.isFrozen()`, `Object.isExtensible()`, `Object.preventExtensions()`
+- **Promise enhancements** — `Promise.any()`, `Promise.allSettled()`, `Promise.withResolvers()`
 
 ### 🔮 Future / Research
 - **Iteration & Generators**

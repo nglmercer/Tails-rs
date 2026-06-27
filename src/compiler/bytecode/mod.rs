@@ -345,43 +345,39 @@ impl CodeGenerator {
                 self.locals.push(var_name.clone());
                 let var_slot = (self.locals.len() - 1) as u16;
 
+                // Evaluate the iterable and get an iterator
                 self.generate_expression(right)?;
+                self.instructions.push(Instruction::GetIterator);
 
+                // Store iterator in a local
                 let iter_slot = self.locals.len() as u16;
                 self.locals.push("__iter".to_string());
                 self.instructions.push(Instruction::StoreLocal(iter_slot));
 
-                let idx_slot = self.locals.len() as u16;
-                self.locals.push("__idx".to_string());
-                let zero_idx = self.add_constant(Value::Float(0.0));
-                self.instructions.push(Instruction::LoadConst(zero_idx));
-                self.instructions.push(Instruction::StoreLocal(idx_slot));
-
                 let loop_start = self.instructions.len() as u32;
 
-                self.instructions.push(Instruction::LoadLocal(idx_slot));
-                let jump_if_done = self.instructions.len();
-                self.instructions.push(Instruction::JumpIfNot(0));
-
+                // Load iterator for IteratorNext
                 self.instructions.push(Instruction::LoadLocal(iter_slot));
-                self.instructions.push(Instruction::LoadLocal(idx_slot));
-                self.instructions.push(Instruction::GetProperty);
+                // IteratorNext: calls next(), if done jumps to target, else pushes value
+                let iter_next_pos = self.instructions.len();
+                self.instructions.push(Instruction::IteratorNext(0)); // placeholder
+
+                // Store the yielded value into the loop variable
                 self.instructions.push(Instruction::StoreLocal(var_slot));
 
+                // Execute loop body
                 self.generate_statement(body, false)?;
 
-                self.instructions.push(Instruction::LoadLocal(idx_slot));
-                let one_idx = self.add_constant(Value::Float(1.0));
-                self.instructions.push(Instruction::LoadConst(one_idx));
-                self.instructions.push(Instruction::Add);
-                self.instructions.push(Instruction::StoreLocal(idx_slot));
-
+                // Jump back to loop start
                 self.instructions.push(Instruction::Jump(loop_start));
 
-                self.patch_jump(jump_if_done, self.instructions.len());
+                // Patch IteratorNext jump target (when done)
+                let loop_end = self.instructions.len() as u32;
+                if let Instruction::IteratorNext(ref mut target) = self.instructions[iter_next_pos] {
+                    *target = loop_end;
+                }
 
-                self.locals.pop();
-                self.locals.pop();
+                self.locals.pop(); // __iter
 
                 let locals_added = self.locals.len() - prev_locals_count;
                 for _ in 0..locals_added {
@@ -599,7 +595,7 @@ impl CodeGenerator {
                             ..
                         } => {
                             let func_idx =
-                                self.compile_function(Some(mname.clone()), params, mbody)?;
+                                self.compile_function(Some(mname.clone()), params, mbody, false)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -614,7 +610,7 @@ impl CodeGenerator {
                             ..
                         } => {
                             let func_idx =
-                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody)?;
+                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody, false)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -633,6 +629,7 @@ impl CodeGenerator {
                                 Some(format!("set_{}", mname)),
                                 std::slice::from_ref(param),
                                 mbody,
+                                false,
                             )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
@@ -808,7 +805,7 @@ impl CodeGenerator {
                 is_async: _,
                 param_types: _,
                 return_type: _,
-                is_generator: _,
+                is_generator,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
@@ -821,6 +818,7 @@ impl CodeGenerator {
                     bytecode_index: 0,
                     param_count: params.len(),
                     closure_var_count: num_captures,
+is_generator: *is_generator,
                 });
 
                 let jump_over = self.instructions.len();
@@ -977,6 +975,7 @@ impl CodeGenerator {
                     Some("constructor".to_string()),
                     &param_names,
                     body,
+                    false,
                 )?));
             }
         }

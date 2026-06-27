@@ -4,6 +4,16 @@ pub mod js_promise;
 pub mod js_proxy;
 use std::fmt;
 
+/// Well-known symbol IDs (small numbers to distinguish from user symbols)
+pub const SYMBOL_ITERATOR: u64 = 1;
+pub const SYMBOL_TO_STRING_TAG: u64 = 2;
+pub const SYMBOL_HAS_INSTANCE: u64 = 3;
+pub const SYMBOL_TO_PRIMITIVE: u64 = 4;
+pub const SYMBOL_SPECIES: u64 = 5;
+pub const SYMBOL_UNSCOPABLES: u64 = 6;
+/// Starting ID for user-created symbols
+pub const USER_SYMBOL_START: u64 = 1000;
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Undefined,
@@ -13,6 +23,7 @@ pub enum Value {
     Float(f64),
     String(String),
     BigInt(i128),
+    Symbol(u64),
     Function(usize),
     NativeFunction(usize),
     Object(usize),
@@ -39,6 +50,7 @@ impl PartialEq for Value {
             (Value::Float(a), Value::Integer(b)) => *a == *b as f64,
             (Value::String(a), Value::String(b)) => a == b,
             (Value::BigInt(a), Value::BigInt(b)) => a == b,
+            (Value::Symbol(a), Value::Symbol(b)) => a == b,
             (Value::Function(a), Value::Function(b)) => a == b,
             (Value::NativeFunction(a), Value::NativeFunction(b)) => a == b,
             (Value::Object(a), Value::Object(b)) => a == b,
@@ -66,6 +78,7 @@ impl fmt::Display for Value {
             Value::Float(fl) => write!(f, "{}", fl),
             Value::String(s) => write!(f, "{}", s),
             Value::BigInt(i) => write!(f, "{}n", i),
+            Value::Symbol(id) => write!(f, "Symbol({})", id),
             Value::Function(_) => write!(f, "[Function]"),
             Value::NativeFunction(_) => write!(f, "[Native Function]"),
             Value::Object(_) => write!(f, "[Object]"),

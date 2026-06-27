@@ -86,6 +86,7 @@ pub struct CompiledFunction {
     pub bytecode_index: usize,
     pub param_count: usize,
     pub closure_var_count: usize,
+    pub is_generator: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -172,4 +173,7 @@ pub enum Instruction {
     BlockExit,
     LoadGlobalOrUndefined(String),
     TypeOfGlobal(String),
+    GetIterator,
+    IteratorNext(u32),
+    IteratorClose,
 }

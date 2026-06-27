@@ -2,6 +2,8 @@ mod array_fns;
 mod collection_fns;
 mod console;
 mod error_fns;
+mod function_fns;
+mod generator_fns;
 mod global_fns;
 mod helpers;
 mod json_fns;
@@ -11,6 +13,7 @@ mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;
 mod string_fns;
+mod symbol_fns;
 mod typed_array_fns;
 
 use crate::errors::Result;
@@ -167,4 +170,37 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     collection_fns::native_weakset_add,
     collection_fns::native_weakset_has,
     collection_fns::native_weakset_delete,
+    // Generator
+    generator_fns::native_generator_next,
+    generator_fns::native_generator_return,
+    generator_fns::native_generator_throw,
+    // Object additional methods
+    object_fns::native_object_is,
+    object_fns::native_object_prevent_extensions,
+    object_fns::native_object_is_extensible,
+    object_fns::native_object_is_sealed,
+    object_fns::native_object_is_frozen,
+    object_fns::native_object_seal,
+    // Symbol
+    symbol_fns::native_symbol_constructor,
+    symbol_fns::native_symbol_for,
+    symbol_fns::native_symbol_key_for,
+    // Function.prototype
+    function_fns::native_function_call,
+    function_fns::native_function_apply,
+    function_fns::native_function_bind,
+    // Array additional methods
+    array_fns::native_array_copy_within,
+    array_fns::native_array_fill,
+    array_fns::native_array_find_last,
+    array_fns::native_array_find_last_index,
+    array_fns::native_array_flat_map,
+    array_fns::native_array_last_index_of,
+    array_fns::native_array_is_array,
+    array_fns::native_array_from,
+    array_fns::native_array_of,
+    // Promise additional methods
+    promise_fns::native_promise_all_settled,
+    promise_fns::native_promise_any,
+    promise_fns::native_promise_with_resolvers,
 ];

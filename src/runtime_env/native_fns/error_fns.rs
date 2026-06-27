@@ -35,6 +35,7 @@ pub(super) fn native_error_constructor(
         crate::vm::interpreter::JsObject {
             properties: props,
             prototype: proto_idx,
+                extensible: true,
         },
     ));
     Ok(Value::Object(obj_idx))
@@ -60,6 +61,7 @@ pub(super) fn native_type_error_constructor(
         crate::vm::interpreter::JsObject {
             properties: props,
             prototype: proto_idx,
+                extensible: true,
         },
     ));
     Ok(Value::Object(obj_idx))
@@ -85,6 +87,7 @@ pub(super) fn native_reference_error_constructor(
         crate::vm::interpreter::JsObject {
             properties: props,
             prototype: proto_idx,
+                extensible: true,
         },
     ));
     Ok(Value::Object(obj_idx))
@@ -110,6 +113,7 @@ pub(super) fn native_syntax_error_constructor(
         crate::vm::interpreter::JsObject {
             properties: props,
             prototype: proto_idx,
+                extensible: true,
         },
     ));
     Ok(Value::Object(obj_idx))
@@ -135,6 +139,7 @@ pub(super) fn native_range_error_constructor(
         crate::vm::interpreter::JsObject {
             properties: props,
             prototype: proto_idx,
+                extensible: true,
         },
     ));
     Ok(Value::Object(obj_idx))

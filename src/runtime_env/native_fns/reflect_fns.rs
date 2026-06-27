@@ -237,6 +237,7 @@ pub(super) fn native_reflect_get_own_property_descriptor(
                         crate::vm::interpreter::JsObject {
                             properties: descriptor,
                             prototype: None,
+                extensible: true,
                         },
                     ));
                     return Ok(Value::Object(desc_idx));
@@ -255,6 +256,7 @@ pub(super) fn native_reflect_get_own_property_descriptor(
                         crate::vm::interpreter::JsObject {
                             properties: descriptor,
                             prototype: None,
+                extensible: true,
                         },
                     ));
                     return Ok(Value::Object(desc_idx));
@@ -270,6 +272,7 @@ pub(super) fn native_reflect_get_own_property_descriptor(
                             crate::vm::interpreter::JsObject {
                                 properties: descriptor,
                                 prototype: None,
+                extensible: true,
                             },
                         ));
                         return Ok(Value::Object(desc_idx));
@@ -376,23 +379,53 @@ pub(super) fn native_reflect_set_prototype_of(
 }
 
 pub(super) fn native_reflect_is_extensible(
-    _interp: &mut Interpreter,
+    interp: &mut Interpreter,
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
     let target = args.first().cloned().unwrap_or(Value::Undefined);
     match &target {
-        Value::Object(_) | Value::Array(_) | Value::Function(_) | Value::Proxy(_) => {
-            Ok(Value::Boolean(true))
+        Value::Object(obj_idx) => {
+            if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
+                Ok(Value::Boolean(obj.extensible))
+            } else {
+                Ok(Value::Boolean(false))
+            }
+        }
+        Value::Array(arr_idx) => {
+            if let crate::vm::interpreter::HeapValue::Array(_) = &interp.heap[*arr_idx] {
+                Ok(Value::Boolean(true))
+            } else {
+                Ok(Value::Boolean(false))
+            }
+        }
+        Value::Function(func_idx) => {
+            if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*func_idx] {
+                // Functions are extensible by default; we don't track extensibility on functions yet
+                let _ = f;
+                Ok(Value::Boolean(true))
+            } else {
+                Ok(Value::Boolean(false))
+            }
         }
         _ => Ok(Value::Boolean(false)),
     }
 }
 
 pub(super) fn native_reflect_prevent_extensions(
-    _interp: &mut Interpreter,
+    interp: &mut Interpreter,
     _this: &Value,
-    _args: &[Value],
+    args: &[Value],
 ) -> Result<Value> {
-    Ok(Value::Boolean(true))
+    let target = args.first().cloned().unwrap_or(Value::Undefined);
+    match &target {
+        Value::Object(obj_idx) => {
+            if let crate::vm::interpreter::HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
+                obj.extensible = false;
+                return Ok(Value::Boolean(true));
+            }
+            Ok(Value::Boolean(false))
+        }
+        _ => Ok(Value::Boolean(false)),
+    }
 }

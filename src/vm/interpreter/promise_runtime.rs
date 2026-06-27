@@ -26,6 +26,7 @@ impl Interpreter {
                 properties: HashMap::new(),
                 owner_module: None,
                 module_scope: None,
+                is_generator: false,
             }),
         );
         Value::Function(heap_idx)
@@ -47,6 +48,7 @@ impl Interpreter {
                 properties: HashMap::new(),
                 owner_module: None,
                 module_scope: None,
+                is_generator: false,
             }),
         );
         Value::Function(heap_idx)

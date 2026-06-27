@@ -507,6 +507,10 @@ pub fn value_to_tails_value(value: Value) -> TailsValue {
             tag: TailsValueType::Object as u32,
             data: 0,
         },
+        Value::Symbol(_) => TailsValue {
+            tag: TailsValueType::Object as u32,
+            data: 0,
+        },
     }
 }
 

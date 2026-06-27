@@ -11,6 +11,7 @@ use std::rc::Rc;
 pub struct JsObject {
     pub properties: HashMap<String, Value>,
     pub prototype: Option<usize>,
+    pub extensible: bool,
 }
 
 impl Default for JsObject {
@@ -24,6 +25,7 @@ impl JsObject {
         Self {
             properties: HashMap::new(),
             prototype: None,
+            extensible: true,
         }
     }
 
@@ -31,6 +33,7 @@ impl JsObject {
         Self {
             properties: HashMap::new(),
             prototype,
+            extensible: true,
         }
     }
 }
@@ -51,6 +54,7 @@ pub struct JsFunction {
     pub properties: HashMap<String, Value>,
     pub owner_module: Option<Rc<CompiledModule>>,
     pub module_scope: Option<Rc<HashMap<String, Value>>>,
+    pub is_generator: bool,
 }
 
 #[derive(Debug, Clone)]

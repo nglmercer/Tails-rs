@@ -329,3 +329,191 @@ pub(super) fn native_promise_race(
 
     Ok(Value::Promise(result_idx))
 }
+
+pub(super) fn native_promise_all_settled(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let promises_arg = args.first().cloned().unwrap_or(Value::Undefined);
+
+    let promise_indices: Vec<usize> = match &promises_arg {
+        Value::Array(arr_idx) => {
+            if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                arr.elements
+                    .iter()
+                    .filter_map(|v| {
+                        if let Value::Promise(idx) = v {
+                            Some(*idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        }
+        _ => Vec::new(),
+    };
+
+    let result_idx = interp.heap.len();
+    interp.heap.push(crate::vm::interpreter::HeapValue::Promise(
+        crate::objects::js_promise::JsPromise::new(),
+    ));
+
+    let mut all_settled = true;
+    let mut results = Vec::new();
+
+    for &p_idx in &promise_indices {
+        if let crate::vm::interpreter::HeapValue::Promise(p) = &interp.heap[p_idx] {
+            match &p.state {
+                crate::objects::js_promise::PromiseState::Fulfilled(v) => {
+                    let mut props = std::collections::HashMap::new();
+                    props.insert("status".to_string(), Value::String("fulfilled".to_string()));
+                    props.insert("value".to_string(), v.clone());
+                    let obj_idx = interp.heap.len();
+                    interp.heap.push(crate::vm::interpreter::HeapValue::Object(
+                        crate::vm::interpreter::JsObject {
+                            properties: props,
+                            prototype: None,
+                            extensible: true,
+                        },
+                    ));
+                    results.push(Value::Object(obj_idx));
+                }
+                crate::objects::js_promise::PromiseState::Rejected(r) => {
+                    let mut props = std::collections::HashMap::new();
+                    props.insert("status".to_string(), Value::String("rejected".to_string()));
+                    props.insert("reason".to_string(), r.clone());
+                    let obj_idx = interp.heap.len();
+                    interp.heap.push(crate::vm::interpreter::HeapValue::Object(
+                        crate::vm::interpreter::JsObject {
+                            properties: props,
+                            prototype: None,
+                            extensible: true,
+                        },
+                    ));
+                    results.push(Value::Object(obj_idx));
+                }
+                crate::objects::js_promise::PromiseState::Pending => {
+                    all_settled = false;
+                }
+            }
+        }
+    }
+
+    if all_settled {
+        let heap_idx = interp.heap.len();
+        interp.heap.push(crate::vm::interpreter::HeapValue::Array(
+            crate::vm::interpreter::JsArray { elements: results },
+        ));
+        interp.resolve_promise(result_idx, Value::Array(heap_idx));
+    }
+
+    Ok(Value::Promise(result_idx))
+}
+
+pub(super) fn native_promise_any(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let promises_arg = args.first().cloned().unwrap_or(Value::Undefined);
+
+    let promise_indices: Vec<usize> = match &promises_arg {
+        Value::Array(arr_idx) => {
+            if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                arr.elements
+                    .iter()
+                    .filter_map(|v| {
+                        if let Value::Promise(idx) = v {
+                            Some(*idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        }
+        _ => Vec::new(),
+    };
+
+    let result_idx = interp.heap.len();
+    interp.heap.push(crate::vm::interpreter::HeapValue::Promise(
+        crate::objects::js_promise::JsPromise::new(),
+    ));
+
+    let mut all_rejected = true;
+    let mut rejections = Vec::new();
+
+    for &p_idx in &promise_indices {
+        if let crate::vm::interpreter::HeapValue::Promise(p) = &interp.heap[p_idx] {
+            match &p.state {
+                crate::objects::js_promise::PromiseState::Fulfilled(v) => {
+                    interp.resolve_promise(result_idx, v.clone());
+                    return Ok(Value::Promise(result_idx));
+                }
+                crate::objects::js_promise::PromiseState::Rejected(r) => {
+                    rejections.push(r.clone());
+                }
+                crate::objects::js_promise::PromiseState::Pending => {
+                    all_rejected = false;
+                }
+            }
+        }
+    }
+
+    if all_rejected && !rejections.is_empty() {
+        // Create an AggregateError-like object
+        let mut props = std::collections::HashMap::new();
+        props.insert("message".to_string(), Value::String("All promises were rejected".to_string()));
+        let errors_idx = interp.heap.len();
+        interp.heap.push(crate::vm::interpreter::HeapValue::Array(
+            crate::vm::interpreter::JsArray { elements: rejections },
+        ));
+        props.insert("errors".to_string(), Value::Array(errors_idx));
+        let err_obj_idx = interp.heap.len();
+        interp.heap.push(crate::vm::interpreter::HeapValue::Object(
+            crate::vm::interpreter::JsObject {
+                properties: props,
+                prototype: None,
+                extensible: true,
+            },
+        ));
+        interp.reject_promise(result_idx, Value::Object(err_obj_idx));
+    }
+
+    Ok(Value::Promise(result_idx))
+}
+
+pub(super) fn native_promise_with_resolvers(
+    interp: &mut Interpreter,
+    _this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
+    let promise_idx = interp.heap.len();
+    interp.heap.push(crate::vm::interpreter::HeapValue::Promise(
+        crate::objects::js_promise::JsPromise::new(),
+    ));
+
+    let resolve_fn = interp.create_resolve_fn(promise_idx);
+    let reject_fn = interp.create_reject_fn(promise_idx);
+
+    let mut props = std::collections::HashMap::new();
+    props.insert("promise".to_string(), Value::Promise(promise_idx));
+    props.insert("resolve".to_string(), resolve_fn);
+    props.insert("reject".to_string(), reject_fn);
+    let obj_idx = interp.heap.len();
+    interp.heap.push(crate::vm::interpreter::HeapValue::Object(
+        crate::vm::interpreter::JsObject {
+            properties: props,
+            prototype: None,
+            extensible: true,
+        },
+    ));
+
+    Ok(Value::Object(obj_idx))
+}

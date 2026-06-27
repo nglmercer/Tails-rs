@@ -171,6 +171,13 @@ impl Interpreter {
             }
             Value::Function(func_idx) => {
                 if let Value::String(key_str) = key {
+                    // Function.prototype methods
+                    match key_str.as_str() {
+                        "call" => return Ok(Value::NativeFunction(154)),
+                        "apply" => return Ok(Value::NativeFunction(155)),
+                        "bind" => return Ok(Value::NativeFunction(156)),
+                        _ => {}
+                    }
                     if key_str == "prototype" {
                         if let HeapValue::Function(f) = &self.heap[*func_idx] {
                             if let Some(proto_idx) = f.prototype {
@@ -216,12 +223,35 @@ impl Interpreter {
             }
             Value::NativeFunction(idx) => {
                 if let Value::String(key_str) = key {
+                    // Function.prototype methods available on all native functions
+                    match key_str.as_str() {
+                        "call" => return Ok(Value::NativeFunction(154)),
+                        "apply" => return Ok(Value::NativeFunction(155)),
+                        "bind" => return Ok(Value::NativeFunction(156)),
+                        _ => {}
+                    }
                     if *idx == 77 {
                         match key_str.as_str() {
                             "resolve" => return Ok(Value::NativeFunction(81)),
                             "reject" => return Ok(Value::NativeFunction(82)),
                             "all" => return Ok(Value::NativeFunction(83)),
                             "race" => return Ok(Value::NativeFunction(84)),
+                            "allSettled" => return Ok(Value::NativeFunction(166)),
+                            "any" => return Ok(Value::NativeFunction(167)),
+                            "withResolvers" => return Ok(Value::NativeFunction(168)),
+                            _ => {}
+                        }
+                    }
+                    if *idx == 151 {
+                        match key_str.as_str() {
+                            "for" => return Ok(Value::NativeFunction(152)),
+                            "keyFor" => return Ok(Value::NativeFunction(153)),
+                            "iterator" => return Ok(Value::Symbol(crate::objects::SYMBOL_ITERATOR)),
+                            "toStringTag" => return Ok(Value::Symbol(crate::objects::SYMBOL_TO_STRING_TAG)),
+                            "hasInstance" => return Ok(Value::Symbol(crate::objects::SYMBOL_HAS_INSTANCE)),
+                            "toPrimitive" => return Ok(Value::Symbol(crate::objects::SYMBOL_TO_PRIMITIVE)),
+                            "species" => return Ok(Value::Symbol(crate::objects::SYMBOL_SPECIES)),
+                            "unscopables" => return Ok(Value::Symbol(crate::objects::SYMBOL_UNSCOPABLES)),
                             _ => {}
                         }
                     }
@@ -278,6 +308,12 @@ impl Interpreter {
             "sort" => 49,
             "concat" => 50,
             "flat" => 51,
+            "copyWithin" => 157,
+            "fill" => 158,
+            "findLast" => 159,
+            "findLastIndex" => 160,
+            "flatMap" => 161,
+            "lastIndexOf" => 162,
             _ => return Ok(Value::Undefined),
         };
         Ok(Value::NativeFunction(idx))

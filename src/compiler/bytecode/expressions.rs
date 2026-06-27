@@ -314,7 +314,7 @@ impl CodeGenerator {
                 is_async: _,
                 param_types: _,
                 return_type: _,
-                is_generator: _,
+                is_generator,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
@@ -328,6 +328,7 @@ impl CodeGenerator {
                     bytecode_index: 0,
                     param_count: params.len(),
                     closure_var_count: num_captures,
+is_generator: *is_generator,
                 });
 
                 let jump_over = self.instructions.len();
@@ -398,6 +399,7 @@ impl CodeGenerator {
                     bytecode_index: 0,
                     param_count: params.len(),
                     closure_var_count: num_captures,
+                    is_generator: false,
                 });
 
                 let jump_over = self.instructions.len();
@@ -571,7 +573,7 @@ impl CodeGenerator {
                             ..
                         } => {
                             let func_idx =
-                                self.compile_function(Some(mname.clone()), params, mbody)?;
+                                self.compile_function(Some(mname.clone()), params, mbody, false)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -586,7 +588,7 @@ impl CodeGenerator {
                             ..
                         } => {
                             let func_idx =
-                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody)?;
+                                self.compile_function(Some(format!("get_{}", mname)), &[], mbody, false)?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
                                 func_idx,
@@ -605,6 +607,7 @@ impl CodeGenerator {
                                 Some(format!("set_{}", mname)),
                                 std::slice::from_ref(param),
                                 mbody,
+                                false,
                             )?;
                             methods.push(ClassMethodInfo {
                                 name: mname.clone(),
