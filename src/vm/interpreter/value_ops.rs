@@ -1,128 +1,76 @@
 use super::Interpreter;
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::objects::Value;
 
 impl Interpreter {
     pub(super) fn add(&self, left: Value, right: Value) -> Result<Value> {
         match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a + b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a + b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 + b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a + *b as f64)),
-            (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
-            _ => Err(Error::TypeError(format!(
-                "Cannot add {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
+            (Value::String(a), r) => Ok(Value::String(format!("{}{}", a, self.to_string_coerce(r)))),
+            (l, Value::String(b)) => Ok(Value::String(format!("{}{}", self.to_string_coerce(l), b))),
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                Ok(Value::Float(l + r))
+            }
+        }
+    }
+
+    pub(super) fn to_string_coerce(&self, value: &Value) -> String {
+        match value {
+            Value::Undefined => "undefined".to_string(),
+            Value::Null => "null".to_string(),
+            Value::Boolean(b) => b.to_string(),
+            Value::Integer(n) => n.to_string(),
+            Value::Float(n) => {
+                if *n == (*n as i64) as f64 && n.is_finite() {
+                    (*n as i64).to_string()
+                } else {
+                    n.to_string()
+                }
+            }
+            Value::String(s) => s.clone(),
+            Value::BigInt(n) => format!("{}", n),
+            Value::Function(_) => "function () {}".to_string(),
+            Value::NativeFunction(_) => "function () {}".to_string(),
+            Value::Object(_) => "[object Object]".to_string(),
+            Value::Array(_) => "[object Array]".to_string(),
+            _ => value.to_string(),
         }
     }
 
     pub(super) fn sub(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a - b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a - b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 - b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a - *b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot subtract {} from {}",
-                self.value_to_string(&right),
-                self.value_to_string(&left)
-            ))),
-        }
+        let l = self.to_number(&left)?;
+        let r = self.to_number(&right)?;
+        Ok(Value::Float(l - r))
     }
 
     pub(super) fn mul(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a * b)),
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a * b)),
-            (Value::Integer(a), Value::Float(b)) => Ok(Value::Float(*a as f64 * b)),
-            (Value::Float(a), Value::Integer(b)) => Ok(Value::Float(a * *b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot multiply {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
+        let l = self.to_number(&left)?;
+        let r = self.to_number(&right)?;
+        Ok(Value::Float(l * r))
     }
 
     pub(super) fn div(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(*a as f64 / *b as f64))
-            }
-            (Value::Float(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a / b))
-            }
-            (Value::Integer(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(*a as f64 / b))
-            }
-            (Value::Float(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a / *b as f64))
-            }
-            _ => Err(Error::TypeError(format!(
-                "Cannot divide {} by {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
+        let l = self.to_number(&left)?;
+        let r = self.to_number(&right)?;
+        Ok(Value::Float(l / r))
     }
 
     pub(super) fn modulo(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Integer(a), Value::Integer(b)) => {
-                if *b == 0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Integer(a % b))
-            }
-            (Value::Float(a), Value::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::RuntimeError("Division by zero".into()));
-                }
-                Ok(Value::Float(a % b))
-            }
-            _ => Err(Error::TypeError(format!(
-                "Cannot apply modulo to {} and {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
+        let l = self.to_number(&left)?;
+        let r = self.to_number(&right)?;
+        Ok(Value::Float(l % r))
     }
 
     pub(super) fn power(&self, left: Value, right: Value) -> Result<Value> {
-        match (&left, &right) {
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a.powf(*b))),
-            (Value::Integer(a), Value::Integer(b)) => Ok(Value::Float((*a as f64).powf(*b as f64))),
-            _ => Err(Error::TypeError(format!(
-                "Cannot raise {} to the power of {}",
-                self.value_to_string(&left),
-                self.value_to_string(&right)
-            ))),
-        }
+        let l = self.to_number(&left)?;
+        let r = self.to_number(&right)?;
+        Ok(Value::Float(l.powf(r)))
     }
 
     pub(super) fn negate(&self, value: Value) -> Result<Value> {
-        match value {
-            Value::Integer(n) => Ok(Value::Integer(-n)),
-            Value::Float(n) => Ok(Value::Float(-n)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot negate {}",
-                self.value_to_string(&value)
-            ))),
-        }
+        let n = self.to_number(&value)?;
+        Ok(Value::Float(-n))
     }
 
     pub(crate) fn is_truthy(&self, value: &Value) -> bool {
@@ -144,69 +92,70 @@ impl Interpreter {
             (Value::Null, Value::Null) => true,
             (Value::Null, Value::Undefined) => true,
             (Value::Undefined, Value::Null) => true,
-            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Boolean(a), _) => {
+                self.is_equal(&Value::Float(if *a { 1.0 } else { 0.0 }), right)
+            }
+            (_, Value::Boolean(b)) => {
+                self.is_equal(left, &Value::Float(if *b { 1.0 } else { 0.0 }))
+            }
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::String(s), _) => {
+                let num = s.parse::<f64>().unwrap_or(f64::NAN);
+                self.is_equal(&Value::Float(num), right)
+            }
+            (_, Value::String(s)) => {
+                let num = s.parse::<f64>().unwrap_or(f64::NAN);
+                self.is_equal(left, &Value::Float(num))
+            }
             (Value::Integer(a), Value::Integer(b)) => a == b,
             (Value::Float(a), Value::Float(b)) => a == b && !a.is_nan() && !b.is_nan(),
             (Value::Integer(a), Value::Float(b)) => *a as f64 == *b && !b.is_nan(),
             (Value::Float(a), Value::Integer(b)) => *a == *b as f64 && !a.is_nan(),
-            (Value::String(a), Value::String(b)) => a == b,
             _ => false,
         }
     }
 
     pub(super) fn less_than(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a < b),
-            (Value::Float(a), Value::Float(b)) => Ok(a < b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) < *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a < (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
+            (Value::String(a), Value::String(b)) => Ok(a < b),
+            _ => {
+                let l = self.to_number(left)?;
+                let r = self.to_number(right)?;
+                Ok(l < r)
+            }
         }
     }
 
     pub(super) fn greater_than(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a > b),
-            (Value::Float(a), Value::Float(b)) => Ok(a > b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) > *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a > (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
+            (Value::String(a), Value::String(b)) => Ok(a > b),
+            _ => {
+                let l = self.to_number(left)?;
+                let r = self.to_number(right)?;
+                Ok(l > r)
+            }
         }
     }
 
     pub(super) fn less_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a <= b),
-            (Value::Float(a), Value::Float(b)) => Ok(a <= b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) <= *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a <= (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
+            (Value::String(a), Value::String(b)) => Ok(a <= b),
+            _ => {
+                let l = self.to_number(left)?;
+                let r = self.to_number(right)?;
+                Ok(l <= r)
+            }
         }
     }
 
     pub(super) fn greater_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
-            (Value::Integer(a), Value::Integer(b)) => Ok(a >= b),
-            (Value::Float(a), Value::Float(b)) => Ok(a >= b),
-            (Value::Integer(a), Value::Float(b)) => Ok((*a as f64) >= *b),
-            (Value::Float(a), Value::Integer(b)) => Ok(*a >= (*b as f64)),
-            _ => Err(Error::TypeError(format!(
-                "Cannot compare {} and {}",
-                self.value_to_string(left),
-                self.value_to_string(right)
-            ))),
+            (Value::String(a), Value::String(b)) => Ok(a >= b),
+            _ => {
+                let l = self.to_number(left)?;
+                let r = self.to_number(right)?;
+                Ok(l >= r)
+            }
         }
     }
 

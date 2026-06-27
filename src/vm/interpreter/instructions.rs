@@ -247,6 +247,8 @@ impl Interpreter {
                     .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
                 let eq = match (&left, &right) {
                     (Value::Float(a), Value::Float(b)) => a == b && !a.is_nan() && !b.is_nan(),
+                    (Value::Integer(a), Value::Float(b)) => *a as f64 == *b && !b.is_nan(),
+                    (Value::Float(a), Value::Integer(b)) => *a == *b as f64 && !a.is_nan(),
                     _ => left == right,
                 };
                 self.stack.push(Value::Boolean(eq));
@@ -331,8 +333,11 @@ impl Interpreter {
                     .stack
                     .pop()
                     .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                let result = self.is_truthy(&left) && self.is_truthy(&right);
-                self.stack.push(Value::Boolean(result));
+                if self.is_truthy(&left) {
+                    self.stack.push(right);
+                } else {
+                    self.stack.push(left);
+                }
             }
             Instruction::Or => {
                 let right = self
@@ -343,8 +348,11 @@ impl Interpreter {
                     .stack
                     .pop()
                     .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
-                let result = self.is_truthy(&left) || self.is_truthy(&right);
-                self.stack.push(Value::Boolean(result));
+                if self.is_truthy(&left) {
+                    self.stack.push(left);
+                } else {
+                    self.stack.push(right);
+                }
             }
             Instruction::InstanceOf => {
                 let right = self

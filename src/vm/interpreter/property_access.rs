@@ -349,11 +349,11 @@ impl Interpreter {
     }
 
     pub(super) fn make_native_number_method(&self, _name: &str) -> Value {
-        Value::NativeFunction(0)
+        Value::Undefined
     }
 
     pub(super) fn make_native_boolean_method(&self, _name: &str) -> Value {
-        Value::NativeFunction(0)
+        Value::Undefined
     }
 
     pub(crate) fn delete_property(&mut self, object: &Value, key: &Value) -> Value {

@@ -325,6 +325,11 @@ impl<'a> Parser<'a> {
                 }
                 _ => return Err(Error::ParseError("Expected identifier in for-loop".into())),
             };
+            // Parse optional type annotation
+            if self.peek() == &Token::Colon {
+                self.advance();
+                self.parse_type_annotation()?;
+            }
             if self.peek() == &Token::In {
                 self.advance();
                 let right = self.parse_expression()?;
@@ -587,6 +592,11 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::LeftParen)?;
                 let params = self.parse_params()?;
                 self.expect(&Token::RightParen)?;
+                // Parse optional return type annotation
+                if self.peek() == &Token::Colon {
+                    self.advance();
+                    self.parse_type_annotation()?;
+                }
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
@@ -604,6 +614,11 @@ impl<'a> Parser<'a> {
                 };
                 self.expect(&Token::LeftParen)?;
                 self.expect(&Token::RightParen)?;
+                // Parse optional return type annotation
+                if self.peek() == &Token::Colon {
+                    self.advance();
+                    self.parse_type_annotation()?;
+                }
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
@@ -625,7 +640,14 @@ impl<'a> Parser<'a> {
                 };
                 self.expect(&Token::LeftParen)?;
                 let param = match self.advance() {
-                    Token::Identifier(name) => name,
+                    Token::Identifier(name) => {
+                        // Parse optional parameter type annotation
+                        if self.peek() == &Token::Colon {
+                            self.advance();
+                            self.parse_type_annotation()?;
+                        }
+                        name
+                    }
                     t => {
                         return Err(Error::ParseError(format!(
                             "Expected parameter name, got {:?}",
@@ -634,6 +656,11 @@ impl<'a> Parser<'a> {
                     }
                 };
                 self.expect(&Token::RightParen)?;
+                // Parse optional return type annotation
+                if self.peek() == &Token::Colon {
+                    self.advance();
+                    self.parse_type_annotation()?;
+                }
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
@@ -657,6 +684,11 @@ impl<'a> Parser<'a> {
                     self.advance();
                     let params = self.parse_params()?;
                     self.expect(&Token::RightParen)?;
+                    // Parse optional return type annotation
+                    if self.peek() == &Token::Colon {
+                        self.advance();
+                        self.parse_type_annotation()?;
+                    }
                     self.expect(&Token::LeftBrace)?;
                     let body = self.parse_block_body()?;
                     self.expect(&Token::RightBrace)?;

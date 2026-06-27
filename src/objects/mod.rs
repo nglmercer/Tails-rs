@@ -28,6 +28,8 @@ impl PartialEq for Value {
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Integer(a), Value::Integer(b)) => a == b,
             (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Integer(a), Value::Float(b)) => *a as f64 == *b,
+            (Value::Float(a), Value::Integer(b)) => *a == *b as f64,
             (Value::String(a), Value::String(b)) => a == b,
             (Value::BigInt(a), Value::BigInt(b)) => a == b,
             (Value::Function(a), Value::Function(b)) => a == b,
