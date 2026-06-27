@@ -695,10 +695,12 @@ impl Interpreter {
             Instruction::MakeClosure(func_idx, _capture_slots) => {
                 let func_info = module.functions[*func_idx as usize].clone();
                 let mut closure_vars = Vec::new();
+                let base = self.call_stack.last().map(|f| f.base_pointer).unwrap_or(0);
                 for slot in _capture_slots {
+                    let abs_slot = base + *slot as usize;
                     let value = self
                         .stack
-                        .get(*slot as usize)
+                        .get(abs_slot)
                         .cloned()
                         .unwrap_or(Value::Undefined);
                     closure_vars.push(value);

@@ -67,7 +67,8 @@ pub struct JsGenerator {
     pub yield_value: Value,
     pub resume_pc: usize,
     pub saved_stack: Vec<Value>,
-    pub saved_call_stack: Vec<CallFrame>,
+    #[allow(dead_code)]
+    pub(crate) saved_call_stack: Vec<CallFrame>,
     pub func_heap_idx: Option<usize>,
 }
 

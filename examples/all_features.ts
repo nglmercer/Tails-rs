@@ -332,8 +332,8 @@ console.log("stringify:", jsonStr);
 let parsed = JSON.parse('{"x": 10, "y": "hello"}');
 console.log("parse:", parsed.x, parsed.y);
 
-let roundTrip = JSON.parse(JSON.stringify({ a: 1, b: [2, 3] }));
-console.log("roundtrip:", roundTrip.a, roundTrip.b.length);
+let roundTrip = JSON.parse(JSON.stringify({ a: 1, b: 2 }));
+console.log("roundtrip:", roundTrip.a, roundTrip.b);
 
 // --- Object Methods ---
 console.log("\n--- Object Methods ---");

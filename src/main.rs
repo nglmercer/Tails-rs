@@ -101,10 +101,8 @@ fn run_script(script_path: &Path) -> Result<()> {
 }
 
 fn watch(script_path: &Path) -> Result<()> {
-    let (tx, rx): (
-        mpsc::Sender<Result<Event, notify::Error>>,
-        Receiver<Result<Event, notify::Error>>,
-    ) = mpsc::channel();
+    type FileEvent = Result<Event, notify::Error>;
+    let (tx, rx): (mpsc::Sender<FileEvent>, Receiver<FileEvent>) = mpsc::channel();
 
     let mut watcher: RecommendedWatcher = Watcher::new(
         tx,
