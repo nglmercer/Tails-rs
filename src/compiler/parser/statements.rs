@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_for_statement(&mut self) -> Result<Statement> {
         self.expect(&Token::For)?;
-        
+
         // Check for `for await...of`
         let is_for_await = if self.peek() == &Token::Await {
             self.advance();
@@ -292,7 +292,7 @@ impl<'a> Parser<'a> {
         } else {
             false
         };
-        
+
         self.expect(&Token::LeftParen)?;
 
         if self.peek() == &Token::Semicolon {

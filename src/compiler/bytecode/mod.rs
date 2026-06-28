@@ -382,12 +382,14 @@ impl CodeGenerator {
                 // Patch IteratorNext jump target (when done)
                 let loop_end = self.instructions.len() as u32;
                 if *is_async {
-                    if let Instruction::AsyncIteratorNext(ref mut target) = self.instructions[iter_next_pos]
+                    if let Instruction::AsyncIteratorNext(ref mut target) =
+                        self.instructions[iter_next_pos]
                     {
                         *target = loop_end;
                     }
                 } else {
-                    if let Instruction::IteratorNext(ref mut target) = self.instructions[iter_next_pos]
+                    if let Instruction::IteratorNext(ref mut target) =
+                        self.instructions[iter_next_pos]
                     {
                         *target = loop_end;
                     }

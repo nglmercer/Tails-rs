@@ -191,7 +191,8 @@ impl Interpreter {
             }),
         );
         // Register Date as a NativeFunction for constructor
-        self.globals.insert("Date".into(), Value::NativeFunction(170));
+        self.globals
+            .insert("Date".into(), Value::NativeFunction(170));
         // Store the prototype index for Date constructor
         self.date_proto_idx = Some(date_proto_idx);
 
@@ -218,7 +219,8 @@ impl Interpreter {
             }),
         );
         // Register RegExp as a NativeFunction for constructor
-        self.globals.insert("RegExp".into(), Value::NativeFunction(214));
+        self.globals
+            .insert("RegExp".into(), Value::NativeFunction(214));
         // Store the prototype index for RegExp constructor
         self.regexp_proto_idx = Some(regexp_proto_idx);
 

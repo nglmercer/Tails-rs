@@ -987,12 +987,17 @@ impl Interpreter {
                         }
                         _ => {
                             // Try Symbol.asyncIterator first, then Symbol.iterator
-                            let async_iter_symbol = Value::Symbol(crate::objects::SYMBOL_ASYNC_ITERATOR);
+                            let async_iter_symbol =
+                                Value::Symbol(crate::objects::SYMBOL_ASYNC_ITERATOR);
                             let async_iter_fn = self.get_property(&iterable, &async_iter_symbol)?;
-                            let iterator_fn = if matches!(async_iter_fn, Value::Function(_) | Value::NativeFunction(_)) {
+                            let iterator_fn = if matches!(
+                                async_iter_fn,
+                                Value::Function(_) | Value::NativeFunction(_)
+                            ) {
                                 async_iter_fn
                             } else {
-                                let iterator_symbol = Value::Symbol(crate::objects::SYMBOL_ITERATOR);
+                                let iterator_symbol =
+                                    Value::Symbol(crate::objects::SYMBOL_ITERATOR);
                                 self.get_property(&iterable, &iterator_symbol)?
                             };
                             match iterator_fn {
@@ -1133,7 +1138,9 @@ impl Interpreter {
                     if let Value::Object(iter_idx) = &iterator {
                         let iter_idx = *iter_idx;
                         if let HeapValue::Object(ref iter_obj) = self.heap[iter_idx] {
-                            if let Some(Value::String(ref iter_type)) = iter_obj.properties.get("__type") {
+                            if let Some(Value::String(_iter_type)) =
+                                iter_obj.properties.get("__type")
+                            {
                                 let index = match iter_obj.properties.get("__index") {
                                     Some(Value::Integer(i)) => *i as usize,
                                     _ => 0,
@@ -1143,7 +1150,9 @@ impl Interpreter {
                                         Value::Array(arr_idx) => {
                                             if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
                                                 index >= arr.elements.len()
-                                            } else { true }
+                                            } else {
+                                                true
+                                            }
                                         }
                                         _ => true,
                                     };
@@ -1156,24 +1165,34 @@ impl Interpreter {
                                         Value::Array(arr_idx) => {
                                             if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
                                                 arr.elements[index].clone()
-                                            } else { Value::Undefined }
+                                            } else {
+                                                Value::Undefined
+                                            }
                                         }
                                         _ => Value::Undefined,
                                     };
                                     // Update index
                                     if let HeapValue::Object(ref mut obj) = self.heap[iter_idx] {
-                                        obj.properties.insert("__index".to_string(), Value::Integer((index + 1) as i64));
+                                        obj.properties.insert(
+                                            "__index".to_string(),
+                                            Value::Integer((index + 1) as i64),
+                                        );
                                     }
                                     // Await the value if it's a promise
-                                    let awaited_value = if let Value::Promise(promise_idx) = &value {
+                                    let awaited_value = if let Value::Promise(promise_idx) = &value
+                                    {
                                         if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
                                             match &p.state {
                                                 PromiseState::Fulfilled(v) => v.clone(),
                                                 PromiseState::Rejected(_) => Value::Undefined,
                                                 PromiseState::Pending => value.clone(),
                                             }
-                                        } else { value.clone() }
-                                    } else { value.clone() };
+                                        } else {
+                                            value.clone()
+                                        }
+                                    } else {
+                                        value.clone()
+                                    };
                                     self.stack.push(awaited_value);
                                     pc += 1;
                                     continue;
@@ -1183,10 +1202,12 @@ impl Interpreter {
                     }
 
                     // Generic iterator - call iterator.next()
-                    let next_fn = self.get_property(&iterator, &Value::String("next".to_string()))?;
+                    let next_fn =
+                        self.get_property(&iterator, &Value::String("next".to_string()))?;
                     let next_result = self.call_value(&next_fn, &iterator, &[])?;
                     // Check done property
-                    let done = self.get_property(&next_result, &Value::String("done".to_string()))?;
+                    let done =
+                        self.get_property(&next_result, &Value::String("done".to_string()))?;
                     match done {
                         Value::Boolean(true) => {
                             self.stack.pop();
@@ -1194,7 +1215,8 @@ impl Interpreter {
                             continue;
                         }
                         _ => {
-                            let value = self.get_property(&next_result, &Value::String("value".to_string()))?;
+                            let value = self
+                                .get_property(&next_result, &Value::String("value".to_string()))?;
                             // Await the value if it's a promise
                             let awaited_value = if let Value::Promise(promise_idx) = &value {
                                 if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
@@ -1203,8 +1225,12 @@ impl Interpreter {
                                         PromiseState::Rejected(_) => Value::Undefined,
                                         PromiseState::Pending => value.clone(),
                                     }
-                                } else { value.clone() }
-                            } else { value.clone() };
+                                } else {
+                                    value.clone()
+                                }
+                            } else {
+                                value.clone()
+                            };
                             self.stack.push(awaited_value);
                         }
                     }

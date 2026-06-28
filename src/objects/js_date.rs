@@ -467,22 +467,20 @@ fn parse_iso8601(s: &str) -> Option<f64> {
         let rest = &rest[1 + frac_end..];
         if rest == "Z" || rest.is_empty() {
             tz_offset = 0;
-        } else if (rest.starts_with('+') || rest.starts_with('-'))
-            && rest.len() >= 6 {
-                let sign = if rest.starts_with('-') { -1 } else { 1 };
-                let tz_h: i64 = rest[1..3].parse().ok()?;
-                let tz_m: i64 = rest[4..6].parse().ok()?;
-                tz_offset = sign * (tz_h * 60 + tz_m);
-            }
-    } else if rest == "Z" || rest.is_empty() {
-        tz_offset = 0;
-    } else if (rest.starts_with('+') || rest.starts_with('-'))
-        && rest.len() >= 6 {
+        } else if (rest.starts_with('+') || rest.starts_with('-')) && rest.len() >= 6 {
             let sign = if rest.starts_with('-') { -1 } else { 1 };
             let tz_h: i64 = rest[1..3].parse().ok()?;
             let tz_m: i64 = rest[4..6].parse().ok()?;
             tz_offset = sign * (tz_h * 60 + tz_m);
         }
+    } else if rest == "Z" || rest.is_empty() {
+        tz_offset = 0;
+    } else if (rest.starts_with('+') || rest.starts_with('-')) && rest.len() >= 6 {
+        let sign = if rest.starts_with('-') { -1 } else { 1 };
+        let tz_h: i64 = rest[1..3].parse().ok()?;
+        let tz_m: i64 = rest[4..6].parse().ok()?;
+        tz_offset = sign * (tz_h * 60 + tz_m);
+    }
 
     let days = days_since_epoch(year, month - 1, day);
     let result =
