@@ -67,10 +67,11 @@ Native modules are imported using the `.native` extension. They are **not** avai
 ```typescript
 import fs from "./fs.native";
 import path from "./path.native";
+import process from "./process.native";
+import Buffer from "./buffer.native";
+import Intl from "./intl.native";
 import events from "./events.native";
 import os from "./os.native";
-import process from "./process.native";
-import url from "./url.native";
 import crypto from "./crypto.native";
 ```
 
@@ -80,11 +81,12 @@ import crypto from "./crypto.native";
 |--------|-------------|
 | `fs` | File system operations (read, write, stat, mkdir, etc.) |
 | `path` | Path manipulation (join, resolve, basename, etc.) |
+| `process` | Process info and control (env, argv, exit, etc.) |
+| `buffer` | Node.js-compatible binary data handling |
+| `intl` | Internationalization (DateTimeFormat, NumberFormat) |
 | `events` | EventEmitter class with on/emit/off |
 | `os` | OS information (platform, arch, cpus, memory, etc.) |
-| `process` | Process info and control (env, argv, exit, etc.) |
-| `url` | URL parsing and manipulation |
-| `crypto` | Cryptographic functions (random, hash, etc.) |
+| `crypto` | Cryptographic functions (randomBytes, randomUUID, createHash) |
 
 ## Supported Features
 
@@ -175,20 +177,21 @@ import crypto from "./crypto.native";
 - `Number.isNaN()`, `Number.isFinite()`
 - `atob()`, `btoa()` — Base64 encoding/decoding
 
-### Encoding & Buffer
+### Encoding
 - `atob()` / `btoa()` — Base64 encoding/decoding
-- `Buffer` — Node.js-compatible binary data handling
-  - Static: `Buffer.alloc()`, `Buffer.from()`, `Buffer.concat()`, `Buffer.isBuffer()`, `Buffer.byteLength()`
-  - Instance: `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`, `length`
 
-### process Global
+### Buffer (native module)
+- `Buffer.alloc()`, `Buffer.from()`, `Buffer.concat()`, `Buffer.isBuffer()`, `Buffer.byteLength()`
+- Instance: `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`
+
+### process (native module)
 - `process.platform`, `process.arch`, `process.pid`
 - `process.cwd()`, `process.chdir()`
 - `process.env`, `process.argv`
 - `process.exit()`, `process.stdout.write()`, `process.stderr.write()`
 - `process.hrtime()`, `process.nextTick()`
 
-### Intl APIs
+### Intl (native module)
 - `Intl.DateTimeFormat` — Date/time formatting with `format()` and `formatToParts()`
 - `Intl.NumberFormat` — Number formatting with decimal, currency, and percent styles
 
@@ -224,7 +227,14 @@ import crypto from "./crypto.native";
 > Based on current implementation status. Contributions welcome!
 
 ### Recently Completed
+- **Light Runtime** — Moved process, Buffer, Intl from globals to import-only native modules
 - **Native Module System** — Import-only modules via `.native` extension, registry-based loader
+- **events module** — EventEmitter class with `on()`, `emit()`, `off()`, `listenerCount()`
+- **os module** — OS info: `platform()`, `arch()`, `cpus()`, `totalmem()`, `freemem()`, `uptime()`, `hostname()`, `type()`, `release()`, `homedir()`, `tmpdir()`
+- **crypto module** — `randomBytes()`, `randomUUID()`, `createHash()` (SHA-224/256/384/512)
+- **process module** — `process.platform`, `process.arch`, `process.pid`, `process.cwd()`, `process.chdir()`, `process.env`, `process.argv`, `process.exit()`, `process.stdout.write()`, `process.hrtime()`, `process.nextTick()`
+- **buffer module** — `Buffer.alloc()`, `Buffer.from()`, `Buffer.concat()`, `Buffer.isBuffer()`, `Buffer.byteLength()`, `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`
+- **intl module** — `Intl.DateTimeFormat` with `format()` and `formatToParts()`, `Intl.NumberFormat` with currency and percent styles
 - **Import-only fs/path** — `fs` and `path` removed from globals, now require explicit import
 - **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, `isExtensible`, `preventExtensions`, etc.
 - **Generators** — Runtime support for `function*`, `yield`, and `.next()`
@@ -241,18 +251,12 @@ import crypto from "./crypto.native";
 - **for await...of** — Async iteration with `Symbol.asyncIterator` support, automatic promise resolution
 - **Error stack traces** — Real stack traces with function names for `Error`, `TypeError`, `ReferenceError`, `SyntaxError`, `RangeError`
 - **Encoding** — `atob()` and `btoa()` for base64 encoding/decoding
-- **Buffer** — Node.js-compatible `Buffer` class with `alloc()`, `from()`, `concat()`, `isBuffer()`, `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`
-- **process global** — `process.platform`, `process.arch`, `process.pid`, `process.cwd()`, `process.chdir()`, `process.env`, `process.argv`, `process.exit()`, `process.stdout.write()`, `process.hrtime()`, `process.nextTick()`
-- **Intl APIs** — `Intl.DateTimeFormat` with `format()` and `formatToParts()`, `Intl.NumberFormat` with currency and percent styles
 - **path module** — `path.join()`, `path.resolve()`, `path.basename()`, `path.dirname()`, `path.extname()`, `path.relative()`, `path.isAbsolute()`, `path.normalize()`, `path.sep`, `path.delimiter`
 - **fs module** — `fs.readFileSync()`, `fs.writeFileSync()`, `fs.existsSync()`, `fs.mkdirSync()`, `fs.readdirSync()`, `fs.statSync()`, `fs.unlinkSync()`, `fs.rmSync()`, `fs.copyFileSync()`, `fs.renameSync()`, `fs.appendFileSync()`
 
 ### Future / Research
 - **More Native Modules**
-  - `events` — EventEmitter class
-  - `os` — OS information and utilities
   - `url` — URL parsing and manipulation
-  - `crypto` — Cryptographic functions
   - `stream` — Stream processing
   - `http` / `https` — HTTP client/server
   - `child_process` — Process spawning

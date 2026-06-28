@@ -6,9 +6,21 @@ use std::collections::HashMap;
 impl Interpreter {
     pub(super) fn init_native_modules(&mut self) {
         self.native_loader
-            .register("fs", || super::native_loader::create_fs_module());
+            .register("fs", |heap, gc| super::native_loader::create_fs_module(heap, gc));
         self.native_loader
-            .register("path", || super::native_loader::create_path_module());
+            .register("path", |heap, gc| super::native_loader::create_path_module(heap, gc));
+        self.native_loader
+            .register("process", |heap, gc| super::native_loader::create_process_module(heap, gc));
+        self.native_loader
+            .register("buffer", |heap, gc| super::native_loader::create_buffer_module(heap, gc));
+        self.native_loader
+            .register("intl", |heap, gc| super::native_loader::create_intl_module(heap, gc));
+        self.native_loader
+            .register("events", |heap, gc| super::native_loader::create_events_module(heap, gc));
+        self.native_loader
+            .register("os", |heap, gc| super::native_loader::create_os_module(heap, gc));
+        self.native_loader
+            .register("crypto", |heap, gc| super::native_loader::create_crypto_module(heap, gc));
     }
 
     pub(super) fn init_builtins(&mut self) {
@@ -159,143 +171,6 @@ impl Interpreter {
         self.globals
             .insert("btoa".into(), Value::NativeFunction(238));
 
-        // process global
-        let mut process_props = HashMap::new();
-        process_props.insert("exit".into(), Value::NativeFunction(239));
-        process_props.insert("cwd".into(), Value::NativeFunction(240));
-        process_props.insert("chdir".into(), Value::NativeFunction(241));
-        process_props.insert(
-            "platform".into(),
-            Value::String(
-                if cfg!(target_os = "linux") {
-                    "linux"
-                } else if cfg!(target_os = "macos") {
-                    "darwin"
-                } else if cfg!(target_os = "windows") {
-                    "win32"
-                } else {
-                    "unknown"
-                }
-                .into(),
-            ),
-        );
-        process_props.insert(
-            "arch".into(),
-            Value::String(
-                if cfg!(target_arch = "x86_64") {
-                    "x64"
-                } else if cfg!(target_arch = "aarch64") {
-                    "arm64"
-                } else {
-                    "unknown"
-                }
-                .into(),
-            ),
-        );
-        process_props.insert("pid".into(), Value::Integer(std::process::id() as i64));
-
-        // process.env
-        let mut env_props = HashMap::new();
-        for (key, value) in std::env::vars() {
-            env_props.insert(key, Value::String(value));
-        }
-        let env_obj_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: env_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        process_props.insert("env".into(), Value::Object(env_obj_idx));
-
-        // process.argv
-        let argv: Vec<Value> = std::env::args().map(Value::String).collect();
-        let argv_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Array(crate::vm::interpreter::JsArray { elements: argv }),
-        );
-        process_props.insert("argv".into(), Value::Array(argv_idx));
-
-        // process.stdout
-        let mut stdout_props = HashMap::new();
-        stdout_props.insert("write".into(), Value::NativeFunction(242));
-        let stdout_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: stdout_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        process_props.insert("stdout".into(), Value::Object(stdout_idx));
-
-        // process.stderr
-        let mut stderr_props = HashMap::new();
-        stderr_props.insert("write".into(), Value::NativeFunction(242)); // shares the same native fn
-        let stderr_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: stderr_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        process_props.insert("stderr".into(), Value::Object(stderr_idx));
-
-        process_props.insert("hrtime".into(), Value::NativeFunction(243));
-        process_props.insert("nextTick".into(), Value::NativeFunction(245));
-
-        let process_obj_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: process_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        self.globals
-            .insert("process".into(), Value::Object(process_obj_idx));
-
-        // Buffer
-        let mut buffer_proto_props = HashMap::new();
-        buffer_proto_props.insert("toString".into(), Value::NativeFunction(252));
-        buffer_proto_props.insert("write".into(), Value::NativeFunction(253));
-        buffer_proto_props.insert("slice".into(), Value::NativeFunction(254));
-        buffer_proto_props.insert("copy".into(), Value::NativeFunction(255));
-        buffer_proto_props.insert("fill".into(), Value::NativeFunction(256));
-        buffer_proto_props.insert("compare".into(), Value::NativeFunction(257));
-        buffer_proto_props.insert("equals".into(), Value::NativeFunction(258));
-        buffer_proto_props.insert("indexOf".into(), Value::NativeFunction(259));
-        buffer_proto_props.insert("length".into(), Value::Integer(0));
-        let buffer_proto_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: buffer_proto_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-
-        let mut buffer_ctor_props = HashMap::new();
-        buffer_ctor_props.insert("prototype".into(), Value::Object(buffer_proto_idx));
-        buffer_ctor_props.insert("alloc".into(), Value::NativeFunction(247));
-        buffer_ctor_props.insert("from".into(), Value::NativeFunction(248));
-        buffer_ctor_props.insert("concat".into(), Value::NativeFunction(249));
-        buffer_ctor_props.insert("isBuffer".into(), Value::NativeFunction(250));
-        buffer_ctor_props.insert("byteLength".into(), Value::NativeFunction(251));
-        let buffer_ctor_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: buffer_ctor_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        self.globals
-            .insert("Buffer".into(), Value::Object(buffer_ctor_idx));
-        self.buffer_proto_idx = Some(buffer_proto_idx);
-
         // URL (factory function, not constructor)
         self.globals
             .insert("URL".into(), Value::NativeFunction(273));
@@ -303,21 +178,6 @@ impl Interpreter {
         // fetch
         self.globals
             .insert("fetch".into(), Value::NativeFunction(297));
-
-        // Intl
-        let mut intl_props = HashMap::new();
-        intl_props.insert("DateTimeFormat".into(), Value::NativeFunction(260));
-        intl_props.insert("NumberFormat".into(), Value::NativeFunction(261));
-        let intl_obj_idx = self.gc.allocate(
-            &mut self.heap,
-            HeapValue::Object(JsObject {
-                properties: intl_props,
-                prototype: None,
-                extensible: true,
-            }),
-        );
-        self.globals
-            .insert("Intl".into(), Value::Object(intl_obj_idx));
 
         // Date
         let mut date_proto_props = HashMap::new();

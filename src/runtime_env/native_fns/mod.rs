@@ -2,9 +2,11 @@ mod array_fns;
 mod buffer_fns;
 mod collection_fns;
 mod console;
+mod crypto_fns;
 mod date_fns;
 mod encoding_fns;
 mod error_fns;
+mod events_fns;
 mod fetch_fns;
 mod fs_fns;
 mod function_fns;
@@ -17,6 +19,7 @@ mod json_fns;
 mod math_fns;
 mod number_fns;
 mod object_fns;
+mod os_fns;
 mod path_fns;
 mod process_fns;
 mod promise_fns;
@@ -373,4 +376,29 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     typed_array_fns::native_float64_array_constructor,
     typed_array_fns::native_bigint64_array_constructor,
     typed_array_fns::native_biguint64_array_constructor,
+    // EventEmitter (322-326)
+    events_fns::native_event_emitter_constructor,
+    events_fns::native_event_emitter_on,
+    events_fns::native_event_emitter_emit,
+    events_fns::native_event_emitter_off,
+    events_fns::native_event_emitter_listener_count,
+    // Crypto hash methods (327-328)
+    crypto_fns::native_crypto_hash_update,
+    crypto_fns::native_crypto_hash_digest,
+    // OS (329-339)
+    os_fns::native_os_platform,
+    os_fns::native_os_arch,
+    os_fns::native_os_cpus,
+    os_fns::native_os_totalmem,
+    os_fns::native_os_freemem,
+    os_fns::native_os_uptime,
+    os_fns::native_os_hostname,
+    os_fns::native_os_type,
+    os_fns::native_os_release,
+    os_fns::native_os_homedir,
+    os_fns::native_os_tmpdir,
+    // Crypto (340-342)
+    crypto_fns::native_crypto_random_bytes,
+    crypto_fns::native_crypto_random_uuid,
+    crypto_fns::native_crypto_create_hash,
 ];

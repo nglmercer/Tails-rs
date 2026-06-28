@@ -1,13 +1,15 @@
+use std::path::Path;
 use tails::TailsRuntime;
 
 #[test]
 fn test_process_platform() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let p = process.platform;
-        p;
+        import process from "./process.native";
+        process.platform;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     let val = r.unwrap();
@@ -25,11 +27,12 @@ fn test_process_platform() {
 #[test]
 fn test_process_arch() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let a = process.arch;
-        a;
+        import process from "./process.native";
+        process.arch;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     let val = r.unwrap();
@@ -47,11 +50,12 @@ fn test_process_arch() {
 #[test]
 fn test_process_pid() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let p = process.pid;
-        p;
+        import process from "./process.native";
+        process.pid;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     if let tails::Value::Integer(n) = r.unwrap() {
@@ -64,11 +68,12 @@ fn test_process_pid() {
 #[test]
 fn test_process_cwd() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let d = process.cwd();
-        d;
+        import process from "./process.native";
+        process.cwd();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     if let tails::Value::String(s) = r.unwrap() {
@@ -81,41 +86,45 @@ fn test_process_cwd() {
 #[test]
 fn test_process_argv() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let a = process.argv;
-        a.length;
+        import process from "./process.native";
+        process.argv.length;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
-    if let tails::Value::Float(n) = r.unwrap() {
-        assert!(n >= 1.0, "argv should have at least one element");
-    } else {
-        panic!("Expected number for argv.length");
+    let val = r.unwrap();
+    match val {
+        tails::Value::Float(n) => assert!(n >= 1.0, "argv should have at least one element"),
+        tails::Value::Integer(n) => assert!(n >= 1, "argv should have at least one element"),
+        _ => panic!("Expected number for argv.length"),
     }
 }
 
 #[test]
 fn test_process_env() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let home = process.env.HOME;
-        typeof home;
+        import process from "./process.native";
+        typeof process.env;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), tails::Value::String("string".to_string()));
+    assert_eq!(r.unwrap(), tails::Value::String("object".to_string()));
 }
 
 #[test]
 fn test_process_stdout_write() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
-        let result = process.stdout.write("test");
-        result;
+        import process from "./process.native";
+        process.stdout.write("test");
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));

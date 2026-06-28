@@ -1,13 +1,16 @@
+use std::path::Path;
 use tails::TailsRuntime;
 
 #[test]
 fn test_buffer_alloc() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.alloc(5, 0);
         b.length;
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Integer(5));
@@ -16,11 +19,13 @@ fn test_buffer_alloc() {
 #[test]
 fn test_buffer_from_string() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.from("Hello");
         b.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("Hello".to_string()));
@@ -29,11 +34,13 @@ fn test_buffer_from_string() {
 #[test]
 fn test_buffer_from_array() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.from([72, 101, 108, 108, 111]);
         b.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("Hello".to_string()));
@@ -42,13 +49,15 @@ fn test_buffer_from_array() {
 #[test]
 fn test_buffer_concat() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b1 = Buffer.from("Hello");
         let b2 = Buffer.from(" World");
         let b3 = Buffer.concat([b1, b2]);
         b3.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("Hello World".to_string()));
@@ -57,11 +66,13 @@ fn test_buffer_concat() {
 #[test]
 fn test_buffer_is_buffer() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.from("test");
         Buffer.isBuffer(b);
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
@@ -70,10 +81,12 @@ fn test_buffer_is_buffer() {
 #[test]
 fn test_buffer_is_buffer_false() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         Buffer.isBuffer("not a buffer");
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(false));
@@ -82,10 +95,12 @@ fn test_buffer_is_buffer_false() {
 #[test]
 fn test_buffer_byte_length() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         Buffer.byteLength("Hello");
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Integer(5));
@@ -94,12 +109,14 @@ fn test_buffer_byte_length() {
 #[test]
 fn test_buffer_slice() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.from("Hello, World!");
         let s = b.slice(0, 5);
         s.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("Hello".to_string()));
@@ -108,11 +125,13 @@ fn test_buffer_slice() {
 #[test]
 fn test_buffer_index_of() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.from("Hello, World!");
         b.indexOf("World");
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Integer(7));
@@ -121,13 +140,14 @@ fn test_buffer_index_of() {
 #[test]
 fn test_buffer_equals() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b1 = Buffer.from("Hello");
         let b2 = Buffer.from("Hello");
-        let b3 = Buffer.from("World");
         b1.equals(b2);
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
@@ -136,12 +156,14 @@ fn test_buffer_equals() {
 #[test]
 fn test_buffer_not_equals() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b1 = Buffer.from("Hello");
         let b2 = Buffer.from("World");
         b1.equals(b2);
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(false));
@@ -150,12 +172,14 @@ fn test_buffer_not_equals() {
 #[test]
 fn test_buffer_compare() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b1 = Buffer.from("ABC");
         let b2 = Buffer.from("ABD");
         b1.compare(b2);
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Integer(-1));
@@ -164,11 +188,13 @@ fn test_buffer_compare() {
 #[test]
 fn test_buffer_alloc_fill() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.alloc(3, 65);
         b.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("AAA".to_string()));
@@ -177,11 +203,13 @@ fn test_buffer_alloc_fill() {
 #[test]
 fn test_buffer_alloc_zero_fill() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(
+    let r = rt.eval_module(
         r#"
+        import Buffer from "./buffer.native";
         let b = Buffer.alloc(3);
         b.toString();
     "#,
+        Path::new("/tmp/test_module.ts"),
     );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("\0\0\0".to_string()));

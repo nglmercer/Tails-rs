@@ -61,6 +61,12 @@ impl Interpreter {
                 let exports =
                     self.native_loader
                         .load_module(module_name, &mut self.heap, &mut self.gc)?;
+                // Set buffer_proto_idx when buffer module is loaded
+                if module_name == "buffer" {
+                    if let Some(Value::Object(proto_idx)) = exports.get("prototype") {
+                        self.buffer_proto_idx = Some(*proto_idx);
+                    }
+                }
                 let mut props = HashMap::new();
                 for (name, val) in &exports {
                     props.insert(name.clone(), val.clone());

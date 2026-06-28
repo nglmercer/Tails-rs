@@ -4,6 +4,11 @@
 //
 // Comprehensive test of every feature listed in the README.
 // ============================================================
+import path from "./path.native";
+import fs from "./fs.native";
+import process from "./process.native";
+import Buffer from "./buffer.native";
+import Intl from "./intl.native";
 
 console.log("=== Tails-rs Feature Demo ===\n");
 
@@ -27,7 +32,7 @@ console.log("compound:", x);
 console.log("comparison:", 5 == 5, 5 === 5, 5 != 3, 5 !== "5", 5 < 10, 5 > 3);
 console.log("logical:", true && false, true || false, !true);
 console.log("typeof:", typeof 42, typeof "hi", typeof true, typeof undefined);
-console.log("void:", typeof (void 0));
+console.log("void:", typeof void 0);
 
 // Increment/Decrement
 let counter = 0;
@@ -40,52 +45,76 @@ console.log("--:", counter);
 // --- Control Flow ---
 console.log("\n--- Control Flow ---");
 let a = 5;
-if (a > 10) { console.log("big"); } else if (a > 3) { console.log("medium"); } else { console.log("small"); }
+if (a > 10) {
+  console.log("big");
+} else if (a > 3) {
+  console.log("medium");
+} else {
+  console.log("small");
+}
 let ternary = a > 3 ? "big" : "small";
 console.log("ternary:", ternary);
 
 // for loop
 let sum = 0;
-for (let i = 1; i <= 5; i++) { sum += i; }
+for (let i = 1; i <= 5; i++) {
+  sum += i;
+}
 console.log("for sum:", sum);
 
 // while
 let w = 5;
-while (w > 0) { w--; }
+while (w > 0) {
+  w--;
+}
 console.log("while done:", w);
 
 // do while
 let d = 0;
-do { d++; } while (d < 3);
+do {
+  d++;
+} while (d < 3);
 console.log("do while:", d);
 
 // for...in
 let obj = { a: 1, b: 2 };
 let keys = "";
-for (let k in obj) { keys += k; }
+for (let k in obj) {
+  keys += k;
+}
 console.log("for...in keys:", keys);
 
 // switch
 let day = 2;
 let dayName = "";
 switch (day) {
-    case 1: dayName = "Mon"; break;
-    case 2: dayName = "Tue"; break;
-    default: dayName = "Other";
+  case 1:
+    dayName = "Mon";
+    break;
+  case 2:
+    dayName = "Tue";
+    break;
+  default:
+    dayName = "Other";
 }
 console.log("switch:", dayName);
 
 // --- Functions ---
 console.log("\n--- Functions ---");
-function add(a: number, b: number): number { return a + b; }
+function add(a: number, b: number): number {
+  return a + b;
+}
 console.log("function:", add(3, 4));
 
 let mul = (a: number, b: number): number => a * b;
 console.log("arrow:", mul(3, 4));
 
 function makeCounter() {
-    let count = 0;
-    return function() { count++; return count; };
+  let count = 0;
+  return function () {
+    count++;
+    return count;
+  };
 }
 let counterFn = makeCounter();
 console.log("closure:", counterFn(), counterFn(), counterFn());
@@ -96,15 +125,25 @@ console.log("higher-order:", applyFn(add, 10, 20));
 // --- Classes ---
 console.log("\n--- Classes ---");
 class Animal {
-    name: string;
-    constructor(name: string) { this.name = name; }
-    speak(): string { return this.name + " makes a noise"; }
-    get label(): string { return "animal:" + this.name; }
-    set label(v: string) { this.name = v.split(":")[1]; }
+  name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
+  speak(): string {
+    return this.name + " makes a noise";
+  }
+  get label(): string {
+    return "animal:" + this.name;
+  }
+  set label(v: string) {
+    this.name = v.split(":")[1];
+  }
 }
 
 class Dog extends Animal {
-    speak(): string { return this.name + " barks"; }
+  speak(): string {
+    return this.name + " barks";
+  }
 }
 
 let d2 = new Dog("Rex");
@@ -116,7 +155,9 @@ console.log("instanceof:", d2 instanceof Animal, d2 instanceof Dog);
 
 // Static methods
 class MathHelper {
-    static double(x: number): number { return x * 2; }
+  static double(x: number): number {
+    return x * 2;
+  }
 }
 console.log("static:", MathHelper.double(5));
 
@@ -132,16 +173,40 @@ console.log("Object.assign:", person.city);
 let arr = [1, 2, 3, 4, 5];
 console.log("push:", arr.push(6));
 console.log("pop:", arr.pop());
-console.log("map:", arr.map((x: number) => x * 2));
-console.log("filter:", arr.filter((x: number) => x > 3));
-console.log("reduce:", arr.reduce((a: number, b: number) => a + b, 0));
-console.log("find:", arr.find((x: number) => x > 3));
-console.log("some:", arr.some((x: number) => x > 4));
-console.log("every:", arr.every((x: number) => x > 0));
+console.log(
+  "map:",
+  arr.map((x: number) => x * 2),
+);
+console.log(
+  "filter:",
+  arr.filter((x: number) => x > 3),
+);
+console.log(
+  "reduce:",
+  arr.reduce((a: number, b: number) => a + b, 0),
+);
+console.log(
+  "find:",
+  arr.find((x: number) => x > 3),
+);
+console.log(
+  "some:",
+  arr.some((x: number) => x > 4),
+);
+console.log(
+  "every:",
+  arr.every((x: number) => x > 0),
+);
 console.log("includes:", arr.includes(3));
 console.log("join:", arr.join("-"));
 console.log("slice:", arr.slice(1, 3));
-console.log("flat:", [[1, 2], [3, 4]].flat());
+console.log(
+  "flat:",
+  [
+    [1, 2],
+    [3, 4],
+  ].flat(),
+);
 
 // --- Typed Arrays ---
 console.log("\n--- Typed Arrays ---");
@@ -220,16 +285,16 @@ console.log("parse:", parsed.a, parsed.b.length);
 // --- Error Handling ---
 console.log("\n--- Error Handling ---");
 try {
-    throw new Error("test error");
+  throw new Error("test error");
 } catch (e) {
-    console.log("catch:", e.message);
+  console.log("catch:", e.message);
 }
 
 try {
-    throw new TypeError("bad type");
+  throw new TypeError("bad type");
 } catch (e) {
-    console.log("TypeError:", e.name, e.message);
-    console.log("stack:", typeof e.stack === "string");
+  console.log("TypeError:", e.name, e.message);
+  console.log("stack:", typeof e.stack === "string");
 }
 
 // --- Global Functions ---
@@ -297,9 +362,9 @@ console.log("spread:", arr3);
 // --- Proxy ---
 console.log("\n--- Proxy ---");
 let handler = {
-    get: function(target: any, prop: string) {
-        return prop in target ? target[prop] : 42;
-    }
+  get: function (target: any, prop: string) {
+    return prop in target ? target[prop] : 42;
+  },
 };
 let proxy = new Proxy({ x: 1 }, handler);
 console.log("Proxy get:", proxy.x);
@@ -324,19 +389,25 @@ console.log("Symbol.keyFor:", Symbol.keyFor(sym2));
 console.log("\n--- for...of ---");
 let arr4 = [10, 20, 30];
 let sum2 = 0;
-for (let v of arr4) { sum2 += v; }
+for (let v of arr4) {
+  sum2 += v;
+}
 console.log("for...of sum:", sum2);
 
 let str2 = "abc";
 let chars = "";
-for (let c of str2) { chars += c + "-"; }
+for (let c of str2) {
+  chars += c + "-";
+}
 console.log("string for...of:", chars);
 
 // --- Generator ---
 console.log("\n--- Generator ---");
 function* idGen() {
-    let id = 0;
-    while (true) { yield id++; }
+  let id = 0;
+  while (true) {
+    yield id++;
+  }
 }
 let gen = idGen();
 console.log("generator:", gen.next().value, gen.next().value, gen.next().value);
@@ -347,7 +418,7 @@ let p2 = Promise.resolve(42);
 p2.then((v: number) => console.log("Promise resolve:", v));
 
 Promise.all([Promise.resolve(1), Promise.resolve(2)]).then((vals: number[]) => {
-    console.log("Promise.all:", vals);
+  console.log("Promise.all:", vals);
 });
 
 // --- BigInt ---
@@ -377,7 +448,7 @@ let iterArr = [1, 2, 3, 4, 5];
 // --- Function.prototype ---
 console.log("\n--- Function.prototype ---");
 function greet(greeting: string, name: string) {
-    return greeting + ", " + name + "!";
+  return greeting + ", " + name + "!";
 }
 console.log("call:", greet.call(null, "Hi", "World"));
 console.log("apply:", greet.apply(null, ["Hey", "Alice"]));
@@ -394,7 +465,11 @@ console.log("is:", Object.is(1, 1), Object.is(NaN, NaN));
 
 // --- Intl ---
 console.log("\n--- Intl ---");
-let dtf = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" });
+let dtf = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
 console.log("DateTimeFormat:", dtf.format().length > 0);
 let nf = new Intl.NumberFormat("en-US");
 console.log("NumberFormat:", nf.format(1234567.89));
