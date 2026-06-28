@@ -188,15 +188,6 @@ fn test_regexp_test_false() {
 }
 
 #[test]
-fn test_regexp_test_false() {
-    let mut rt = TailsRuntime::default();
-    let r = rt
-        .eval(r#"let re = new RegExp("xyz"); re.test("hello world");"#)
-        .unwrap();
-    assert_eq!(r, Value::Boolean(false));
-}
-
-#[test]
 fn test_regexp_with_flags() {
     let mut rt = TailsRuntime::default();
     let r = rt
@@ -256,9 +247,13 @@ fn test_regexp_flags() {
 #[test]
 fn test_regexp_global() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"let re = new RegExp("a", "g"); re.global();"#).unwrap();
+    let r = rt
+        .eval(r#"let re = new RegExp("a", "g"); re.global();"#)
+        .unwrap();
     assert_eq!(r, Value::Boolean(true));
-    let r = rt.eval(r#"let re = new RegExp("a"); re.global();"#).unwrap();
+    let r = rt
+        .eval(r#"let re = new RegExp("a"); re.global();"#)
+        .unwrap();
     assert_eq!(r, Value::Boolean(false));
 }
 
