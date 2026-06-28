@@ -94,7 +94,7 @@ pub(super) fn native_os_totalmem(
         if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
             for line in content.lines() {
                 if let Some(rest) = line.strip_prefix("MemTotal:") {
-                    if let Some(kb_str) = rest.trim().split_whitespace().next() {
+                    if let Some(kb_str) = rest.split_whitespace().next() {
                         if let Ok(kb) = kb_str.parse::<f64>() {
                             return Ok(Value::Float(kb * 1024.0));
                         }
@@ -116,7 +116,7 @@ pub(super) fn native_os_freemem(
         if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
             for line in content.lines() {
                 if let Some(rest) = line.strip_prefix("MemAvailable:") {
-                    if let Some(kb_str) = rest.trim().split_whitespace().next() {
+                    if let Some(kb_str) = rest.split_whitespace().next() {
                         if let Ok(kb) = kb_str.parse::<f64>() {
                             return Ok(Value::Float(kb * 1024.0));
                         }

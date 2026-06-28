@@ -123,7 +123,13 @@ pub(super) fn native_crypto_hash_digest(
                 let alg = obj
                     .properties
                     .get("_algorithm")
-                    .and_then(|v| if let Value::String(s) = v { Some(s.as_str()) } else { None })
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or("sha256");
                 let buf_idx = match obj.properties.get("_data") {
                     Some(Value::Object(idx)) => *idx,

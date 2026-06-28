@@ -249,7 +249,10 @@ impl TypeChecker {
                     args: arg_tys,
                 })
             }
-            TypeAnnotation::Constructor { params, return_type } => {
+            TypeAnnotation::Constructor {
+                params,
+                return_type,
+            } => {
                 let param_tys: Vec<Type> = params
                     .iter()
                     .map(|p| self.resolve_annotation(p))

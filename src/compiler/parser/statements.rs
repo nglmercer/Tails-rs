@@ -778,7 +778,11 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    members.push(ClassMember::Property { name, is_static, init });
+                    members.push(ClassMember::Property {
+                        name,
+                        is_static,
+                        init,
+                    });
                     if self.peek().token == Token::Semicolon {
                         self.advance();
                     }
@@ -1100,6 +1104,10 @@ impl<'a> Parser<'a> {
                     )))
                 }
             };
+            // Skip optional marker for methods: setup?(): void
+            if self.peek().token == Token::Question {
+                self.advance();
+            }
             if self.peek().token == Token::LeftParen {
                 self.advance();
                 let mut params = Vec::new();

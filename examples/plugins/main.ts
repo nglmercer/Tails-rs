@@ -1,33 +1,35 @@
-import { register, init, shutdown, getPlugins } from "./plugin_manager.ts";
+import {
+  register,
+  init,
+  shutdown,
+  getPlugins,
+} from "./plugin_manager.ts";
 import { PluginInput } from "./types.ts";
 
-// --- Example: Register a plugin from a plain object ---
 const helloPlugin: PluginInput = {
   metadata: { name: "hello", version: "1.0.0" },
-  setup() {
+  setup(): void {
     console.log("[hello] setup called");
   },
-  onLoad() {
+  onLoad(): void {
     console.log("[hello] loaded");
   },
-  onEnable() {
+  onEnable(): void {
     console.log("[hello] enabled");
   },
-  onDisable() {
+  onDisable(): void {
     console.log("[hello] disabled");
   },
-  onUnload() {
+  onUnload(): void {
     console.log("[hello] unloaded");
   },
 };
 
-// Register the plugin
 register(helloPlugin);
 console.log("Registered plugins:", getPlugins());
 
-// Initialize (calls setup + onLoad for each plugin)
 init();
+console.log("Initialized.");
 
-// Shutdown (calls onDisable + onUnload for each plugin)
 shutdown();
 console.log("All plugins shut down.");

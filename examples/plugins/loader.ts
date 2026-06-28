@@ -15,14 +15,15 @@ export async function loadPluginFromFile(
 export async function loadPluginsFromDir(
   dir: string,
 ): Promise<PluginInput[]> {
-  const dirPath = path.resolve(dir);
+  const dirPath: string = path.resolve(dir);
   const entries: string[] = await fs.readdir(dirPath);
   const plugins: PluginInput[] = [];
-  for (const name of entries) {
+  for (let i = 0; i < entries.length; i++) {
+    const name: string = entries[i];
     if (!name.endsWith(".ts") && !name.endsWith(".js")) continue;
-    const filePath = `${dirPath}/${name}`;
+    const filePath: string = `${dirPath}/${name}`;
     try {
-      const plugin = await loadPluginFromFile(filePath);
+      const plugin: PluginInput = await loadPluginFromFile(filePath);
       plugins.push(plugin);
     } catch {
       // skip invalid plugins

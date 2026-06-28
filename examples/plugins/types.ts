@@ -1,24 +1,24 @@
 export interface PluginMetadata {
-  name: string;
-  version: string;
+  readonly name: string;
+  readonly version: string;
 }
 
 export interface IPlugin {
-  metadata: PluginMetadata;
-  setup: () => void;
-  onLoad: () => void;
-  onEnable: () => void;
-  onDisable: () => void;
-  onUnload: () => void;
+  readonly metadata: PluginMetadata;
+  setup(): void | Promise<void>;
+  onLoad(): void | Promise<void>;
+  onEnable(): void | Promise<void>;
+  onDisable(): void | Promise<void>;
+  onUnload(): void | Promise<void>;
 }
 
 export interface PluginConst {
   metadata: PluginMetadata;
-  setup?: () => void;
-  onLoad?: () => void;
-  onEnable?: () => void;
-  onDisable?: () => void;
-  onUnload?: () => void;
+  setup?(): void | Promise<void>;
+  onLoad?(): void | Promise<void>;
+  onEnable?(): void | Promise<void>;
+  onDisable?(): void | Promise<void>;
+  onUnload?(): void | Promise<void>;
 }
 
 export type PluginInput = IPlugin | PluginConst;

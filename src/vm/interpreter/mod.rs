@@ -958,9 +958,11 @@ impl Interpreter {
                         Value::String(s) => s.clone(),
                         _ => {
                             let promise_idx = self.heap.len();
-                            self.heap.push(HeapValue::Promise(crate::objects::js_promise::JsPromise::rejected(
-                                Value::String(format!("Cannot resolve import source: {}", source)),
-                            )));
+                            self.heap.push(HeapValue::Promise(
+                                crate::objects::js_promise::JsPromise::rejected(Value::String(
+                                    format!("Cannot resolve import source: {}", source),
+                                )),
+                            ));
                             self.stack.push(Value::Promise(promise_idx));
                             continue;
                         }
@@ -1003,7 +1005,9 @@ impl Interpreter {
                             }));
                             let promise_idx = self.heap.len();
                             self.heap.push(HeapValue::Promise(
-                                crate::objects::js_promise::JsPromise::rejected(Value::Object(reason_idx)),
+                                crate::objects::js_promise::JsPromise::rejected(Value::Object(
+                                    reason_idx,
+                                )),
                             ));
                             self.stack.push(Value::Promise(promise_idx));
                         }

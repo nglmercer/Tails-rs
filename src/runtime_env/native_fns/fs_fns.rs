@@ -347,9 +347,11 @@ pub(super) fn native_fs_readdir(
                 .collect();
 
             let arr_idx = interp.heap.len();
-            interp.heap.push(HeapValue::Array(
-                crate::vm::interpreter::JsArray { elements: entries },
-            ));
+            interp
+                .heap
+                .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+                    elements: entries,
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::fulfilled(Value::Array(arr_idx)),
@@ -361,15 +363,18 @@ pub(super) fn native_fs_readdir(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("ENOENT: no such file or directory, scandir '{}': {}", path, e)),
+                Value::String(format!(
+                    "ENOENT: no such file or directory, scandir '{}': {}",
+                    path, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -402,15 +407,18 @@ pub(super) fn native_fs_read_file(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("ENOENT: no such file or directory, open '{}': {}", path, e)),
+                Value::String(format!(
+                    "ENOENT: no such file or directory, open '{}': {}",
+                    path, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -449,13 +457,13 @@ pub(super) fn native_fs_write_file(
                 "message".into(),
                 Value::String(format!("EACCES: permission denied, open '{}': {}", path, e)),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -499,13 +507,13 @@ pub(super) fn native_fs_stat(
                 }
             }
             let stat_idx = interp.heap.len();
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::fulfilled(Value::Object(stat_idx)),
@@ -517,15 +525,18 @@ pub(super) fn native_fs_stat(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("ENOENT: no such file or directory, stat '{}': {}", path, e)),
+                Value::String(format!(
+                    "ENOENT: no such file or directory, stat '{}': {}",
+                    path, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -579,15 +590,18 @@ pub(super) fn native_fs_mkdir(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("EACCES: permission denied, mkdir '{}': {}", path, e)),
+                Value::String(format!(
+                    "EACCES: permission denied, mkdir '{}': {}",
+                    path, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -620,15 +634,18 @@ pub(super) fn native_fs_unlink(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("ENOENT: no such file or directory, unlink '{}': {}", path, e)),
+                Value::String(format!(
+                    "ENOENT: no such file or directory, unlink '{}': {}",
+                    path, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -665,15 +682,18 @@ pub(super) fn native_fs_copy_file(
             let mut props = std::collections::HashMap::new();
             props.insert(
                 "message".into(),
-                Value::String(format!("EACCES: permission denied, copy '{}' to '{}': {}", src, dest, e)),
+                Value::String(format!(
+                    "EACCES: permission denied, copy '{}' to '{}': {}",
+                    src, dest, e
+                )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),
@@ -715,13 +735,13 @@ pub(super) fn native_fs_rename(
                     old_path, new_path, e
                 )),
             );
-            interp.heap.push(HeapValue::Object(
-                crate::vm::interpreter::JsObject {
+            interp
+                .heap
+                .push(HeapValue::Object(crate::vm::interpreter::JsObject {
                     properties: props,
                     prototype: None,
                     extensible: true,
-                },
-            ));
+                }));
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
                 crate::objects::js_promise::JsPromise::rejected(Value::Object(err_idx)),

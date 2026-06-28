@@ -9,10 +9,9 @@ pub(super) fn native_event_emitter_constructor(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let listeners_idx = interp.gc.allocate(
-        &mut interp.heap,
-        HeapValue::Object(JsObject::new()),
-    );
+    let listeners_idx = interp
+        .gc
+        .allocate(&mut interp.heap, HeapValue::Object(JsObject::new()));
     let mut props = std::collections::HashMap::new();
     props.insert("_listeners".into(), Value::Object(listeners_idx));
     let idx = interp.heap.len();
@@ -56,7 +55,9 @@ pub(super) fn native_event_emitter_on(
                 _ => {
                     // Create new array
                     let new_idx = interp.heap.len();
-                    interp.heap.push(HeapValue::Array(JsArray { elements: Vec::new() }));
+                    interp.heap.push(HeapValue::Array(JsArray {
+                        elements: Vec::new(),
+                    }));
                     new_idx
                 }
             }
@@ -71,7 +72,9 @@ pub(super) fn native_event_emitter_on(
 
     // Update listeners map
     if let HeapValue::Object(listeners_obj) = &mut interp.heap[listeners_idx] {
-        listeners_obj.properties.insert(event, Value::Array(arr_idx));
+        listeners_obj
+            .properties
+            .insert(event, Value::Array(arr_idx));
     }
 
     Ok(this.clone())
@@ -103,15 +106,13 @@ pub(super) fn native_event_emitter_emit(
 
     // Clone callbacks to avoid borrow issues
     let callbacks: Vec<Value> = match &interp.heap[listeners_idx] {
-        HeapValue::Object(listeners_obj) => {
-            match listeners_obj.properties.get(&event) {
-                Some(Value::Array(arr_idx)) => match &interp.heap[*arr_idx] {
-                    HeapValue::Array(arr_obj) => arr_obj.elements.clone(),
-                    _ => Vec::new(),
-                },
+        HeapValue::Object(listeners_obj) => match listeners_obj.properties.get(&event) {
+            Some(Value::Array(arr_idx)) => match &interp.heap[*arr_idx] {
+                HeapValue::Array(arr_obj) => arr_obj.elements.clone(),
                 _ => Vec::new(),
-            }
-        }
+            },
+            _ => Vec::new(),
+        },
         _ => Vec::new(),
     };
 
@@ -148,12 +149,10 @@ pub(super) fn native_event_emitter_off(
     };
 
     let arr_idx = match &interp.heap[listeners_idx] {
-        HeapValue::Object(listeners_obj) => {
-            match listeners_obj.properties.get(&event) {
-                Some(Value::Array(idx)) => *idx,
-                _ => return Ok(this.clone()),
-            }
-        }
+        HeapValue::Object(listeners_obj) => match listeners_obj.properties.get(&event) {
+            Some(Value::Array(idx)) => *idx,
+            _ => return Ok(this.clone()),
+        },
         _ => return Ok(this.clone()),
     };
 
@@ -196,17 +195,13 @@ pub(super) fn native_event_emitter_listener_count(
     };
 
     match &interp.heap[listeners_idx] {
-        HeapValue::Object(listeners_obj) => {
-            match listeners_obj.properties.get(&event) {
-                Some(Value::Array(arr_idx)) => match &interp.heap[*arr_idx] {
-                    HeapValue::Array(arr_obj) => {
-                        Ok(Value::Integer(arr_obj.elements.len() as i64))
-                    }
-                    _ => Ok(Value::Integer(0)),
-                },
+        HeapValue::Object(listeners_obj) => match listeners_obj.properties.get(&event) {
+            Some(Value::Array(arr_idx)) => match &interp.heap[*arr_idx] {
+                HeapValue::Array(arr_obj) => Ok(Value::Integer(arr_obj.elements.len() as i64)),
                 _ => Ok(Value::Integer(0)),
-            }
-        }
+            },
+            _ => Ok(Value::Integer(0)),
+        },
         _ => Ok(Value::Integer(0)),
     }
 }

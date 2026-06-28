@@ -34,7 +34,10 @@ fn test_primitives() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("string,boolean,object,undefined".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("string,boolean,object,undefined".to_string())
+    );
 }
 
 #[test]
@@ -46,7 +49,10 @@ fn test_arithmetic_operators() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("13,7,30,3.3333333333333335,1,1024".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("13,7,30,3.3333333333333335,1,1024".to_string())
+    );
 }
 
 #[test]
@@ -72,7 +78,10 @@ fn test_comparison_operators() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("true,true,true,true,true,true".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("true,true,true,true,true,true".to_string())
+    );
 }
 
 #[test]
@@ -625,7 +634,10 @@ fn test_math() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("5,3,4,4,1,3,1024,4,0,true".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("5,3,4,4,1,3,1024,4,0,true".to_string())
+    );
 }
 
 #[test]
@@ -737,7 +749,10 @@ fn test_is_nan_is_finite() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("true,false,true,false".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("true,false,true,false".to_string())
+    );
 }
 
 // ---- Encoding ----
@@ -811,7 +826,10 @@ fn test_path_module() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("/foo/bar/baz,bar.txt,/foo,.txt,true,/bar,true".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("/foo/bar/baz,bar.txt,/foo,.txt,true,/bar,true".to_string())
+    );
 }
 
 // ---- fs (native module) ----
@@ -830,7 +848,10 @@ fn test_fs_module() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("Hello from Tails!,true,false".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("Hello from Tails!,true,false".to_string())
+    );
 }
 
 // ---- Destructuring & Spread ----
@@ -1089,7 +1110,10 @@ fn test_date() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("number,number,number".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("number,number,number".to_string())
+    );
 }
 
 // ---- RegExp ----
@@ -1257,7 +1281,10 @@ fn test_iterator_helpers() {
     "#,
     );
     assert!(r.is_ok());
-    assert_eq!(r.unwrap(), Value::String("2,4,6,8,10|3,4,5|1,2,3|3,4,5".to_string()));
+    assert_eq!(
+        r.unwrap(),
+        Value::String("2,4,6,8,10|3,4,5|1,2,3|3,4,5".to_string())
+    );
 }
 
 // ---- Promise enhancements ----
