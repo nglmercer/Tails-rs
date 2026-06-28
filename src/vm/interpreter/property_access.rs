@@ -425,10 +425,10 @@ impl Interpreter {
                 if let Value::String(key_str) = key {
                     match key_str.as_str() {
                         "length" => {
-                            // Return the length directly (getter)
                             if let Value::TypedArray(ta_idx) = this {
                                 if let HeapValue::TypedArray(ta) = &self.heap[*ta_idx] {
-                                    return Ok(Value::Float(ta.byte_length as f64));
+                                    let elem_size = crate::objects::js_array::TypedArray::element_size(&ta.kind);
+                                    return Ok(Value::Float((ta.byte_length / elem_size) as f64));
                                 }
                             }
                         }

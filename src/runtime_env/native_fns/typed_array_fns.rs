@@ -74,6 +74,164 @@ pub(super) fn native_typed_array_constructor(
     Ok(Value::TypedArray(heap_idx))
 }
 
+fn typed_array_constructor_impl(
+    interp: &mut Interpreter,
+    kind: TypedArrayType,
+    args: &[Value],
+) -> Result<Value> {
+    match args.first() {
+        Some(Value::Integer(length)) => {
+            let typed_array = TypedArray::new(kind, *length as usize);
+            let heap_idx = interp.heap.len();
+            interp
+                .heap
+                .push(crate::vm::interpreter::HeapValue::TypedArray(typed_array));
+            Ok(Value::TypedArray(heap_idx))
+        }
+        Some(Value::Float(length)) => {
+            let typed_array = TypedArray::new(kind, *length as usize);
+            let heap_idx = interp.heap.len();
+            interp
+                .heap
+                .push(crate::vm::interpreter::HeapValue::TypedArray(typed_array));
+            Ok(Value::TypedArray(heap_idx))
+        }
+        Some(Value::Array(arr_idx)) => {
+            let elements: Vec<Value> = if let crate::vm::interpreter::HeapValue::Array(arr) =
+                &interp.heap[*arr_idx]
+            {
+                arr.elements.clone()
+            } else {
+                Vec::new()
+            };
+            let length = elements.len();
+            let mut typed_array = TypedArray::new(kind.clone(), length);
+            for (i, elem) in elements.iter().enumerate() {
+                match (&kind, elem) {
+                    (TypedArrayType::Int8Array, Value::Integer(v)) => typed_array.set_value(i, *v as i8),
+                    (TypedArrayType::Int8Array, Value::Float(v)) => typed_array.set_value(i, *v as i8),
+                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => typed_array.set_value(i, *v as u8),
+                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Float(v)) => typed_array.set_value(i, *v as u8),
+                    (TypedArrayType::Int16Array, Value::Integer(v)) => typed_array.set_value(i, *v as i16),
+                    (TypedArrayType::Int16Array, Value::Float(v)) => typed_array.set_value(i, *v as i16),
+                    (TypedArrayType::Uint16Array, Value::Integer(v)) => typed_array.set_value(i, *v as u16),
+                    (TypedArrayType::Uint16Array, Value::Float(v)) => typed_array.set_value(i, *v as u16),
+                    (TypedArrayType::Int32Array, Value::Integer(v)) => typed_array.set_value(i, *v as i32),
+                    (TypedArrayType::Int32Array, Value::Float(v)) => typed_array.set_value(i, *v as i32),
+                    (TypedArrayType::Uint32Array, Value::Integer(v)) => typed_array.set_value(i, *v as u32),
+                    (TypedArrayType::Uint32Array, Value::Float(v)) => typed_array.set_value(i, *v as u32),
+                    (TypedArrayType::Float32Array, Value::Float(v)) => typed_array.set_value(i, *v as f32),
+                    (TypedArrayType::Float32Array, Value::Integer(v)) => typed_array.set_value(i, *v as f32),
+                    (TypedArrayType::Float64Array, Value::Float(v)) => typed_array.set_value(i, *v),
+                    (TypedArrayType::Float64Array, Value::Integer(v)) => typed_array.set_value(i, *v as f64),
+                    _ => {}
+                }
+            }
+            let heap_idx = interp.heap.len();
+            interp
+                .heap
+                .push(crate::vm::interpreter::HeapValue::TypedArray(typed_array));
+            Ok(Value::TypedArray(heap_idx))
+        }
+        _ => {
+            let typed_array = TypedArray::new(kind, 0);
+            let heap_idx = interp.heap.len();
+            interp
+                .heap
+                .push(crate::vm::interpreter::HeapValue::TypedArray(typed_array));
+            Ok(Value::TypedArray(heap_idx))
+        }
+    }
+}
+
+pub(super) fn native_int8_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Int8Array, args)
+}
+
+pub(super) fn native_uint8_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Uint8Array, args)
+}
+
+pub(super) fn native_uint8_clamped_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Uint8ClampedArray, args)
+}
+
+pub(super) fn native_int16_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Int16Array, args)
+}
+
+pub(super) fn native_uint16_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Uint16Array, args)
+}
+
+pub(super) fn native_int32_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Int32Array, args)
+}
+
+pub(super) fn native_uint32_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Uint32Array, args)
+}
+
+pub(super) fn native_float32_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Float32Array, args)
+}
+
+pub(super) fn native_float64_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::Float64Array, args)
+}
+
+pub(super) fn native_bigint64_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::BigInt64Array, args)
+}
+
+pub(super) fn native_biguint64_array_constructor(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    typed_array_constructor_impl(interp, TypedArrayType::BigUint64Array, args)
+}
+
 pub(super) fn native_typed_array_from(
     interp: &mut Interpreter,
     _this: &Value,
@@ -263,30 +421,156 @@ pub(super) fn native_typed_array_set(
         _ => return Err(Error::TypeError("Not a TypedArray".into())),
     };
 
-    let index = match args.first() {
-        Some(Value::Integer(i)) => *i as usize,
-        Some(Value::Float(f)) => *f as usize,
-        _ => return Err(Error::TypeError("Invalid index".into())),
-    };
-
-    let value = args.get(1).cloned().unwrap_or(Value::Undefined);
-
-    let arr = get_typed_array_mut(interp, idx)?;
-
-    match (arr.kind.clone(), value) {
-        (TypedArrayType::Int8Array, Value::Integer(v)) => arr.set_value(index, v as i8),
-        (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => {
-            arr.set_value(index, v as u8)
+    match args.first() {
+        Some(Value::TypedArray(src_idx)) => {
+            let src_idx = *src_idx;
+            let (src_kind, src_byte_length) = if let crate::vm::interpreter::HeapValue::TypedArray(ta) = &interp.heap[src_idx] {
+                (ta.kind.clone(), ta.byte_length)
+            } else {
+                return Err(Error::TypeError("Not a TypedArray".into()));
+            };
+            let offset = match args.get(1) {
+                Some(Value::Integer(i)) => *i as usize,
+                Some(Value::Float(f)) => *f as usize,
+                _ => 0,
+            };
+            let element_size = TypedArray::element_size(&src_kind);
+            let src_elems = src_byte_length / element_size;
+            let dst_byte_length = {
+                let arr = get_typed_array(interp, idx)?;
+                arr.byte_length
+            };
+            let byte_offset = offset * element_size;
+            let count = std::cmp::min(
+                (dst_byte_length - byte_offset) / element_size,
+                src_elems - offset,
+            );
+            let mut src_values: Vec<i64> = Vec::with_capacity(count);
+            if let crate::vm::interpreter::HeapValue::TypedArray(src_arr) = &interp.heap[src_idx] {
+                for i in 0..count {
+                    let val = src_arr.get::<i64>(i + offset).unwrap_or(0);
+                    src_values.push(val);
+                }
+            }
+            let arr = get_typed_array_mut(interp, idx)?;
+            if byte_offset + count * element_size <= arr.byte_length {
+                for (i, val) in src_values.iter().enumerate() {
+                    match src_kind {
+                        TypedArrayType::Int8Array => arr.set_value(i + offset, *val as i8),
+                        TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray => {
+                            arr.set_value(i + offset, *val as u8)
+                        }
+                        TypedArrayType::Int16Array => arr.set_value(i + offset, *val as i16),
+                        TypedArrayType::Uint16Array => arr.set_value(i + offset, *val as u16),
+                        TypedArrayType::Int32Array => arr.set_value(i + offset, *val as i32),
+                        TypedArrayType::Uint32Array => arr.set_value(i + offset, *val as u32),
+                        TypedArrayType::Float32Array => arr.set_value(i + offset, *val as f32),
+                        TypedArrayType::Float64Array => arr.set_value(i + offset, *val as f64),
+                        _ => {}
+                    }
+                }
+            }
         }
-        (TypedArrayType::Int16Array, Value::Integer(v)) => arr.set_value(index, v as i16),
-        (TypedArrayType::Uint16Array, Value::Integer(v)) => arr.set_value(index, v as u16),
-        (TypedArrayType::Int32Array, Value::Integer(v)) => arr.set_value(index, v as i32),
-        (TypedArrayType::Uint32Array, Value::Integer(v)) => arr.set_value(index, v as u32),
-        (TypedArrayType::Float32Array, Value::Float(v)) => arr.set_value(index, v as f32),
-        (TypedArrayType::Float32Array, Value::Integer(v)) => arr.set_value(index, v as f32),
-        (TypedArrayType::Float64Array, Value::Float(v)) => arr.set_value(index, v),
-        (TypedArrayType::Float64Array, Value::Integer(v)) => arr.set_value(index, v as f64),
-        _ => {}
+        Some(Value::Array(arr_idx)) => {
+            let arr_idx = *arr_idx;
+            let elements: Vec<Value> = if let crate::vm::interpreter::HeapValue::Array(
+                crate::vm::interpreter::JsArray { elements: elems },
+            ) = &interp.heap[arr_idx]
+            {
+                elems.clone()
+            } else {
+                Vec::new()
+            };
+            let dst_kind = {
+                let arr = get_typed_array(interp, idx)?;
+                arr.kind.clone()
+            };
+            let dst_byte_length = {
+                let arr = get_typed_array(interp, idx)?;
+                arr.byte_length
+            };
+            let offset = match args.get(1) {
+                Some(Value::Integer(i)) => *i as usize,
+                Some(Value::Float(f)) => *f as usize,
+                _ => 0,
+            };
+            let arr = get_typed_array_mut(interp, idx)?;
+            for (i, elem) in elements.iter().enumerate() {
+                let target_idx = offset + i;
+                if target_idx * TypedArray::element_size(&dst_kind) >= dst_byte_length {
+                    break;
+                }
+                match (dst_kind.clone(), elem) {
+                    (TypedArrayType::Int8Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as i8)
+                    }
+                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as u8)
+                    }
+                    (TypedArrayType::Int16Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as i16)
+                    }
+                    (TypedArrayType::Uint16Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as u16)
+                    }
+                    (TypedArrayType::Int32Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as i32)
+                    }
+                    (TypedArrayType::Uint32Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as u32)
+                    }
+                    (TypedArrayType::Float32Array, Value::Float(v)) => {
+                        arr.set_value(target_idx, *v as f32)
+                    }
+                    (TypedArrayType::Float32Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as f32)
+                    }
+                    (TypedArrayType::Float64Array, Value::Float(v)) => {
+                        arr.set_value(target_idx, *v)
+                    }
+                    (TypedArrayType::Float64Array, Value::Integer(v)) => {
+                        arr.set_value(target_idx, *v as f64)
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {
+            // Single value: set(index, value)
+            let index = match args.first() {
+                Some(Value::Integer(i)) => *i as usize,
+                Some(Value::Float(f)) => *f as usize,
+                _ => return Err(Error::TypeError("Invalid index".into())),
+            };
+
+            let value = args.get(1).cloned().unwrap_or(Value::Undefined);
+            let kind = get_typed_array(interp, idx)?.kind.clone();
+            let arr = get_typed_array_mut(interp, idx)?;
+
+            match (kind, value) {
+                (TypedArrayType::Int8Array, Value::Integer(v)) => arr.set_value(index, v as i8),
+                (TypedArrayType::Int8Array, Value::Float(v)) => arr.set_value(index, v as i8),
+                (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => {
+                    arr.set_value(index, v as u8)
+                }
+                (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Float(v)) => {
+                    arr.set_value(index, v as u8)
+                }
+                (TypedArrayType::Int16Array, Value::Integer(v)) => arr.set_value(index, v as i16),
+                (TypedArrayType::Int16Array, Value::Float(v)) => arr.set_value(index, v as i16),
+                (TypedArrayType::Uint16Array, Value::Integer(v)) => arr.set_value(index, v as u16),
+                (TypedArrayType::Uint16Array, Value::Float(v)) => arr.set_value(index, v as u16),
+                (TypedArrayType::Int32Array, Value::Integer(v)) => arr.set_value(index, v as i32),
+                (TypedArrayType::Int32Array, Value::Float(v)) => arr.set_value(index, v as i32),
+                (TypedArrayType::Uint32Array, Value::Integer(v)) => arr.set_value(index, v as u32),
+                (TypedArrayType::Uint32Array, Value::Float(v)) => arr.set_value(index, v as u32),
+                (TypedArrayType::Float32Array, Value::Float(v)) => arr.set_value(index, v as f32),
+                (TypedArrayType::Float32Array, Value::Integer(v)) => arr.set_value(index, v as f32),
+                (TypedArrayType::Float64Array, Value::Float(v)) => arr.set_value(index, v),
+                (TypedArrayType::Float64Array, Value::Integer(v)) => arr.set_value(index, v as f64),
+                _ => {}
+            }
+        }
     }
 
     Ok(Value::Undefined)

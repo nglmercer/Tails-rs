@@ -479,6 +479,60 @@ impl Interpreter {
                             let this_val = Value::Object(new_obj_heap_idx);
                             if let HeapValue::Function(f) = &self.heap[*func_idx] {
                                 if f.bytecode_index == usize::MAX {
+                                    // Default constructor - auto-call super if subclass
+                                    if let Some(ref super_val) = f.super_class {
+                                        if let Value::Function(super_func_idx) = super_val {
+                                            if let HeapValue::Function(super_f) =
+                                                &self.heap[*super_func_idx]
+                                            {
+                                                if super_f.bytecode_index != usize::MAX {
+                                                    let super_f_clone = super_f.clone();
+                                                    let return_address = pc + 1;
+                                                    let base_pointer = self.stack.len();
+                                                    self.call_stack.push(CallFrame {
+                                                        return_address,
+                                                        base_pointer,
+                                                        closure_var_count: 0,
+                                                        func_heap_idx: Some(*super_func_idx),
+                                                        this_value: Some(this_val.clone()),
+                                                        is_construct: true,
+                                                        source_name: self.current_module_path.clone(),
+                                                    });
+                                                    for arg in args {
+                                                        self.stack.push(arg);
+                                                    }
+                                                    pc = super_f_clone.bytecode_index;
+                                                    continue;
+                                                }
+                                            }
+                                        } else if let Value::NativeFunction(super_native_idx) =
+                                            super_val
+                                        {
+                                            let result = self.call_native(
+                                                *super_native_idx,
+                                                &this_val,
+                                                &args,
+                                            )?;
+                                            match result {
+                                                Value::Object(_)
+                                                | Value::Array(_)
+                                                | Value::Function(_)
+                                                | Value::Promise(_)
+                                                | Value::Proxy(_)
+                                                | Value::Date(_)
+                                                | Value::RegExp(_)
+                                                | Value::Map(_)
+                                                | Value::Set(_)
+                                                | Value::TypedArray(_) => {
+                                                    self.stack.push(result);
+                                                }
+                                                _ => {
+                                                    self.stack.push(this_val);
+                                                }
+                                            }
+                                            continue;
+                                        }
+                                    }
                                     self.stack.push(this_val);
                                 } else {
                                     let f_clone = f.clone();
@@ -527,21 +581,7 @@ impl Interpreter {
                             }
                         }
                         Value::NativeFunction(native_idx) => {
-                            // For TypedArray constructors (index 102), pass the type name
-                            let mut final_args = args.clone();
-                            if *native_idx == 102 {
-                                // Find the type name from globals
-                                if let Some(name) = self.globals.iter().find_map(|(k, v)| {
-                                    if let Value::NativeFunction(idx) = v {
-                                        if *idx == 102 {
-                                            return Some(k.clone());
-                                        }
-                                    }
-                                    None
-                                }) {
-                                    final_args.insert(0, Value::String(name));
-                                }
-                            }
+                            let final_args = args.clone();
                             let proto_idx = self.find_native_prototype(*native_idx);
                             let new_obj_heap_idx = self.gc.allocate(
                                 &mut self.heap,
@@ -559,6 +599,8 @@ impl Interpreter {
                                 | Value::RegExp(_)
                                 | Value::Map(_)
                                 | Value::Set(_)
+                                | Value::WeakMap(_)
+                                | Value::WeakSet(_)
                                 | Value::TypedArray(_) => {
                                     self.stack.push(result);
                                 }

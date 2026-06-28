@@ -5,6 +5,12 @@ use std::collections::HashMap;
 
 impl Interpreter {
     pub(super) fn init_builtins(&mut self) {
+        // Global constants
+        self.globals
+            .insert("Infinity".into(), Value::Float(f64::INFINITY));
+        self.globals
+            .insert("-Infinity".into(), Value::Float(f64::NEG_INFINITY));
+
         // Global functions
         self.globals
             .insert("parseInt".into(), Value::NativeFunction(10));
@@ -639,21 +645,21 @@ impl Interpreter {
             .insert("RangeError".into(), Value::NativeFunction(76));
 
         // TypedArray constructors
-        let typed_array_names = [
-            "Int8Array",
-            "Uint8Array",
-            "Uint8ClampedArray",
-            "Int16Array",
-            "Uint16Array",
-            "Int32Array",
-            "Uint32Array",
-            "Float32Array",
-            "Float64Array",
-            "BigInt64Array",
-            "BigUint64Array",
+        let typed_array_constructors = [
+            ("Int8Array", 301usize),
+            ("Uint8Array", 302),
+            ("Uint8ClampedArray", 303),
+            ("Int16Array", 304),
+            ("Uint16Array", 305),
+            ("Int32Array", 306),
+            ("Uint32Array", 307),
+            ("Float32Array", 308),
+            ("Float64Array", 309),
+            ("BigInt64Array", 310),
+            ("BigUint64Array", 311),
         ];
 
-        for name in typed_array_names.iter() {
+        for (name, ctor_idx) in typed_array_constructors.iter() {
             // Create prototype
             let mut proto_props = HashMap::new();
             proto_props.insert(
@@ -692,7 +698,7 @@ impl Interpreter {
                 }),
             );
             self.globals
-                .insert((*name).into(), Value::NativeFunction(102));
+                .insert((*name).into(), Value::NativeFunction(*ctor_idx));
         }
 
         // Map

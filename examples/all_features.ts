@@ -145,14 +145,38 @@ console.log("flat:", [[1, 2], [3, 4]].flat());
 
 // --- Typed Arrays ---
 console.log("\n--- Typed Arrays ---");
-// Note: TypedArray constructors need Construct support for Value::Object
-console.log("TypedArray: (skipped - constructor not implemented yet)");
+let ta = new Int32Array(3);
+ta.set(0, 10);
+ta.set(1, 20);
+ta.set(2, 30);
+console.log("Int32Array length:", ta.length);
+console.log("Int32Array get:", ta.get(0), ta.get(1), ta.get(2));
+
+let ta2 = new Float64Array([1.5, 2.5, 3.5]);
+console.log("Float64Array length:", ta2.length);
+console.log("Float64Array get:", ta2.get(0), ta2.get(1), ta2.get(2));
 
 // --- ES6+ Collections ---
-console.log("
---- ES6+ Collections ---");
-// Note: Map/Set constructors need Construct support for Value::Object
-console.log("Collections: (skipped - constructors not implemented yet)");
+console.log("\n--- ES6+ Collections ---");
+let myMap = new Map();
+myMap.set("a", 1);
+myMap.set("b", 2);
+myMap.set("c", 3);
+console.log("Map size:", myMap.size);
+console.log("Map get:", myMap.get("a"), myMap.get("b"));
+console.log("Map has:", myMap.has("a"), myMap.has("d"));
+myMap.delete("c");
+console.log("Map after delete:", myMap.size);
+
+let mySet = new Set();
+mySet.add(1);
+mySet.add(2);
+mySet.add(3);
+mySet.add(2);
+console.log("Set size:", mySet.size);
+console.log("Set has:", mySet.has(1), mySet.has(4));
+mySet.delete(1);
+console.log("Set after delete:", mySet.size);
 // --- Strings ---
 console.log("\n--- Strings ---");
 let str = "Hello, World!";

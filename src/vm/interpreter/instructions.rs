@@ -81,7 +81,7 @@ impl Interpreter {
                     | Value::WeakMap(_)
                     | Value::WeakSet(_)
                     | Value::Buffer(_) => "object",
-                    Value::Date(_) | Value::RegExp(_) => todo!(),
+                    Value::Date(_) | Value::RegExp(_) => "object",
                 };
                 self.stack.push(Value::String(type_str.to_string()));
             }
@@ -279,7 +279,7 @@ impl Interpreter {
                     | Value::WeakMap(_)
                     | Value::WeakSet(_)
                     | Value::Buffer(_) => "object",
-                    Value::Date(_) | Value::RegExp(_) => todo!(),
+                    Value::Date(_) | Value::RegExp(_) => "object",
                 };
                 self.stack.push(Value::String(type_str.to_string()));
             }
@@ -508,7 +508,13 @@ impl Interpreter {
                     Value::Object(obj_idx) => {
                         if let HeapValue::Object(obj) = &mut self.heap[*obj_idx] {
                             if let Value::String(key_str) = &key {
-                                obj.properties.insert(key_str.clone(), value);
+                                let setter_key = format!("__setter_{}", key_str);
+                                if let Some(setter_val) = obj.properties.get(&setter_key).cloned() {
+                                    let _ = obj;
+                                    self.call_value(&setter_val, &object, &[value])?;
+                                } else {
+                                    obj.properties.insert(key_str.clone(), value);
+                                }
                             }
                         }
                     }

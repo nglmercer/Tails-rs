@@ -361,4 +361,16 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     fetch_fns::native_response_text,
     fetch_fns::native_response_json,
     fetch_fns::native_response_array_buffer,
+    // TypedArray constructors (311-321)
+    typed_array_fns::native_int8_array_constructor,
+    typed_array_fns::native_uint8_array_constructor,
+    typed_array_fns::native_uint8_clamped_array_constructor,
+    typed_array_fns::native_int16_array_constructor,
+    typed_array_fns::native_uint16_array_constructor,
+    typed_array_fns::native_int32_array_constructor,
+    typed_array_fns::native_uint32_array_constructor,
+    typed_array_fns::native_float32_array_constructor,
+    typed_array_fns::native_float64_array_constructor,
+    typed_array_fns::native_bigint64_array_constructor,
+    typed_array_fns::native_biguint64_array_constructor,
 ];

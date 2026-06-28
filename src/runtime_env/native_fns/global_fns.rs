@@ -14,21 +14,66 @@ pub(super) fn native_parse_int(
         Some(v) => to_string_value(_interp, v),
         None => return Ok(Value::Float(f64::NAN)),
     };
-    let radix = args.get(1).map(to_i64).unwrap_or(10);
-    let _trimmed = s.trim().trim_start_matches(|c: char| {
-        c.is_ascii_digit() || c == '-' || c == '+' || c.is_alphabetic()
-    });
-    let actual = s.trim();
-    let result = i64::from_str_radix(actual.trim_start_matches(['+', '-']), radix as u32);
-    match result {
-        Ok(n) => {
-            if actual.starts_with('-') {
-                Ok(Value::Float(-n as f64))
-            } else {
-                Ok(Value::Float(n as f64))
-            }
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return Ok(Value::Float(f64::NAN));
+    }
+
+    let negative = trimmed.starts_with('-');
+    let digits = trimmed.trim_start_matches(['-', '+']);
+
+    let provided_radix = args.get(1).map(to_i64).unwrap_or(0);
+
+    let (radix, num_str) = if provided_radix == 0 {
+        if digits.starts_with("0x") || digits.starts_with("0X") {
+            (16u32, &digits[2..])
+        } else if digits.starts_with("0") && digits.len() > 1 && digits.as_bytes()[1].is_ascii_digit()
+        {
+            (8u32, digits)
+        } else {
+            (10u32, digits)
         }
-        Err(_) => Ok(Value::Float(f64::NAN)),
+    } else if provided_radix == 16 {
+        let stripped = digits
+            .strip_prefix("0x")
+            .or_else(|| digits.strip_prefix("0X"))
+            .unwrap_or(digits);
+        (16u32, stripped)
+    } else {
+        (provided_radix as u32, digits)
+    };
+
+    if !(2..=36).contains(&radix) {
+        return Ok(Value::Float(f64::NAN));
+    }
+
+    let mut result: i64 = 0;
+    let mut found_digit = false;
+    for ch in num_str.chars() {
+        let lower = ch.to_ascii_lowercase();
+        let digit = match lower {
+            '0'..='9' => lower as u32 - '0' as u32,
+            'a'..='z' => lower as u32 - 'a' as u32 + 10,
+            _ => break,
+        };
+        if digit >= radix {
+            break;
+        }
+        found_digit = true;
+        result = result
+            .checked_mul(radix as i64)
+            .and_then(|r| r.checked_add(digit as i64))
+            .unwrap_or(i64::MAX);
+    }
+
+    if !found_digit {
+        return Ok(Value::Float(f64::NAN));
+    }
+
+    if negative {
+        Ok(Value::Float(-result as f64))
+    } else {
+        Ok(Value::Float(result as f64))
     }
 }
 
