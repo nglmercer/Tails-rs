@@ -14,8 +14,8 @@ pub(super) fn native_url_constructor(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    let parsed = url::Url::parse(&url_str)
-        .map_err(|e| Error::TypeError(format!("Invalid URL: {}", e)))?;
+    let parsed =
+        url::Url::parse(&url_str).map_err(|e| Error::TypeError(format!("Invalid URL: {}", e)))?;
 
     let query_str = parsed.query().unwrap_or("").to_string();
 
@@ -24,23 +24,50 @@ pub(super) fn native_url_constructor(
 
     // Build all properties
     let mut props = std::collections::HashMap::new();
-    props.insert("href".to_string(), Value::String(parsed.as_str().to_string()));
-    props.insert("origin".to_string(), Value::String(parsed.origin().ascii_serialization()));
-    props.insert("protocol".to_string(), Value::String(parsed.scheme().to_string() + ":"));
-    props.insert("host".to_string(), Value::String(parsed.host_str().unwrap_or("").to_string()));
-    props.insert("hostname".to_string(), Value::String(parsed.host_str().unwrap_or("").to_string()));
-    props.insert("port".to_string(), Value::String(parsed.port().map(|p| p.to_string()).unwrap_or_default()));
-    props.insert("pathname".to_string(), Value::String(parsed.path().to_string()));
-    props.insert("search".to_string(), Value::String(if !query_str.is_empty() {
-        format!("?{}", query_str)
-    } else {
-        String::new()
-    }));
-    props.insert("hash".to_string(), Value::String(if parsed.fragment().is_some() {
-        format!("#{}", parsed.fragment().unwrap_or(""))
-    } else {
-        String::new()
-    }));
+    props.insert(
+        "href".to_string(),
+        Value::String(parsed.as_str().to_string()),
+    );
+    props.insert(
+        "origin".to_string(),
+        Value::String(parsed.origin().ascii_serialization()),
+    );
+    props.insert(
+        "protocol".to_string(),
+        Value::String(parsed.scheme().to_string() + ":"),
+    );
+    props.insert(
+        "host".to_string(),
+        Value::String(parsed.host_str().unwrap_or("").to_string()),
+    );
+    props.insert(
+        "hostname".to_string(),
+        Value::String(parsed.host_str().unwrap_or("").to_string()),
+    );
+    props.insert(
+        "port".to_string(),
+        Value::String(parsed.port().map(|p| p.to_string()).unwrap_or_default()),
+    );
+    props.insert(
+        "pathname".to_string(),
+        Value::String(parsed.path().to_string()),
+    );
+    props.insert(
+        "search".to_string(),
+        Value::String(if !query_str.is_empty() {
+            format!("?{}", query_str)
+        } else {
+            String::new()
+        }),
+    );
+    props.insert(
+        "hash".to_string(),
+        Value::String(if parsed.fragment().is_some() {
+            format!("#{}", parsed.fragment().unwrap_or(""))
+        } else {
+            String::new()
+        }),
+    );
     props.insert("searchParams".to_string(), Value::Object(search_params_idx));
 
     // Always create a new object
@@ -71,9 +98,10 @@ pub(super) fn native_url_to_string(
 fn create_search_params(interp: &mut Interpreter, query: &str) -> usize {
     let mut props = std::collections::HashMap::new();
     props.insert("__entries".into(), Value::String(query.to_string()));
-    props.insert("size".into(), Value::Integer(
-        query.split('&').filter(|s| !s.is_empty()).count() as i64
-    ));
+    props.insert(
+        "size".into(),
+        Value::Integer(query.split('&').filter(|s| !s.is_empty()).count() as i64),
+    );
     props.insert("get".into(), Value::NativeFunction(275));
     props.insert("getAll".into(), Value::NativeFunction(276));
     props.insert("has".into(), Value::NativeFunction(277));
@@ -100,7 +128,10 @@ pub(super) fn native_search_params_get(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     if let Value::Object(obj_idx) = _this {
         if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             if let Some(Value::String(entries_str)) = obj.properties.get("__entries") {
@@ -127,7 +158,10 @@ pub(super) fn native_search_params_get_all(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     let mut values = Vec::new();
     if let Value::Object(obj_idx) = _this {
         if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
@@ -148,7 +182,11 @@ pub(super) fn native_search_params_get_all(
         }
     }
     let arr_idx = interp.heap.len();
-    interp.heap.push(HeapValue::Array(crate::vm::interpreter::JsArray { elements: values }));
+    interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+            elements: values,
+        }));
     Ok(Value::Array(arr_idx))
 }
 
@@ -157,12 +195,15 @@ pub(super) fn native_search_params_has(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     if let Value::Object(obj_idx) = _this {
         if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             if let Some(Value::String(entries_str)) = obj.properties.get("__entries") {
                 for pair in entries_str.split('&') {
-                    if let Some(k) = pair.splitn(2, '=').next() {
+                    if let Some(k) = pair.split('=').next() {
                         if k == key {
                             return Ok(Value::Boolean(true));
                         }
@@ -179,8 +220,14 @@ pub(super) fn native_search_params_set(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
-    let value = args.get(1).map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
+    let value = args
+        .get(1)
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     update_entries(interp, _this, |entries| {
         entries.retain(|(k, _)| k != &key);
         entries.push((key.clone(), value.clone()));
@@ -193,8 +240,14 @@ pub(super) fn native_search_params_append(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
-    let value = args.get(1).map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
+    let value = args
+        .get(1)
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     update_entries(interp, _this, |entries| {
         entries.push((key.clone(), value.clone()));
     });
@@ -206,7 +259,10 @@ pub(super) fn native_search_params_delete(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let key = args.first().map(|v| to_string_value(interp, v)).unwrap_or_default();
+    let key = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
     update_entries(interp, _this, |entries| {
         entries.retain(|(k, _)| k != &key);
     });
@@ -237,13 +293,19 @@ pub(super) fn native_search_params_entries(
     let mut entries = Vec::new();
     for (key, value) in entries_data {
         let entry_idx = interp.heap.len();
-        interp.heap.push(HeapValue::Array(crate::vm::interpreter::JsArray {
-            elements: vec![Value::String(key), Value::String(value)],
-        }));
+        interp
+            .heap
+            .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+                elements: vec![Value::String(key), Value::String(value)],
+            }));
         entries.push(Value::Array(entry_idx));
     }
     let arr_idx = interp.heap.len();
-    interp.heap.push(HeapValue::Array(crate::vm::interpreter::JsArray { elements: entries }));
+    interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+            elements: entries,
+        }));
     Ok(Value::Array(arr_idx))
 }
 
@@ -253,9 +315,16 @@ pub(super) fn native_search_params_keys(
     _args: &[Value],
 ) -> Result<Value> {
     let entries_data: Vec<(String, String)> = parse_entries(interp, _this);
-    let keys: Vec<Value> = entries_data.into_iter().map(|(k, _)| Value::String(k)).collect();
+    let keys: Vec<Value> = entries_data
+        .into_iter()
+        .map(|(k, _)| Value::String(k))
+        .collect();
     let arr_idx = interp.heap.len();
-    interp.heap.push(HeapValue::Array(crate::vm::interpreter::JsArray { elements: keys }));
+    interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+            elements: keys,
+        }));
     Ok(Value::Array(arr_idx))
 }
 
@@ -265,9 +334,16 @@ pub(super) fn native_search_params_values(
     _args: &[Value],
 ) -> Result<Value> {
     let entries_data: Vec<(String, String)> = parse_entries(interp, _this);
-    let vals: Vec<Value> = entries_data.into_iter().map(|(_, v)| Value::String(v)).collect();
+    let vals: Vec<Value> = entries_data
+        .into_iter()
+        .map(|(_, v)| Value::String(v))
+        .collect();
     let arr_idx = interp.heap.len();
-    interp.heap.push(HeapValue::Array(crate::vm::interpreter::JsArray { elements: vals }));
+    interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+            elements: vals,
+        }));
     Ok(Value::Array(arr_idx))
 }
 
@@ -282,7 +358,11 @@ pub(super) fn native_search_params_for_each(
         let _ = interp.call_value(
             &callback,
             &Value::Undefined,
-            &[Value::String(value.clone()), Value::String(key.clone()), _this.clone()],
+            &[
+                Value::String(value.clone()),
+                Value::String(key.clone()),
+                _this.clone(),
+            ],
         );
     }
     Ok(Value::Undefined)
@@ -326,9 +406,16 @@ where
                     })
                     .collect();
                 f(&mut entries);
-                let new_str: Vec<String> = entries.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
-                let _ = obj.properties.insert("__entries".into(), Value::String(new_str.join("&")));
-                let _ = obj.properties.insert("size".into(), Value::Integer(entries.len() as i64));
+                let new_str: Vec<String> = entries
+                    .iter()
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect();
+                let _ = obj
+                    .properties
+                    .insert("__entries".into(), Value::String(new_str.join("&")));
+                let _ = obj
+                    .properties
+                    .insert("size".into(), Value::Integer(entries.len() as i64));
             }
         }
     }

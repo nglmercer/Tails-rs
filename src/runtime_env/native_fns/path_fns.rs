@@ -232,19 +232,3 @@ fn normalize_path(path: &str) -> String {
 
     result
 }
-
-// Store the path separator as a global
-pub(super) fn native_path_sep() -> Value {
-    Value::String(std::path::MAIN_SEPARATOR.to_string())
-}
-
-pub(super) fn native_path_delimiter() -> Value {
-    Value::String(
-        if cfg!(target_os = "windows") {
-            ";"
-        } else {
-            ":"
-        }
-        .to_string(),
-    )
-}

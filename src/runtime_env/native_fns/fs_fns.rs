@@ -319,8 +319,9 @@ pub(super) fn native_fs_append_file_sync(
         .open(&path)
         .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
 
-    file.write_all(content.as_bytes())
-        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, write '{}'", path)))?;
+    file.write_all(content.as_bytes()).map_err(|_e| {
+        Error::RuntimeError(format!("EACCES: permission denied, write '{}'", path))
+    })?;
 
     Ok(Value::Undefined)
 }

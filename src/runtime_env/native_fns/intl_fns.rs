@@ -187,7 +187,7 @@ fn format_datetime(
     let secs = secs_in_day % 60;
 
     // Days since epoch for date calculation
-    let days = total_secs / 86400 ;
+    let days = total_secs / 86400;
     let mut year = 1970;
     let mut remaining_days = days;
     loop {

@@ -9,7 +9,6 @@ pub(crate) struct CallFrame {
     pub(crate) this_value: Option<Value>,
     pub(crate) is_construct: bool,
     pub(crate) source_name: Option<String>,
-    pub(crate) instruction_pc: usize,
 }
 
 #[derive(Debug, Clone)]

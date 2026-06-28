@@ -329,7 +329,6 @@ impl Interpreter {
                                             this_value: None,
                                             is_construct: false,
                                             source_name: self.current_module_path.clone(),
-                                            instruction_pc: pc,
                                         });
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
@@ -422,7 +421,6 @@ impl Interpreter {
                                         this_value: Some(object),
                                         is_construct: false,
                                         source_name: self.current_module_path.clone(),
-                                        instruction_pc: pc,
                                     });
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
@@ -502,7 +500,6 @@ impl Interpreter {
                                             this_value: Some(this_val.clone()),
                                             is_construct: true,
                                             source_name: self.current_module_path.clone(),
-                                            instruction_pc: pc,
                                         });
                                         for closure_var in &f_clone.closure {
                                             self.stack.push(closure_var.clone());
@@ -650,7 +647,6 @@ impl Interpreter {
                                     this_value: Some(this_val.clone()),
                                     is_construct: true,
                                     source_name: self.current_module_path.clone(),
-                                    instruction_pc: pc,
                                 });
                                 for closure_var in &f_clone.closure {
                                     self.stack.push(closure_var.clone());

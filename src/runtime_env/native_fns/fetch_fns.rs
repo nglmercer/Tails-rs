@@ -20,7 +20,13 @@ pub(super) fn native_fetch(
             let method = obj
                 .properties
                 .get("method")
-                .and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None })
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_else(|| "GET".to_string());
 
             let mut headers = std::collections::HashMap::new();
@@ -67,18 +73,22 @@ pub(super) fn native_fetch(
     }
 
     // Execute request
-    let response = req.send().map_err(|e| {
-        Error::RuntimeError(format!("fetch failed: {}", e))
-    })?;
+    let response = req
+        .send()
+        .map_err(|e| Error::RuntimeError(format!("fetch failed: {}", e)))?;
 
     // Build Response object
     let status = response.status().as_u16();
-    let status_text = response.status().canonical_reason().unwrap_or("Unknown").to_string();
+    let status_text = response
+        .status()
+        .canonical_reason()
+        .unwrap_or("Unknown")
+        .to_string();
 
     let mut resp_props = std::collections::HashMap::new();
     resp_props.insert("status".into(), Value::Integer(status as i64));
     resp_props.insert("statusText".into(), Value::String(status_text));
-    resp_props.insert("ok".into(), Value::Boolean(status >= 200 && status < 300));
+    resp_props.insert("ok".into(), Value::Boolean((200..300).contains(&status)));
     resp_props.insert("url".into(), Value::String(url));
 
     // Read response body
