@@ -301,6 +301,7 @@ impl TypeChecker {
             }
             Expression::RestElement { .. } => Ok(Type::Any),
             Expression::OptionalMember { .. } | Expression::OptionalCall { .. } => Ok(Type::Any),
+            Expression::ImportExpression { .. } => Ok(Type::Any),
         }
     }
 }

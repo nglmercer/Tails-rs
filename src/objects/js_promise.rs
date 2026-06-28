@@ -31,6 +31,24 @@ impl JsPromise {
         }
     }
 
+    pub fn fulfilled(value: Value) -> Self {
+        Self {
+            state: PromiseState::Fulfilled(value),
+            then_handlers: Vec::new(),
+            catch_handlers: Vec::new(),
+            finally_handlers: Vec::new(),
+        }
+    }
+
+    pub fn rejected(reason: Value) -> Self {
+        Self {
+            state: PromiseState::Rejected(reason),
+            then_handlers: Vec::new(),
+            catch_handlers: Vec::new(),
+            finally_handlers: Vec::new(),
+        }
+    }
+
     pub fn resolve(&mut self, value: Value) {
         if self.state == PromiseState::Pending {
             self.state = PromiseState::Fulfilled(value);

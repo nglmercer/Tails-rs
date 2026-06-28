@@ -79,6 +79,15 @@ pub fn create_fs_module(_heap: &mut Vec<HeapValue>, _gc: &mut GarbageCollector) 
     props.insert("copyFileSync".into(), Value::NativeFunction(294));
     props.insert("renameSync".into(), Value::NativeFunction(295));
     props.insert("appendFileSync".into(), Value::NativeFunction(296));
+    // Async wrappers returning Promises
+    props.insert("readdir".into(), Value::NativeFunction(343));
+    props.insert("readFile".into(), Value::NativeFunction(344));
+    props.insert("writeFile".into(), Value::NativeFunction(345));
+    props.insert("stat".into(), Value::NativeFunction(346));
+    props.insert("mkdir".into(), Value::NativeFunction(347));
+    props.insert("unlink".into(), Value::NativeFunction(348));
+    props.insert("copyFile".into(), Value::NativeFunction(349));
+    props.insert("rename".into(), Value::NativeFunction(350));
     props
 }
 

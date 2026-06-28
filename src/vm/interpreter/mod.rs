@@ -949,6 +949,66 @@ impl Interpreter {
                         self.stack.push(value);
                     }
                 }
+                Instruction::DynamicImport => {
+                    let source = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                    let source_str = match &source {
+                        Value::String(s) => s.clone(),
+                        _ => {
+                            let promise_idx = self.heap.len();
+                            self.heap.push(HeapValue::Promise(crate::objects::js_promise::JsPromise::rejected(
+                                Value::String(format!("Cannot resolve import source: {}", source)),
+                            )));
+                            self.stack.push(Value::Promise(promise_idx));
+                            continue;
+                        }
+                    };
+                    match self.load_and_run_module(&source_str) {
+                        Ok(Some(module_path)) => {
+                            let exports = self
+                                .module_registry
+                                .get(&module_path)
+                                .cloned()
+                                .unwrap_or_default();
+                            let heap_idx = self.heap.len();
+                            let mut props = HashMap::new();
+                            for (k, v) in &exports {
+                                props.insert(k.clone(), v.clone());
+                            }
+                            self.heap.push(HeapValue::Object(JsObject {
+                                properties: props,
+                                prototype: None,
+                                extensible: true,
+                            }));
+                            let module_obj = Value::Object(heap_idx);
+                            let promise_idx = self.heap.len();
+                            self.heap.push(HeapValue::Promise(
+                                crate::objects::js_promise::JsPromise::fulfilled(module_obj),
+                            ));
+                            self.stack.push(Value::Promise(promise_idx));
+                        }
+                        _ => {
+                            let reason_idx = self.heap.len();
+                            let mut props = HashMap::new();
+                            props.insert(
+                                "message".into(),
+                                Value::String(format!("Module '{}' not found", source_str)),
+                            );
+                            self.heap.push(HeapValue::Object(JsObject {
+                                properties: props,
+                                prototype: None,
+                                extensible: true,
+                            }));
+                            let promise_idx = self.heap.len();
+                            self.heap.push(HeapValue::Promise(
+                                crate::objects::js_promise::JsPromise::rejected(Value::Object(reason_idx)),
+                            ));
+                            self.stack.push(Value::Promise(promise_idx));
+                        }
+                    }
+                }
                 Instruction::GetIterator => {
                     let iterable = self
                         .stack

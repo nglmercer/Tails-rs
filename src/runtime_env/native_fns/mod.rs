@@ -401,4 +401,13 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     crypto_fns::native_crypto_random_bytes,
     crypto_fns::native_crypto_random_uuid,
     crypto_fns::native_crypto_create_hash,
+    // Async Fs (343-349)
+    fs_fns::native_fs_readdir,
+    fs_fns::native_fs_read_file,
+    fs_fns::native_fs_write_file,
+    fs_fns::native_fs_stat,
+    fs_fns::native_fs_mkdir,
+    fs_fns::native_fs_unlink,
+    fs_fns::native_fs_copy_file,
+    fs_fns::native_fs_rename,
 ];

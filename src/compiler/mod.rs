@@ -171,6 +171,7 @@ pub enum Instruction {
     StoreModuleExport(String),
     PopModuleExports,
     Await,
+    DynamicImport,
     Yield,
     BlockEnter,
     BlockExit,

@@ -383,6 +383,19 @@ impl<'a> Parser<'a> {
                     argument: Box::new(argument.inner),
                 }))
             }
+            Token::Import => {
+                self.advance();
+                if self.peek().token == Token::LeftParen {
+                    self.advance();
+                    let source = self.parse_expression()?;
+                    self.expect(&Token::RightParen)?;
+                    Ok(self.spanned(Expression::ImportExpression {
+                        source: Box::new(source.inner),
+                    }))
+                } else {
+                    Ok(self.spanned(Expression::Identifier("import".to_string())))
+                }
+            }
             _ => self.parse_postfix(),
         }
     }

@@ -81,7 +81,7 @@ fn run_script(script_path: &Path) -> Result<()> {
 
     let start = Instant::now();
     let mut runtime = tails::TailsRuntime::default();
-    let result = runtime.eval(&source);
+    let result = runtime.eval_module(&source, script_path);
     let elapsed = start.elapsed();
 
     match result {

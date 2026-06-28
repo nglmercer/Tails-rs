@@ -382,6 +382,9 @@ pub enum Expression {
     AwaitExpression {
         argument: Box<Expression>,
     },
+    ImportExpression {
+        source: Box<Expression>,
+    },
     SuperCall {
         args: Vec<Expression>,
     },

@@ -669,6 +669,11 @@ impl CodeGenerator {
                 self.emit(Instruction::Await);
                 Ok(())
             }
+            Expression::ImportExpression { source } => {
+                self.generate_expression(source)?;
+                self.emit(Instruction::DynamicImport);
+                Ok(())
+            }
             Expression::SuperCall { args } => {
                 self.emit(Instruction::LoadThis);
                 for arg in args {
