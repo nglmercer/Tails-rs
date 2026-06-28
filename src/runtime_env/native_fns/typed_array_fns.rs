@@ -97,33 +97,64 @@ fn typed_array_constructor_impl(
             Ok(Value::TypedArray(heap_idx))
         }
         Some(Value::Array(arr_idx)) => {
-            let elements: Vec<Value> = if let crate::vm::interpreter::HeapValue::Array(arr) =
-                &interp.heap[*arr_idx]
-            {
-                arr.elements.clone()
-            } else {
-                Vec::new()
-            };
+            let elements: Vec<Value> =
+                if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                    arr.elements.clone()
+                } else {
+                    Vec::new()
+                };
             let length = elements.len();
             let mut typed_array = TypedArray::new(kind.clone(), length);
             for (i, elem) in elements.iter().enumerate() {
                 match (&kind, elem) {
-                    (TypedArrayType::Int8Array, Value::Integer(v)) => typed_array.set_value(i, *v as i8),
-                    (TypedArrayType::Int8Array, Value::Float(v)) => typed_array.set_value(i, *v as i8),
-                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => typed_array.set_value(i, *v as u8),
-                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Float(v)) => typed_array.set_value(i, *v as u8),
-                    (TypedArrayType::Int16Array, Value::Integer(v)) => typed_array.set_value(i, *v as i16),
-                    (TypedArrayType::Int16Array, Value::Float(v)) => typed_array.set_value(i, *v as i16),
-                    (TypedArrayType::Uint16Array, Value::Integer(v)) => typed_array.set_value(i, *v as u16),
-                    (TypedArrayType::Uint16Array, Value::Float(v)) => typed_array.set_value(i, *v as u16),
-                    (TypedArrayType::Int32Array, Value::Integer(v)) => typed_array.set_value(i, *v as i32),
-                    (TypedArrayType::Int32Array, Value::Float(v)) => typed_array.set_value(i, *v as i32),
-                    (TypedArrayType::Uint32Array, Value::Integer(v)) => typed_array.set_value(i, *v as u32),
-                    (TypedArrayType::Uint32Array, Value::Float(v)) => typed_array.set_value(i, *v as u32),
-                    (TypedArrayType::Float32Array, Value::Float(v)) => typed_array.set_value(i, *v as f32),
-                    (TypedArrayType::Float32Array, Value::Integer(v)) => typed_array.set_value(i, *v as f32),
+                    (TypedArrayType::Int8Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as i8)
+                    }
+                    (TypedArrayType::Int8Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as i8)
+                    }
+                    (
+                        TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray,
+                        Value::Integer(v),
+                    ) => typed_array.set_value(i, *v as u8),
+                    (
+                        TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray,
+                        Value::Float(v),
+                    ) => typed_array.set_value(i, *v as u8),
+                    (TypedArrayType::Int16Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as i16)
+                    }
+                    (TypedArrayType::Int16Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as i16)
+                    }
+                    (TypedArrayType::Uint16Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as u16)
+                    }
+                    (TypedArrayType::Uint16Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as u16)
+                    }
+                    (TypedArrayType::Int32Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as i32)
+                    }
+                    (TypedArrayType::Int32Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as i32)
+                    }
+                    (TypedArrayType::Uint32Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as u32)
+                    }
+                    (TypedArrayType::Uint32Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as u32)
+                    }
+                    (TypedArrayType::Float32Array, Value::Float(v)) => {
+                        typed_array.set_value(i, *v as f32)
+                    }
+                    (TypedArrayType::Float32Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as f32)
+                    }
                     (TypedArrayType::Float64Array, Value::Float(v)) => typed_array.set_value(i, *v),
-                    (TypedArrayType::Float64Array, Value::Integer(v)) => typed_array.set_value(i, *v as f64),
+                    (TypedArrayType::Float64Array, Value::Integer(v)) => {
+                        typed_array.set_value(i, *v as f64)
+                    }
                     _ => {}
                 }
             }
@@ -424,11 +455,12 @@ pub(super) fn native_typed_array_set(
     match args.first() {
         Some(Value::TypedArray(src_idx)) => {
             let src_idx = *src_idx;
-            let (src_kind, src_byte_length) = if let crate::vm::interpreter::HeapValue::TypedArray(ta) = &interp.heap[src_idx] {
-                (ta.kind.clone(), ta.byte_length)
-            } else {
-                return Err(Error::TypeError("Not a TypedArray".into()));
-            };
+            let (src_kind, src_byte_length) =
+                if let crate::vm::interpreter::HeapValue::TypedArray(ta) = &interp.heap[src_idx] {
+                    (ta.kind.clone(), ta.byte_length)
+                } else {
+                    return Err(Error::TypeError("Not a TypedArray".into()));
+                };
             let offset = match args.get(1) {
                 Some(Value::Integer(i)) => *i as usize,
                 Some(Value::Float(f)) => *f as usize,
@@ -473,14 +505,15 @@ pub(super) fn native_typed_array_set(
         }
         Some(Value::Array(arr_idx)) => {
             let arr_idx = *arr_idx;
-            let elements: Vec<Value> = if let crate::vm::interpreter::HeapValue::Array(
-                crate::vm::interpreter::JsArray { elements: elems },
-            ) = &interp.heap[arr_idx]
-            {
-                elems.clone()
-            } else {
-                Vec::new()
-            };
+            let elements: Vec<Value> =
+                if let crate::vm::interpreter::HeapValue::Array(crate::vm::interpreter::JsArray {
+                    elements: elems,
+                }) = &interp.heap[arr_idx]
+                {
+                    elems.clone()
+                } else {
+                    Vec::new()
+                };
             let dst_kind = {
                 let arr = get_typed_array(interp, idx)?;
                 arr.kind.clone()
@@ -504,9 +537,10 @@ pub(super) fn native_typed_array_set(
                     (TypedArrayType::Int8Array, Value::Integer(v)) => {
                         arr.set_value(target_idx, *v as i8)
                     }
-                    (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => {
-                        arr.set_value(target_idx, *v as u8)
-                    }
+                    (
+                        TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray,
+                        Value::Integer(v),
+                    ) => arr.set_value(target_idx, *v as u8),
                     (TypedArrayType::Int16Array, Value::Integer(v)) => {
                         arr.set_value(target_idx, *v as i16)
                     }
@@ -550,12 +584,14 @@ pub(super) fn native_typed_array_set(
             match (kind, value) {
                 (TypedArrayType::Int8Array, Value::Integer(v)) => arr.set_value(index, v as i8),
                 (TypedArrayType::Int8Array, Value::Float(v)) => arr.set_value(index, v as i8),
-                (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Integer(v)) => {
-                    arr.set_value(index, v as u8)
-                }
-                (TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray, Value::Float(v)) => {
-                    arr.set_value(index, v as u8)
-                }
+                (
+                    TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray,
+                    Value::Integer(v),
+                ) => arr.set_value(index, v as u8),
+                (
+                    TypedArrayType::Uint8Array | TypedArrayType::Uint8ClampedArray,
+                    Value::Float(v),
+                ) => arr.set_value(index, v as u8),
                 (TypedArrayType::Int16Array, Value::Integer(v)) => arr.set_value(index, v as i16),
                 (TypedArrayType::Int16Array, Value::Float(v)) => arr.set_value(index, v as i16),
                 (TypedArrayType::Uint16Array, Value::Integer(v)) => arr.set_value(index, v as u16),

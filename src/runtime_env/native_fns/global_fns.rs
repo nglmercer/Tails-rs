@@ -27,7 +27,9 @@ pub(super) fn native_parse_int(
     let (radix, num_str) = if provided_radix == 0 {
         if digits.starts_with("0x") || digits.starts_with("0X") {
             (16u32, &digits[2..])
-        } else if digits.starts_with("0") && digits.len() > 1 && digits.as_bytes()[1].is_ascii_digit()
+        } else if digits.starts_with("0")
+            && digits.len() > 1
+            && digits.as_bytes()[1].is_ascii_digit()
         {
             (8u32, digits)
         } else {

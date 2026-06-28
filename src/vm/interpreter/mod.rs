@@ -496,7 +496,9 @@ impl Interpreter {
                                                         func_heap_idx: Some(*super_func_idx),
                                                         this_value: Some(this_val.clone()),
                                                         is_construct: true,
-                                                        source_name: self.current_module_path.clone(),
+                                                        source_name: self
+                                                            .current_module_path
+                                                            .clone(),
                                                     });
                                                     for arg in args {
                                                         self.stack.push(arg);
