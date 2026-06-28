@@ -1025,17 +1025,88 @@ impl CodeGenerator {
         &mut self,
         body: &[ClassMember],
     ) -> Result<Option<u32>> {
+        // Collect property initializers
+        let mut prop_inits: Vec<(String, Option<Expression>)> = Vec::new();
+        for member in body {
+            if let ClassMember::Property { name, init, .. } = member {
+                prop_inits.push((name.clone(), init.clone()));
+            }
+        }
+
+        // Find explicit constructor
         for member in body {
             if let ClassMember::Constructor { params, body } = member {
                 let param_names: Vec<String> = params.iter().map(|p| p.name.clone()).collect();
+                // If there are property initializers, we need to prepend them to the constructor body
+                if prop_inits.is_empty() {
+                    return Ok(Some(self.compile_function(
+                        Some("constructor".to_string()),
+                        &param_names,
+                        body,
+                        false,
+                    )?));
+                }
+                // Build synthetic statements for property initializations
+                let mut synthetic_body: Vec<SpannedNode<Statement>> = Vec::new();
+                for (name, init_expr) in &prop_inits {
+                    let value = if let Some(expr) = init_expr {
+                        expr.clone()
+                    } else {
+                        Expression::UndefinedLiteral
+                    };
+                    synthetic_body.push(SpannedNode {
+                        inner: Statement::Expression(Expression::Assignment {
+                            target: Box::new(Expression::Member {
+                                object: Box::new(Expression::Identifier("this".to_string())),
+                                property: Box::new(Expression::Identifier(name.clone())),
+                                computed: false,
+                            }),
+                            value: Box::new(value),
+                            op: None,
+                        }),
+                        span: Some(crate::errors::Span::unknown()),
+                    });
+                }
+                synthetic_body.extend(body.clone());
                 return Ok(Some(self.compile_function(
                     Some("constructor".to_string()),
                     &param_names,
-                    body,
+                    &synthetic_body,
                     false,
                 )?));
             }
         }
+
+        // No explicit constructor but has property initializers — create a default constructor
+        if !prop_inits.is_empty() {
+            let mut synthetic_body: Vec<SpannedNode<Statement>> = Vec::new();
+            for (name, init_expr) in &prop_inits {
+                let value = if let Some(expr) = init_expr {
+                    expr.clone()
+                } else {
+                    Expression::UndefinedLiteral
+                };
+                synthetic_body.push(SpannedNode {
+                    inner: Statement::Expression(Expression::Assignment {
+                        target: Box::new(Expression::Member {
+                            object: Box::new(Expression::Identifier("this".to_string())),
+                            property: Box::new(Expression::Identifier(name.clone())),
+                            computed: false,
+                        }),
+                        value: Box::new(value),
+                        op: None,
+                    }),
+                    span: Some(crate::errors::Span::unknown()),
+                });
+            }
+            return Ok(Some(self.compile_function(
+                Some("constructor".to_string()),
+                &[],
+                &synthetic_body,
+                false,
+            )?));
+        }
+
         Ok(None)
     }
 

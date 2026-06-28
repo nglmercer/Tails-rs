@@ -111,6 +111,7 @@ impl CodeGenerator {
                             if let Expression::Identifier(name) = operand.as_ref() {
                                 if let Some(local_idx) = self.resolve_local(name) {
                                     self.emit(Instruction::LoadLocal(local_idx));
+                                    self.emit(Instruction::TypeOf);
                                 } else {
                                     self.emit(Instruction::TypeOfGlobal(name.clone()));
                                 }

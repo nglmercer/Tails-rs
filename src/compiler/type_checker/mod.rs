@@ -249,6 +249,17 @@ impl TypeChecker {
                     args: arg_tys,
                 })
             }
+            TypeAnnotation::Constructor { params, return_type } => {
+                let param_tys: Vec<Type> = params
+                    .iter()
+                    .map(|p| self.resolve_annotation(p))
+                    .collect::<Result<Vec<_>>>()?;
+                let ret = self.resolve_annotation(return_type)?;
+                Ok(Type::Function {
+                    params: param_tys,
+                    return_type: Box::new(ret),
+                })
+            }
         }
     }
 }

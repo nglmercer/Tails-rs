@@ -9,6 +9,7 @@ impl Interpreter {
         self.current_module = Some(Rc::new(module.clone()));
         let prev_exports = std::mem::take(&mut self.module_exports);
         let saved_globals = std::mem::take(&mut self.globals);
+        // Restore built-in globals into the fresh scope
         for key in saved_globals.keys() {
             if key == "console"
                 || key == "Object"
@@ -33,21 +34,51 @@ impl Interpreter {
                 || key == "setInterval"
                 || key == "clearTimeout"
                 || key == "clearInterval"
+                || key == "Map"
+                || key == "Set"
+                || key == "WeakMap"
+                || key == "WeakSet"
+                || key == "Promise"
+                || key == "Symbol"
+                || key == "BigInt"
+                || key == "Date"
+                || key == "RegExp"
+                || key == "URL"
+                || key == "fetch"
             {
                 self.globals.insert(key.clone(), saved_globals[key].clone());
             }
         }
         let result = self.execute(module);
-        let module_globals = std::mem::replace(&mut self.globals, saved_globals);
+        let module_globals = std::mem::replace(&mut self.globals, saved_globals.clone());
         let exec_exports = std::mem::replace(&mut self.module_exports, prev_exports);
         for (k, v) in &exec_exports {
             self.module_exports.insert(k.clone(), v.clone());
         }
+        // Restore exported values
         for (k, v) in &exec_exports {
             if let Some(mv) = module_globals.get(k) {
                 self.globals.insert(k.clone(), mv.clone());
             } else {
                 self.globals.insert(k.clone(), v.clone());
+            }
+        }
+        // Also restore named imports that the module registered (via ImportNamed/ImportDefault/ImportAll)
+        // These are globals that exist in module_globals but not in the original saved_globals
+        for (k, v) in &module_globals {
+            if !saved_globals.contains_key(k) {
+                // This is a new global added by the module (import or local)
+                // Only preserve it if it was an import (i.e., the value exists in a module registry)
+                // For simplicity, we check if the value is a function or came from a module
+                // We keep it if it's a function (imported functions) or if it was explicitly imported
+                // Module-local variables like `const x = 1` should NOT be preserved
+                // But imported functions like `validatePlugin` SHOULD be preserved
+                // We use a heuristic: if it's a function or if the key was already in module_exports
+                if matches!(v, Value::Function(_) | Value::NativeFunction(_))
+                    || exec_exports.contains_key(k)
+                {
+                    self.globals.insert(k.clone(), v.clone());
+                }
             }
         }
         self.current_module = saved_module;

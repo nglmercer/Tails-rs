@@ -1,8 +1,4 @@
-import {
-  IPlugin,
-  PluginInput,
-  PluginMetadata,
-} from "./types.ts";
+import { IPlugin, PluginInput, PluginMetadata } from "./types.ts";
 
 export class PluginValidationError extends Error {
   constructor(message: string) {
@@ -11,76 +7,57 @@ export class PluginValidationError extends Error {
   }
 }
 
-function isValidMetadata(value: unknown): boolean {
+function isValidMetadata(value) {
   if (!value || typeof value !== "object") return false;
-  const m = value as Record<string, unknown>;
-  return (
-    typeof m.name === "string" &&
-    m.name.length > 0 &&
-    typeof m.version === "string" &&
-    m.version.length > 0
-  );
+  if (!value.name || typeof value.name !== "string") return false;
+  if (value.name.length === 0) return false;
+  if (!value.version || typeof value.version !== "string") return false;
+  if (value.version.length === 0) return false;
+  return true;
 }
 
-function validateHooks(name: string, obj: Record<string, unknown>): void {
+function validateHooks(name, obj) {
   const hooks = ["setup", "onLoad", "onEnable", "onDisable", "onUnload"];
-  for (const hook of hooks) {
+  for (let i = 0; i < hooks.length; i++) {
+    const hook = hooks[i];
     if (hook in obj && typeof obj[hook] !== "function") {
-      throw new PluginValidationError(
-        `Plugin "${name}": "${hook}" must be a function`,
-      );
+      throw new PluginValidationError(`Plugin "${name}": "${hook}" must be a function`);
     }
   }
 }
 
-function validateMetadata(obj: Record<string, unknown>): void {
+function validateMetadata(obj) {
   if (!obj.metadata || typeof obj.metadata !== "object") {
     throw new PluginValidationError("Plugin must have a metadata object");
   }
   if (!isValidMetadata(obj.metadata)) {
-    throw new PluginValidationError(
-      "Plugin metadata must have non-empty 'name' and 'version' strings",
-    );
+    throw new PluginValidationError("Plugin metadata must have non-empty 'name' and 'version' strings");
   }
 }
 
-export function validatePlugin(plugin: PluginInput): void {
+export function validatePlugin(plugin) {
   if (typeof plugin === "function") {
-    const proto = (plugin as { prototype?: Record<string, unknown> }).prototype;
+    const proto = plugin.prototype;
     if (proto && typeof proto === "object" && "metadata" in proto) {
-      validateMetadata(proto as Record<string, unknown>);
-      const metadata = proto.metadata as PluginMetadata;
-      validateHooks(metadata.name, proto as Record<string, unknown>);
+      validateMetadata(proto);
       return;
     }
-
     try {
-      const instance = new (plugin as new () => IPlugin)();
+      const instance = new plugin();
       if (typeof instance === "object" && instance !== null && "metadata" in instance) {
-        const p = instance as unknown as Record<string, unknown>;
-        validateMetadata(p);
-        const metadata = p.metadata as PluginMetadata;
-        validateHooks(metadata.name, p);
+        validateMetadata(instance);
         return;
       }
-    } catch {
-      // instantiation failed, fall through to error
+    } catch (e) {
+      // instantiation failed
     }
-
-    throw new PluginValidationError(
-      "Class plugin must have metadata in prototype or instance",
-    );
+    throw new PluginValidationError("Class plugin must have metadata in prototype or instance");
   }
 
   if (typeof plugin === "object" && plugin !== null) {
-    const p = plugin as Record<string, unknown>;
-    validateMetadata(p);
-    const metadata = p.metadata as PluginMetadata;
-    validateHooks(metadata.name, p);
+    validateMetadata(plugin);
     return;
   }
 
-  throw new PluginValidationError(
-    "Plugin must be a class instance or a plain object with metadata",
-  );
+  throw new PluginValidationError("Plugin must be a class instance or a plain object with metadata");
 }

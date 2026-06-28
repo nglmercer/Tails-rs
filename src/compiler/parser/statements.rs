@@ -518,21 +518,28 @@ impl<'a> Parser<'a> {
 
         let handler = if self.peek().token == Token::Catch {
             self.advance();
-            self.expect(&Token::LeftParen)?;
-            let param = match self.advance().token {
-                Token::Identifier(name) => name,
-                t => {
-                    return Err(Error::ParseError(format!(
-                        "Expected parameter, got {:?}",
-                        t
-                    )))
-                }
-            };
-            if self.peek().token == Token::Colon {
+            // Optional catch binding: catch { } or catch (e) { }
+            let param = if self.peek().token == Token::LeftParen {
                 self.advance();
-                self.parse_type_annotation()?;
-            }
-            self.expect(&Token::RightParen)?;
+                let p = match self.advance().token {
+                    Token::Identifier(name) => name,
+                    t => {
+                        return Err(Error::ParseError(format!(
+                            "Expected parameter, got {:?}",
+                            t
+                        )))
+                    }
+                };
+                if self.peek().token == Token::Colon {
+                    self.advance();
+                    self.parse_type_annotation()?;
+                }
+                self.expect(&Token::RightParen)?;
+                p
+            } else {
+                // Auto-generate a catch variable name
+                "__catch_err".to_string()
+            };
             self.expect(&Token::LeftBrace)?;
             let body = self.parse_block_body()?;
             self.expect(&Token::RightBrace)?;
@@ -721,6 +728,19 @@ impl<'a> Parser<'a> {
                         )))
                     }
                 };
+                // Consume optional generic type parameters: method<T>(...)
+                if self.peek().token == Token::Less {
+                    self.advance();
+                    let mut depth = 1;
+                    while depth > 0 && self.peek().token != Token::Eof {
+                        match self.peek().token {
+                            Token::Less => depth += 1,
+                            Token::Greater => depth -= 1,
+                            _ => {}
+                        }
+                        self.advance();
+                    }
+                }
                 if self.peek().token == Token::LeftParen {
                     self.advance();
                     let (params, param_types) = self.parse_typed_params()?;
@@ -752,11 +772,13 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.parse_type_annotation()?;
                     }
-                    if self.peek().token == Token::Assign {
+                    let init = if self.peek().token == Token::Assign {
                         self.advance();
-                        self.parse_expression()?;
-                    }
-                    members.push(ClassMember::Property { name, is_static });
+                        Some(self.parse_expression()?.inner)
+                    } else {
+                        None
+                    };
+                    members.push(ClassMember::Property { name, is_static, init });
                     if self.peek().token == Token::Semicolon {
                         self.advance();
                     }
@@ -923,6 +945,14 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_export_declaration(&mut self) -> Result<SpannedNode<Statement>> {
         self.expect(&Token::Export)?;
 
+        // Handle 'export type': parse as type alias export
+        if self.peek().token == Token::Type {
+            let type_alias = self.parse_type_alias_declaration()?;
+            return Ok(self.spanned(Statement::ExportDeclaration {
+                kind: ExportDeclarationKind::Local(Box::new(type_alias)),
+            }));
+        }
+
         if self.peek().token == Token::Default {
             self.advance();
             // export default can be followed by a declaration or an expression
@@ -1050,7 +1080,7 @@ impl<'a> Parser<'a> {
         self.expect(&Token::LeftBrace)?;
         let mut members = Vec::new();
         while self.peek().token != Token::RightBrace && self.peek().token != Token::Eof {
-            if self.peek().token == Token::Comma {
+            if self.peek().token == Token::Comma || self.peek().token == Token::Semicolon {
                 self.advance();
                 continue;
             }

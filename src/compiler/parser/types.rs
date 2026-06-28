@@ -218,6 +218,45 @@ impl<'a> Parser<'a> {
                     return_type,
                 })
             }
+            Token::New => {
+                // Constructor type: new (params) => ReturnType
+                self.advance();
+                self.expect(&Token::LeftParen)?;
+                let mut param_types = Vec::new();
+                if self.peek().token != Token::RightParen {
+                    loop {
+                        if self.peek().token == Token::RightParen {
+                            break;
+                        }
+                        if matches!(self.peek().token, Token::Identifier(_)) {
+                            self.advance();
+                            if self.peek().token == Token::Colon {
+                                self.advance();
+                                param_types.push(self.parse_type_annotation()?);
+                            } else {
+                                param_types.push(TypeAnnotation::Any);
+                            }
+                        } else {
+                            param_types.push(self.parse_type_annotation()?);
+                        }
+                        if self.peek().token == Token::Comma {
+                            self.advance();
+                            if self.peek().token == Token::RightParen {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(&Token::RightParen)?;
+                self.expect(&Token::Arrow)?;
+                let return_type = Box::new(self.parse_type_annotation()?);
+                Ok(TypeAnnotation::Constructor {
+                    params: param_types,
+                    return_type,
+                })
+            }
             _ => Ok(TypeAnnotation::Any),
         }?;
         if self.peek().token == Token::LeftBracket {

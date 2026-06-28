@@ -437,6 +437,20 @@ impl<'a> Parser<'a> {
     fn parse_new_expression(&mut self) -> Result<SpannedNode<Expression>> {
         self.expect(&Token::New)?;
         let callee = self.parse_new_target()?;
+        // Consume optional generic type arguments: new Map<string, string>()
+        if self.peek().token == Token::Less {
+            self.advance();
+            let mut depth = 1;
+            while depth > 0 && self.peek().token != Token::Eof {
+                match self.peek().token {
+                    Token::Less => depth += 1,
+                    Token::Greater => depth -= 1,
+                    Token::LeftBracket | Token::LeftBrace | Token::LeftParen => {}
+                    _ => {}
+                }
+                self.advance();
+            }
+        }
         let args = if self.peek().token == Token::LeftParen {
             self.advance();
             let a = self.parse_args()?;
@@ -467,8 +481,26 @@ impl<'a> Parser<'a> {
                 }
                 Ok(self.spanned(expr))
             }
+            Token::LeftParen => {
+                // new (expr)() — parenthesized target
+                self.advance();
+                let expr = self.parse_expression()?;
+                self.expect(&Token::RightParen)?;
+                // Allow member access: new (A.B)()
+                let mut target = expr;
+                while self.peek().token == Token::Dot {
+                    self.advance();
+                    let prop_name = self.token_to_property_name()?;
+                    target = self.spanned(Expression::Member {
+                        object: Box::new(target.inner),
+                        property: Box::new(prop_name),
+                        computed: false,
+                    });
+                }
+                Ok(target)
+            }
             _ => Err(Error::ParseError(format!(
-                "Expected identifier after 'new', got {:?}",
+                "Expected identifier or '(' after 'new', got {:?}",
                 self.peek().token
             ))),
         }

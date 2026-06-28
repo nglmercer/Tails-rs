@@ -32,6 +32,10 @@ pub enum TypeAnnotation {
         params: Vec<TypeAnnotation>,
         return_type: Box<TypeAnnotation>,
     },
+    Constructor {
+        params: Vec<TypeAnnotation>,
+        return_type: Box<TypeAnnotation>,
+    },
     Literal(TypeLiteral),
     Generic {
         name: String,
@@ -217,6 +221,7 @@ pub enum ClassMember {
     Property {
         name: String,
         is_static: bool,
+        init: Option<Expression>,
     },
     Constructor {
         params: Vec<ConstructorParam>,
@@ -626,6 +631,15 @@ impl<'a> Parser<'a> {
                 let ty = if self.peek().token == Token::Colon {
                     self.advance();
                     Some(self.parse_type_annotation()?)
+                } else if self.peek().token == Token::Question {
+                    // Optional parameter: skip '?', type is optional
+                    self.advance();
+                    if self.peek().token == Token::Colon {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -682,6 +696,15 @@ impl<'a> Parser<'a> {
                 let type_annotation = if self.peek().token == Token::Colon {
                     self.advance();
                     Some(self.parse_type_annotation()?)
+                } else if self.peek().token == Token::Question {
+                    // Optional parameter
+                    self.advance();
+                    if self.peek().token == Token::Colon {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
