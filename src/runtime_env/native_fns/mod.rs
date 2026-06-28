@@ -1,17 +1,21 @@
 mod array_fns;
+mod buffer_fns;
 mod collection_fns;
 mod console;
 mod date_fns;
+mod encoding_fns;
 mod error_fns;
 mod function_fns;
 mod generator_fns;
 mod global_fns;
 mod helpers;
+mod intl_fns;
 mod iterator_fns;
 mod json_fns;
 mod math_fns;
 mod number_fns;
 mod object_fns;
+mod process_fns;
 mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;
@@ -281,4 +285,36 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     iterator_fns::native_iterator_to_array,
     // Array[Symbol.iterator] (236)
     iterator_fns::native_array_iterator,
+    // Encoding (237-238)
+    encoding_fns::native_atob,
+    encoding_fns::native_btoa,
+    // Process (239-245)
+    process_fns::native_process_exit,
+    process_fns::native_process_cwd,
+    process_fns::native_process_chdir,
+    process_fns::native_process_stdout_write,
+    process_fns::native_process_hrtime,
+    process_fns::native_process_hrtime_bigint,
+    process_fns::native_process_next_tick,
+    // Buffer (246-260)
+    buffer_fns::native_buffer_constructor,
+    buffer_fns::native_buffer_alloc,
+    buffer_fns::native_buffer_from,
+    buffer_fns::native_buffer_concat,
+    buffer_fns::native_buffer_is_buffer,
+    buffer_fns::native_buffer_byte_length,
+    buffer_fns::native_buffer_to_string,
+    buffer_fns::native_buffer_write,
+    buffer_fns::native_buffer_slice,
+    buffer_fns::native_buffer_copy,
+    buffer_fns::native_buffer_fill,
+    buffer_fns::native_buffer_compare,
+    buffer_fns::native_buffer_equals,
+    buffer_fns::native_buffer_index_of,
+    // Intl (261-265)
+    intl_fns::native_datetime_format_constructor,
+    intl_fns::native_number_format_constructor,
+    intl_fns::native_datetime_format_format,
+    intl_fns::native_datetime_format_format_to_parts,
+    intl_fns::native_number_format_format,
 ];

@@ -79,7 +79,8 @@ impl Interpreter {
                     | Value::Map(_)
                     | Value::Set(_)
                     | Value::WeakMap(_)
-                    | Value::WeakSet(_) => "object",
+                    | Value::WeakSet(_)
+                    | Value::Buffer(_) => "object",
                     Value::Date(_) | Value::RegExp(_) => todo!(),
                 };
                 self.stack.push(Value::String(type_str.to_string()));
@@ -276,7 +277,8 @@ impl Interpreter {
                     | Value::Map(_)
                     | Value::Set(_)
                     | Value::WeakMap(_)
-                    | Value::WeakSet(_) => "object",
+                    | Value::WeakSet(_)
+                    | Value::Buffer(_) => "object",
                     Value::Date(_) | Value::RegExp(_) => todo!(),
                 };
                 self.stack.push(Value::String(type_str.to_string()));

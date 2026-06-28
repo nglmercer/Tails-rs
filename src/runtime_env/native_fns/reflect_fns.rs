@@ -139,6 +139,8 @@ pub(super) fn native_reflect_construct(
                 func_heap_idx: Some(*func_idx),
                 this_value: Some(this_val.clone()),
                 is_construct: true,
+                source_name: None,
+                instruction_pc: 0,
             });
 
             for closure_var in &f.closure {

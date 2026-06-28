@@ -42,6 +42,7 @@ pub struct Interpreter {
     pub(crate) symbol_registry: HashMap<String, u64>,
     pub(crate) date_proto_idx: Option<usize>,
     pub(crate) regexp_proto_idx: Option<usize>,
+    pub(crate) buffer_proto_idx: Option<usize>,
 }
 
 impl Interpreter {
@@ -67,6 +68,7 @@ impl Interpreter {
             symbol_registry: HashMap::new(),
             date_proto_idx: None,
             regexp_proto_idx: None,
+            buffer_proto_idx: None,
         };
         interp.init_builtins();
         Ok(interp)
@@ -326,6 +328,8 @@ impl Interpreter {
                                             func_heap_idx: Some(*func_idx),
                                             this_value: None,
                                             is_construct: false,
+                                            source_name: self.current_module_path.clone(),
+                                            instruction_pc: pc,
                                         });
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
@@ -417,6 +421,8 @@ impl Interpreter {
                                         func_heap_idx: Some(func_idx),
                                         this_value: Some(object),
                                         is_construct: false,
+                                        source_name: self.current_module_path.clone(),
+                                        instruction_pc: pc,
                                     });
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
@@ -495,6 +501,8 @@ impl Interpreter {
                                             func_heap_idx: Some(*func_idx),
                                             this_value: Some(this_val.clone()),
                                             is_construct: true,
+                                            source_name: self.current_module_path.clone(),
+                                            instruction_pc: pc,
                                         });
                                         for closure_var in &f_clone.closure {
                                             self.stack.push(closure_var.clone());
@@ -641,6 +649,8 @@ impl Interpreter {
                                     func_heap_idx: Some(func_idx),
                                     this_value: Some(this_val.clone()),
                                     is_construct: true,
+                                    source_name: self.current_module_path.clone(),
+                                    instruction_pc: pc,
                                 });
                                 for closure_var in &f_clone.closure {
                                     self.stack.push(closure_var.clone());
@@ -1435,6 +1445,40 @@ impl Interpreter {
             func_heap_idx,
         }));
         Value::Generator(gen_idx)
+    }
+
+    pub(crate) fn build_stack_trace(&self, error_name: &str, message: &str) -> String {
+        let mut trace = format!(
+            "{}{}",
+            error_name,
+            if message.is_empty() {
+                String::new()
+            } else {
+                format!(": {}", message)
+            }
+        );
+
+        for frame in self.call_stack.iter().rev() {
+            let func_name = frame
+                .func_heap_idx
+                .and_then(|idx| {
+                    if let HeapValue::Function(f) = &self.heap[idx] {
+                        f.name.clone()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "<anonymous>".to_string());
+
+            let location = match &frame.source_name {
+                Some(name) => format!(" ({})", name),
+                None => String::new(),
+            };
+
+            trace.push_str(&format!("\n    at {}{}", func_name, location));
+        }
+
+        trace
     }
 }
 

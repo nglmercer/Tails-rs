@@ -270,6 +270,7 @@ impl Interpreter {
             Value::WeakSet(_) => "[WeakSet]".to_string(),
             Value::Date(_) => "[Date]".to_string(),
             Value::RegExp(_) => "[RegExp]".to_string(),
+            Value::Buffer(_) => "[Buffer]".to_string(),
         }
     }
 
@@ -297,6 +298,7 @@ impl Interpreter {
             Value::WeakSet(_) => "[WeakSet]".to_string(),
             Value::Date(_) => "[Date]".to_string(),
             Value::RegExp(_) => "[RegExp]".to_string(),
+            Value::Buffer(_) => "[Buffer]".to_string(),
         }
     }
 }

@@ -40,6 +40,7 @@ pub enum Value {
     WeakSet(usize),
     Date(usize),
     RegExp(usize),
+    Buffer(usize),
 }
 
 impl PartialEq for Value {
@@ -69,6 +70,7 @@ impl PartialEq for Value {
             (Value::WeakSet(a), Value::WeakSet(b)) => a == b,
             (Value::Date(a), Value::Date(b)) => a == b,
             (Value::RegExp(a), Value::RegExp(b)) => a == b,
+            (Value::Buffer(a), Value::Buffer(b)) => a == b,
             _ => false,
         }
     }
@@ -99,6 +101,7 @@ impl fmt::Display for Value {
             Value::WeakSet(_) => write!(f, "[WeakSet]"),
             Value::Date(_) => write!(f, "[Date]"),
             Value::RegExp(_) => write!(f, "[RegExp]"),
+            Value::Buffer(_) => write!(f, "[Buffer]"),
         }
     }
 }

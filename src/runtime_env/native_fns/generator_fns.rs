@@ -47,6 +47,8 @@ pub(super) fn native_generator_next(
                 func_heap_idx,
                 this_value: None,
                 is_construct: false,
+                source_name: None,
+                instruction_pc: resume_pc,
             });
 
             // Execute from the resume PC using the module's execute_from

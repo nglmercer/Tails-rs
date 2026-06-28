@@ -92,6 +92,17 @@ impl Interpreter {
                     }
                 }
             }
+            Value::Buffer(buf_idx) => {
+                if let HeapValue::Buffer(buf) = &mut self.heap[*buf_idx] {
+                    if let Value::String(key_str) = key {
+                        if let Ok(index) = key_str.parse::<usize>() {
+                            if index < buf.len() {
+                                buf[index] = to_i64_value(&value) as u8;
+                            }
+                        }
+                    }
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -324,6 +335,25 @@ impl Interpreter {
                         let proto_val = Value::Object(proto_idx);
                         return self.get_property_with_this(&proto_val, key, this);
                     }
+                }
+            }
+            Value::Buffer(_buf_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "length" => {
+                            if let Value::Buffer(bidx) = this {
+                                if let HeapValue::Buffer(buf) = &self.heap[*bidx] {
+                                    return Ok(Value::Integer(buf.len() as i64));
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                // Look up method on Buffer prototype
+                if let Some(proto_idx) = self.buffer_proto_idx {
+                    let proto_val = Value::Object(proto_idx);
+                    return self.get_property_with_this(&proto_val, key, this);
                 }
             }
             _ => {}
@@ -579,5 +609,22 @@ impl Interpreter {
             )));
         }
         self.call_value(&trap, handler, args)
+    }
+}
+
+fn to_i64_value(v: &Value) -> i64 {
+    match v {
+        Value::Integer(n) => *n,
+        Value::Float(n) => *n as i64,
+        Value::Boolean(b) => {
+            if *b {
+                1
+            } else {
+                0
+            }
+        }
+        Value::String(s) => s.parse::<i64>().unwrap_or(0),
+        Value::Null => 0,
+        _ => 0,
     }
 }

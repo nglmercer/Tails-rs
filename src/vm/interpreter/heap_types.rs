@@ -74,6 +74,7 @@ pub enum HeapValue {
     WeakSet(JsWeakSet),
     Date(JsDate),
     RegExp(JsRegExp),
+    Buffer(Vec<u8>),
 }
 
 #[derive(Debug, Clone)]

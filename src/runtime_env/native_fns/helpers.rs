@@ -68,6 +68,7 @@ pub(super) fn to_string_value(interp: &Interpreter, v: &Value) -> String {
             }
         }
         Value::Proxy(_) => "[Proxy]".to_string(),
+        Value::Buffer(_) => "[Buffer]".to_string(),
         _ => "[Function]".to_string(),
     }
 }

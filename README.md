@@ -139,12 +139,31 @@ cargo run --bin tails -- examples/all_features.ts
 ### Error Handling
 - `try` / `catch` / `finally`
 - `throw` with any value
+- Error subclasses with real stack traces (`Error`, `TypeError`, `ReferenceError`, `SyntaxError`, `RangeError`)
 
 ### Global Functions
 - `parseInt()`, `parseFloat()`
 - `isNaN()`, `isFinite()`
 - `Number.parseInt()`, `Number.parseFloat()`
 - `Number.isNaN()`, `Number.isFinite()`
+- `atob()`, `btoa()` — Base64 encoding/decoding
+
+### Encoding & Buffer
+- `atob()` / `btoa()` — Base64 encoding/decoding
+- `Buffer` — Node.js-compatible binary data handling
+  - Static: `Buffer.alloc()`, `Buffer.from()`, `Buffer.concat()`, `Buffer.isBuffer()`, `Buffer.byteLength()`
+  - Instance: `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`, `length`
+
+### process Global
+- `process.platform`, `process.arch`, `process.pid`
+- `process.cwd()`, `process.chdir()`
+- `process.env`, `process.argv`
+- `process.exit()`, `process.stdout.write()`, `process.stderr.write()`
+- `process.hrtime()`, `process.nextTick()`
+
+### Intl APIs
+- `Intl.DateTimeFormat` — Date/time formatting with `format()` and `formatToParts()`
+- `Intl.NumberFormat` — Number formatting with decimal, currency, and percent styles
 
 ### Destructuring & Spread
 - Array destructuring with skipping
@@ -191,13 +210,13 @@ cargo run --bin tails -- examples/all_features.ts
 - **RegExp** — Full implementation with `new RegExp()`, `test()`, `exec()`, flags support, `String.prototype.match/replace/search`
 - **Iterator helpers** — `map()`, `filter()`, `take()`, `drop()`, `forEach()`, `toArray()` on array/string iterators, with chaining support
 - **for await...of** — Async iteration with `Symbol.asyncIterator` support, automatic promise resolution
+- **Error stack traces** — Real stack traces with function names for `Error`, `TypeError`, `ReferenceError`, `SyntaxError`, `RangeError`
+- **Encoding** — `atob()` and `btoa()` for base64 encoding/decoding
+- **Buffer** — Node.js-compatible `Buffer` class with `alloc()`, `from()`, `concat()`, `isBuffer()`, `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`
+- **process global** — `process.platform`, `process.arch`, `process.pid`, `process.cwd()`, `process.chdir()`, `process.env`, `process.argv`, `process.exit()`, `process.stdout.write()`, `process.hrtime()`, `process.nextTick()`
+- **Intl APIs** — `Intl.DateTimeFormat` with `format()` and `formatToParts()`, `Intl.NumberFormat` with currency and percent styles
 
 ### 🔮 Future / Research
-- **Built-in Objects**
-  - `Error` subclasses with real stack traces
-- **Encoding & Intl**
-  - `atob()` / `btoa()`
-  - Basic Intl APIs (`Intl.DateTimeFormat`, `Intl.NumberFormat`)
 - **Web APIs & FFI**
   - `fetch` and `Response`/`Request` types
   - Enhanced FFI for Rust interop
@@ -205,8 +224,7 @@ cargo run --bin tails -- examples/all_features.ts
   - JIT compilation tier
   - Optimized GC (generational, concurrent)
 - **Node.js Compatibility**
-  - `Buffer` and `Uint8Array` parity for Node-style APIs
-  - `process` global and core modules
+  - `process` core modules (fs, path, etc.)
 
 ## Architecture
 

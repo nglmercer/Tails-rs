@@ -17,17 +17,9 @@ pub(super) fn native_error_constructor(
     let mut props = std::collections::HashMap::new();
     props.insert("message".into(), Value::String(message.clone()));
     props.insert("name".into(), Value::String("Error".into()));
-    props.insert(
-        "stack".into(),
-        Value::String(format!(
-            "Error{}",
-            if message.is_empty() {
-                String::new()
-            } else {
-                format!(": {}", message)
-            }
-        )),
-    );
+
+    let stack = interp.build_stack_trace("Error", &message);
+    props.insert("stack".into(), Value::String(stack));
 
     let proto_idx = find_error_ctor_proto(interp);
 
@@ -52,9 +44,11 @@ pub(super) fn native_type_error_constructor(
         .unwrap_or_default();
     let obj_idx = interp.heap.len();
     let mut props = std::collections::HashMap::new();
-    props.insert("message".into(), Value::String(message));
+    props.insert("message".into(), Value::String(message.clone()));
     props.insert("name".into(), Value::String("TypeError".into()));
-    props.insert("stack".into(), Value::String("TypeError".into()));
+
+    let stack = interp.build_stack_trace("TypeError", &message);
+    props.insert("stack".into(), Value::String(stack));
 
     let proto_idx = find_error_proto(interp, "TypeError");
     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
@@ -78,9 +72,11 @@ pub(super) fn native_reference_error_constructor(
         .unwrap_or_default();
     let obj_idx = interp.heap.len();
     let mut props = std::collections::HashMap::new();
-    props.insert("message".into(), Value::String(message));
+    props.insert("message".into(), Value::String(message.clone()));
     props.insert("name".into(), Value::String("ReferenceError".into()));
-    props.insert("stack".into(), Value::String("ReferenceError".into()));
+
+    let stack = interp.build_stack_trace("ReferenceError", &message);
+    props.insert("stack".into(), Value::String(stack));
 
     let proto_idx = find_error_proto(interp, "ReferenceError");
     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
@@ -104,9 +100,11 @@ pub(super) fn native_syntax_error_constructor(
         .unwrap_or_default();
     let obj_idx = interp.heap.len();
     let mut props = std::collections::HashMap::new();
-    props.insert("message".into(), Value::String(message));
+    props.insert("message".into(), Value::String(message.clone()));
     props.insert("name".into(), Value::String("SyntaxError".into()));
-    props.insert("stack".into(), Value::String("SyntaxError".into()));
+
+    let stack = interp.build_stack_trace("SyntaxError", &message);
+    props.insert("stack".into(), Value::String(stack));
 
     let proto_idx = find_error_proto(interp, "SyntaxError");
     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
@@ -130,9 +128,11 @@ pub(super) fn native_range_error_constructor(
         .unwrap_or_default();
     let obj_idx = interp.heap.len();
     let mut props = std::collections::HashMap::new();
-    props.insert("message".into(), Value::String(message));
+    props.insert("message".into(), Value::String(message.clone()));
     props.insert("name".into(), Value::String("RangeError".into()));
-    props.insert("stack".into(), Value::String("RangeError".into()));
+
+    let stack = interp.build_stack_trace("RangeError", &message);
+    props.insert("stack".into(), Value::String(stack));
 
     let proto_idx = find_error_proto(interp, "RangeError");
     interp.heap.push(crate::vm::interpreter::HeapValue::Object(
