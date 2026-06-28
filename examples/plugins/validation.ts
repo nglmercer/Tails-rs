@@ -1,5 +1,6 @@
 import {
   IPlugin,
+  PluginClass,
   PluginInput,
   PluginMetadata,
 } from "./types.ts";
@@ -45,9 +46,17 @@ function validateMetadata(obj: Record<string, unknown>): void {
   }
 }
 
+function isClassPlugin(plugin: PluginInput): plugin is PluginClass {
+  return typeof plugin === "function" && plugin.prototype !== undefined;
+}
+
+function isObjectPlugin(plugin: PluginInput): plugin is IPlugin {
+  return typeof plugin === "object" && plugin !== null && "metadata" in plugin;
+}
+
 export function validatePlugin(plugin: PluginInput): void {
-  if (typeof plugin === "function") {
-    const proto = (plugin as { prototype?: Record<string, unknown> }).prototype;
+  if (isClassPlugin(plugin)) {
+    const proto = plugin.prototype;
     if (proto && typeof proto === "object" && "metadata" in proto) {
       validateMetadata(proto);
       const metadata = proto.metadata as PluginMetadata;
@@ -56,7 +65,7 @@ export function validatePlugin(plugin: PluginInput): void {
     }
 
     try {
-      const instance = new (plugin as new () => IPlugin)();
+      const instance = new plugin();
       if (
         typeof instance === "object" &&
         instance !== null &&
@@ -77,7 +86,7 @@ export function validatePlugin(plugin: PluginInput): void {
     );
   }
 
-  if (typeof plugin === "object" && plugin !== null) {
+  if (isObjectPlugin(plugin)) {
     const p = plugin as Record<string, unknown>;
     validateMetadata(p);
     const metadata = p.metadata as PluginMetadata;

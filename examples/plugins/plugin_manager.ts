@@ -1,82 +1,154 @@
 import {
   IPlugin,
+  PluginClass,
   PluginConst,
+  PluginEntry,
+  PluginHook,
   PluginInput,
-  PluginManagerOptions,
   PluginMetadata,
 } from "./types.ts";
 import { validatePlugin } from "./validation.ts";
 
-const pluginNames: string[] = [];
-const pluginSetups: Array<(() => void) | null> = [];
-const pluginOnLoads: Array<(() => void) | null> = [];
-const pluginOnDisables: Array<(() => void) | null> = [];
-const pluginOnUnloads: Array<(() => void) | null> = [];
+const plugins: PluginEntry[] = [];
 let initialized: boolean = false;
 
+function isClassPlugin(plugin: PluginInput): plugin is PluginClass {
+  return typeof plugin === "function" && plugin.prototype !== undefined;
+}
+
+function isObjectPlugin(plugin: PluginInput): plugin is IPlugin | PluginConst {
+  return typeof plugin === "object" && plugin !== null && "metadata" in plugin;
+}
+
 function getMetadata(plugin: PluginInput): PluginMetadata {
-  if (typeof plugin === "function") {
-    const proto = (plugin as { prototype?: Record<string, unknown> }).prototype;
+  if (isClassPlugin(plugin)) {
+    const proto = plugin.prototype;
     if (proto && typeof proto === "object" && "metadata" in proto) {
       return proto.metadata as PluginMetadata;
     }
-    const instance = new (plugin as new () => IPlugin)();
+    const instance = new plugin();
     return instance.metadata;
   }
-  return plugin.metadata;
+  if (isObjectPlugin(plugin)) {
+    return plugin.metadata;
+  }
+  throw new Error("Invalid plugin input");
+}
+
+function getHookFn(
+  plugin: PluginInput,
+  hook: PluginHook,
+): (() => void | Promise<void>) | null {
+  if (isClassPlugin(plugin)) {
+    const proto = plugin.prototype;
+    if (proto && typeof proto === "object" && hook in proto) {
+      const fn = proto[hook];
+      if (typeof fn === "function") {
+        return fn.bind(proto);
+      }
+    }
+    return null;
+  }
+
+  if (isObjectPlugin(plugin)) {
+    const obj = plugin as Record<string, unknown>;
+    if (hook in obj && typeof obj[hook] === "function") {
+      return (obj[hook] as () => void | Promise<void>).bind(plugin);
+    }
+  }
+
+  return null;
 }
 
 export function register(plugin: PluginInput): void {
   validatePlugin(plugin);
-  const metadata: PluginMetadata = getMetadata(plugin);
-  pluginNames.push(metadata.name);
-  pluginSetups.push(
-    typeof plugin.setup === "function" ? plugin.setup.bind(plugin) : null,
-  );
-  pluginOnLoads.push(
-    typeof plugin.onLoad === "function" ? plugin.onLoad.bind(plugin) : null,
-  );
-  pluginOnDisables.push(
-    typeof plugin.onDisable === "function"
-      ? plugin.onDisable.bind(plugin)
-      : null,
-  );
-  pluginOnUnloads.push(
-    typeof plugin.onUnload === "function"
-      ? plugin.onUnload.bind(plugin)
-      : null,
-  );
+  const metadata = getMetadata(plugin);
+
+  if (has(metadata.name)) {
+    throw new Error(`Plugin "${metadata.name}" is already registered`);
+  }
+
+  const entry: PluginEntry = {
+    name: metadata.name,
+    instance: null,
+    hooks: {
+      setup: getHookFn(plugin, "setup"),
+      onLoad: getHookFn(plugin, "onLoad"),
+      onEnable: getHookFn(plugin, "onEnable"),
+      onDisable: getHookFn(plugin, "onDisable"),
+      onUnload: getHookFn(plugin, "onUnload"),
+    },
+  };
+
+  if (isObjectPlugin(plugin)) {
+    entry.instance = plugin as IPlugin;
+  }
+
+  plugins.push(entry);
 }
 
-export function init(): void {
+export async function init(): Promise<void> {
   if (initialized) return;
   initialized = true;
-  for (let i = 0; i < pluginNames.length; i++) {
-    if (pluginSetups[i]) pluginSetups[i]();
-    if (pluginOnLoads[i]) pluginOnLoads[i]();
+
+  for (const plugin of plugins) {
+    if (plugin.hooks.setup) {
+      await plugin.hooks.setup();
+    }
+    if (plugin.hooks.onLoad) {
+      await plugin.hooks.onLoad();
+    }
+    if (plugin.hooks.onEnable) {
+      await plugin.hooks.onEnable();
+    }
   }
 }
 
-export function shutdown(): void {
-  for (let i = 0; i < pluginNames.length; i++) {
-    if (pluginOnDisables[i]) pluginOnDisables[i]();
-    if (pluginOnUnloads[i]) pluginOnUnloads[i]();
+export async function shutdown(): Promise<void> {
+  for (const plugin of plugins) {
+    if (plugin.hooks.onDisable) {
+      await plugin.hooks.onDisable();
+    }
+    if (plugin.hooks.onUnload) {
+      await plugin.hooks.onUnload();
+    }
   }
-  pluginNames.length = 0;
-  pluginSetups.length = 0;
-  pluginOnLoads.length = 0;
-  pluginOnDisables.length = 0;
-  pluginOnUnloads.length = 0;
+  plugins.length = 0;
   initialized = false;
 }
 
 export function getPlugins(): string[] {
-  return [...pluginNames];
+  return plugins.map((p) => p.name);
 }
 
 export function has(name: string): boolean {
-  for (let i = 0; i < pluginNames.length; i++) {
-    if (pluginNames[i] === name) return true;
+  return plugins.some((p) => p.name === name);
+}
+
+export function getEntry(name: string): PluginEntry | undefined {
+  return plugins.find((p) => p.name === name);
+}
+
+export function isInitialized(): boolean {
+  return initialized;
+}
+
+export async function enablePlugin(name: string): Promise<boolean> {
+  const entry = getEntry(name);
+  if (!entry) return false;
+
+  if (entry.hooks.onEnable) {
+    await entry.hooks.onEnable();
   }
-  return false;
+  return true;
+}
+
+export async function disablePlugin(name: string): Promise<boolean> {
+  const entry = getEntry(name);
+  if (!entry) return false;
+
+  if (entry.hooks.onDisable) {
+    await entry.hooks.onDisable();
+  }
+  return true;
 }

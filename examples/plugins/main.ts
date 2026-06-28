@@ -25,11 +25,15 @@ const helloPlugin: PluginInput = {
   },
 };
 
-register(helloPlugin);
-console.log("Registered plugins:", getPlugins());
+async function main(): Promise<void> {
+  register(helloPlugin);
+  console.log("Registered plugins:", getPlugins());
 
-init();
-console.log("Initialized.");
+  await init();
+  console.log("Initialized.");
 
-shutdown();
-console.log("All plugins shut down.");
+  await shutdown();
+  console.log("All plugins shut down.");
+}
+
+main();
