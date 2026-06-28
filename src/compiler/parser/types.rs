@@ -113,6 +113,18 @@ impl<'a> Parser<'a> {
                                 )))
                             }
                         };
+                        // Handle optional method signature: method?(): void
+                        // If ? is followed by (, it's an optional method — skip the ?
+                        if self.peek().token == Token::Question {
+                            let saved = self.pos;
+                            self.advance(); // skip ?
+                            if self.peek().token == Token::LeftParen {
+                                // It's an optional method, ? already skipped
+                            } else {
+                                // It's an optional property, restore position
+                                self.pos = saved;
+                            }
+                        }
                         if self.peek().token == Token::LeftParen {
                             self.advance();
                             let mut param_types = Vec::new();
@@ -183,40 +195,46 @@ impl<'a> Parser<'a> {
             }
             Token::LeftParen => {
                 self.advance();
-                let mut param_types = Vec::new();
-                if self.peek().token != Token::RightParen {
-                    loop {
-                        if self.peek().token == Token::RightParen {
-                            break;
-                        }
-                        if matches!(self.peek().token, Token::Identifier(_)) {
-                            self.advance();
-                            if self.peek().token == Token::Colon {
-                                self.advance();
-                                param_types.push(self.parse_type_annotation()?);
-                            } else {
-                                param_types.push(TypeAnnotation::Any);
-                            }
-                        } else {
-                            param_types.push(self.parse_type_annotation()?);
-                        }
-                        if self.peek().token == Token::Comma {
-                            self.advance();
+                if self.is_function_type_after_paren() {
+                    let mut param_types = Vec::new();
+                    if self.peek().token != Token::RightParen {
+                        loop {
                             if self.peek().token == Token::RightParen {
                                 break;
                             }
-                        } else {
-                            break;
+                            if matches!(self.peek().token, Token::Identifier(_)) {
+                                self.advance();
+                                if self.peek().token == Token::Colon {
+                                    self.advance();
+                                    param_types.push(self.parse_type_annotation()?);
+                                } else {
+                                    param_types.push(TypeAnnotation::Any);
+                                }
+                            } else {
+                                param_types.push(self.parse_type_annotation()?);
+                            }
+                            if self.peek().token == Token::Comma {
+                                self.advance();
+                                if self.peek().token == Token::RightParen {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
                         }
                     }
+                    self.expect(&Token::RightParen)?;
+                    self.expect(&Token::Arrow)?;
+                    let return_type = Box::new(self.parse_type_annotation()?);
+                    Ok(TypeAnnotation::Function {
+                        params: param_types,
+                        return_type,
+                    })
+                } else {
+                    let inner = self.parse_type_annotation()?;
+                    self.expect(&Token::RightParen)?;
+                    Ok(inner)
                 }
-                self.expect(&Token::RightParen)?;
-                self.expect(&Token::Arrow)?;
-                let return_type = Box::new(self.parse_type_annotation()?);
-                Ok(TypeAnnotation::Function {
-                    params: param_types,
-                    return_type,
-                })
             }
             Token::New => {
                 // Constructor type: new (params) => ReturnType

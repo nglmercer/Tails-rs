@@ -554,6 +554,30 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(crate) fn is_function_type_after_paren(&self) -> bool {
+        let mut depth = 1;
+        let mut pos = self.pos;
+        while pos < self.tokens.len() && depth > 0 {
+            match self.tokens[pos].token {
+                Token::LeftParen | Token::LeftBrace | Token::LeftBracket | Token::Less => {
+                    depth += 1
+                }
+                Token::RightParen | Token::RightBrace | Token::RightBracket | Token::Greater => {
+                    depth -= 1
+                }
+                _ => {}
+            }
+            if depth > 0 {
+                pos += 1;
+            }
+        }
+        if pos >= self.tokens.len() {
+            return false;
+        }
+        let next_pos = pos + 1;
+        next_pos < self.tokens.len() && matches!(self.tokens[next_pos].token, Token::Arrow)
+    }
+
     fn parse_program(&mut self) -> Result<AstNode> {
         let mut statements = Vec::new();
         while self.peek().token != Token::Eof {

@@ -105,6 +105,14 @@ impl TypeChecker {
                         .all(|(a, b)| self.is_compatible(a, b))
                     && self.is_compatible(r1, r2)
             }
+            (Type::Generic { name: n1, args: a1 }, Type::Generic { name: n2, args: a2 }) => {
+                n1 == n2
+                    && a1.len() == a2.len()
+                    && a1
+                        .iter()
+                        .zip(a2.iter())
+                        .all(|(a, b)| self.is_compatible(a, b))
+            }
             _ => false,
         }
     }

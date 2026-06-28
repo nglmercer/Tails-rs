@@ -386,3 +386,25 @@ fn test_run_function_type_signature() {
 fn test_run_tuple_type() {
     compile_and_run(r#"let t: [string, number] = ["hello", 42];"#).unwrap();
 }
+
+#[test]
+fn test_parse_grouped_function_type_in_generic() {
+    let tokens = tokenize("let x: Array<(() => void) | null> = null;").unwrap();
+    let _ast = parse(&tokens).unwrap();
+}
+
+#[test]
+fn test_parse_grouped_union_type() {
+    let tokens = tokenize("let x: (number | string) = 42;").unwrap();
+    let _ast = parse(&tokens).unwrap();
+}
+
+#[test]
+fn test_type_check_grouped_function_union() {
+    type_check("let x: (() => void) | null = null;").unwrap();
+}
+
+#[test]
+fn test_type_check_grouped_union() {
+    type_check("let x: (number | string) = 42;").unwrap();
+}
