@@ -15,6 +15,7 @@ Tails-rs is a JavaScript/TypeScript runtime built from scratch in Rust. It compi
 - **Promises** — Native implementation with `.then()`, `.catch()`, `.finally()`, and `Promise.all`
 - **Timers** — `setTimeout`, `setInterval`, and `clearInterval`
 - **ES Modules** — Import/export with named, default, and namespace imports
+- **Native Modules** — Import-only modules via `.native` extension (fs, path, events, etc.)
 - **Error Handling** — Try/catch/finally with thrown exceptions
 - **Proxy Objects** — JavaScript Proxy API with traps
 - **Rich Standard Library** — Object, Array, String, Math, JSON, Number, and global functions
@@ -58,6 +59,32 @@ See a live demonstration of all supported features:
 ```bash
 cargo run --bin tails -- examples/all_features.ts
 ```
+
+## Native Modules
+
+Native modules are imported using the `.native` extension. They are **not** available as globals — you must always import them explicitly.
+
+```typescript
+import fs from "./fs.native";
+import path from "./path.native";
+import events from "./events.native";
+import os from "./os.native";
+import process from "./process.native";
+import url from "./url.native";
+import crypto from "./crypto.native";
+```
+
+### Available Native Modules
+
+| Module | Description |
+|--------|-------------|
+| `fs` | File system operations (read, write, stat, mkdir, etc.) |
+| `path` | Path manipulation (join, resolve, basename, etc.) |
+| `events` | EventEmitter class with on/emit/off |
+| `os` | OS information (platform, arch, cpus, memory, etc.) |
+| `process` | Process info and control (env, argv, exit, etc.) |
+| `url` | URL parsing and manipulation |
+| `crypto` | Cryptographic functions (random, hash, etc.) |
 
 ## Supported Features
 
@@ -165,31 +192,6 @@ cargo run --bin tails -- examples/all_features.ts
 - `Intl.DateTimeFormat` — Date/time formatting with `format()` and `formatToParts()`
 - `Intl.NumberFormat` — Number formatting with decimal, currency, and percent styles
 
-### Path Module
-- `path.join()` — Join path segments
-- `path.resolve()` — Resolve to absolute path
-- `path.basename()` — Get filename from path
-- `path.dirname()` — Get directory from path
-- `path.extname()` — Get file extension
-- `path.relative()` — Get relative path between two paths
-- `path.isAbsolute()` — Check if path is absolute
-- `path.normalize()` — Normalize path (resolve `.` and `..`)
-- `path.sep` — Path separator (`/` or `\`)
-- `path.delimiter` — Path delimiter (`:` or `;`)
-
-### File System (fs) Module
-- `fs.readFileSync()` — Read file contents synchronously
-- `fs.writeFileSync()` — Write data to file synchronously
-- `fs.existsSync()` — Check if file/directory exists
-- `fs.mkdirSync()` — Create directory (with `recursive` option)
-- `fs.readdirSync()` — List directory contents
-- `fs.statSync()` — Get file metadata (size, isFile, isDirectory, mtimeMs)
-- `fs.unlinkSync()` — Delete a file
-- `fs.rmSync()` — Remove file or directory (with `recursive` option)
-- `fs.copyFileSync()` — Copy a file
-- `fs.renameSync()` — Rename/move a file
-- `fs.appendFileSync()` — Append data to a file
-
 ### Destructuring & Spread
 - Array destructuring with skipping
 - Object destructuring with aliasing
@@ -221,7 +223,9 @@ cargo run --bin tails -- examples/all_features.ts
 
 > Based on current implementation status. Contributions welcome!
 
-### ✅ Recently Completed
+### Recently Completed
+- **Native Module System** — Import-only modules via `.native` extension, registry-based loader
+- **Import-only fs/path** — `fs` and `path` removed from globals, now require explicit import
 - **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, `isExtensible`, `preventExtensions`, etc.
 - **Generators** — Runtime support for `function*`, `yield`, and `.next()`
 - **for...of loop** — Iterator protocol execution with `Symbol.iterator`
@@ -243,7 +247,15 @@ cargo run --bin tails -- examples/all_features.ts
 - **path module** — `path.join()`, `path.resolve()`, `path.basename()`, `path.dirname()`, `path.extname()`, `path.relative()`, `path.isAbsolute()`, `path.normalize()`, `path.sep`, `path.delimiter`
 - **fs module** — `fs.readFileSync()`, `fs.writeFileSync()`, `fs.existsSync()`, `fs.mkdirSync()`, `fs.readdirSync()`, `fs.statSync()`, `fs.unlinkSync()`, `fs.rmSync()`, `fs.copyFileSync()`, `fs.renameSync()`, `fs.appendFileSync()`
 
-### 🔮 Future / Research
+### Future / Research
+- **More Native Modules**
+  - `events` — EventEmitter class
+  - `os` — OS information and utilities
+  - `url` — URL parsing and manipulation
+  - `crypto` — Cryptographic functions
+  - `stream` — Stream processing
+  - `http` / `https` — HTTP client/server
+  - `child_process` — Process spawning
 - **Web APIs & FFI**
   - `fetch` and `Response`/`Request` types
   - Enhanced FFI for Rust interop
@@ -259,10 +271,18 @@ cargo run --bin tails -- examples/all_features.ts
 src/
 ├── compiler/      # Lexer, parser, bytecode generator, type checker
 ├── vm/            # Virtual machine with interpreter and GC
+│   └── interpreter/
+│       ├── native_loader.rs  # Registry-based native module loader
+│       └── ...
 ├── runtime_env/   # Native functions and async runtime
 ├── objects/       # JS value types (objects, arrays, functions, promises, proxies)
 ├── ffi/           # Foreign function interface
 └── main.rs        # CLI entry point
+
+modules/
+├── abi/           # Shared ABI types for future dlopen support
+├── fs/            # File system native module (placeholder)
+└── path/          # Path native module (placeholder)
 ```
 
 ## Testing
