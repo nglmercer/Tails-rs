@@ -96,6 +96,72 @@ fn test_error_stack_has_at() {
 }
 
 #[test]
+fn test_error_stack_has_line_numbers() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(
+        r#"
+        function outer() {
+            function inner() {
+                throw new Error("line test");
+            }
+            inner();
+        }
+        let stack;
+        try {
+            outer();
+        } catch(e) {
+            stack = e.stack;
+        }
+        stack;
+    "#,
+    );
+    assert!(r.is_ok());
+    if let tails::Value::String(stack) = r.unwrap() {
+        assert!(
+            stack.contains("inner"),
+            "Stack should contain 'inner': {}",
+            stack
+        );
+        assert!(
+            stack.contains("outer"),
+            "Stack should contain 'outer': {}",
+            stack
+        );
+    } else {
+        panic!("Expected string for stack trace");
+    }
+}
+
+#[test]
+fn test_error_stack_at_format() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(
+        r#"
+        function myFunc() {
+            throw new Error("format test");
+        }
+        let stack;
+        try {
+            myFunc();
+        } catch(e) {
+            stack = e.stack;
+        }
+        stack;
+    "#,
+    );
+    assert!(r.is_ok());
+    if let tails::Value::String(stack) = r.unwrap() {
+        assert!(
+            stack.contains("at myFunc"),
+            "Stack should contain 'at myFunc': {}",
+            stack
+        );
+    } else {
+        panic!("Expected string for stack trace");
+    }
+}
+
+#[test]
 fn test_error_without_message() {
     let mut rt = TailsRuntime::default();
     let r = rt.eval(

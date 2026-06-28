@@ -54,6 +54,7 @@ pub struct CompiledModule {
     pub constants: Vec<Value>,
     pub functions: Vec<CompiledFunction>,
     pub class_infos: Vec<ClassInfo>,
+    pub source_lines: Vec<Option<usize>>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +88,7 @@ pub struct CompiledFunction {
     pub param_count: usize,
     pub closure_var_count: usize,
     pub is_generator: bool,
+    pub source_line: Option<usize>,
 }
 
 #[derive(Debug, Clone)]

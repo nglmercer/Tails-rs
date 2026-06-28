@@ -49,6 +49,7 @@ pub(super) fn native_generator_next(
                 is_construct: false,
                 source_name: None,
                 generator_heap_idx: Some(idx),
+                source_line: None,
             });
 
             let result = interp.execute_from(&module, resume_pc);

@@ -49,25 +49,25 @@ impl TypeChecker {
                 let cond_type = self.check_expression(condition)?;
                 let saved = self.narrowed_types.clone();
                 self.apply_type_narrowing(condition, &cond_type, true);
-                self.check_statement(consequent)?;
+                self.check_statement(&consequent.inner)?;
                 let after_then = self.narrowed_types.clone();
                 self.narrowed_types = saved;
                 self.apply_type_narrowing(condition, &cond_type, false);
                 if let Some(alt) = alternate {
-                    self.check_statement(alt)?;
+                    self.check_statement(&alt.inner)?;
                 }
                 self.narrowed_types = after_then;
                 Ok(Type::Void)
             }
             Statement::WhileStatement { condition, body } => {
                 self.check_expression(condition)?;
-                self.check_statement(body)?;
+                self.check_statement(&body.inner)?;
                 Ok(Type::Void)
             }
             Statement::BlockStatement(stmts) => {
                 self.enter_scope();
                 for stmt in stmts {
-                    self.check_statement(stmt)?;
+                    self.check_statement(&stmt.inner)?;
                 }
                 self.exit_scope();
                 Ok(Type::Void)
@@ -108,7 +108,7 @@ impl TypeChecker {
                     self.define_variable(param, pty.clone());
                 }
                 for stmt in body {
-                    self.check_statement(stmt)?;
+                    self.check_statement(&stmt.inner)?;
                 }
                 self.exit_scope();
                 Ok(Type::Void)
@@ -225,7 +225,7 @@ impl TypeChecker {
                                 self.define_variable(param, Type::Any);
                             }
                             for stmt in body {
-                                self.check_statement(stmt)?;
+                                self.check_statement(&stmt.inner)?;
                             }
                             self.exit_scope();
                         }
@@ -235,7 +235,7 @@ impl TypeChecker {
                                 self.define_variable(&param.name, Type::Any);
                             }
                             for stmt in body {
-                                self.check_statement(stmt)?;
+                                self.check_statement(&stmt.inner)?;
                             }
                             self.exit_scope();
                         }
@@ -255,7 +255,7 @@ impl TypeChecker {
                 if let Some(init) = init {
                     match init.as_ref() {
                         crate::compiler::parser::ForInit::Variable(stmt) => {
-                            self.check_statement(stmt)?;
+                            self.check_statement(&stmt.inner)?;
                         }
                         crate::compiler::parser::ForInit::Expression(expr) => {
                             self.check_expression(expr)?;
@@ -268,7 +268,7 @@ impl TypeChecker {
                 if let Some(upd) = update {
                     self.check_expression(upd)?;
                 }
-                self.check_statement(body)?;
+                self.check_statement(&body.inner)?;
                 self.exit_scope();
                 Ok(Type::Void)
             }
@@ -278,7 +278,7 @@ impl TypeChecker {
                 body,
             } => {
                 self.check_expression(right)?;
-                self.check_statement(body)?;
+                self.check_statement(&body.inner)?;
                 Ok(Type::Void)
             }
             Statement::ForOfStatement {
@@ -288,7 +288,7 @@ impl TypeChecker {
                 ..
             } => {
                 self.check_expression(right)?;
-                self.check_statement(body)?;
+                self.check_statement(&body.inner)?;
                 Ok(Type::Void)
             }
             Statement::SwitchStatement {
@@ -301,7 +301,7 @@ impl TypeChecker {
                         self.check_expression(test)?;
                     }
                     for stmt in &case.consequent {
-                        self.check_statement(stmt)?;
+                        self.check_statement(&stmt.inner)?;
                     }
                 }
                 Ok(Type::Void)
@@ -313,20 +313,20 @@ impl TypeChecker {
             } => {
                 self.enter_scope();
                 for stmt in block {
-                    self.check_statement(stmt)?;
+                    self.check_statement(&stmt.inner)?;
                 }
                 self.exit_scope();
                 if let Some(catch) = handler {
                     self.enter_scope();
                     self.define_variable(&catch.param, Type::Any);
                     for stmt in &catch.body {
-                        self.check_statement(stmt)?;
+                        self.check_statement(&stmt.inner)?;
                     }
                     self.exit_scope();
                 }
                 if let Some(fin) = finalizer {
                     for stmt in fin {
-                        self.check_statement(stmt)?;
+                        self.check_statement(&stmt.inner)?;
                     }
                 }
                 Ok(Type::Void)
@@ -337,18 +337,18 @@ impl TypeChecker {
             }
             Statement::ExportDeclaration { kind } => match kind {
                 crate::compiler::parser::ExportDeclarationKind::Local(declaration) => {
-                    self.check_statement(declaration)
+                    self.check_statement(&declaration.inner)
                 }
                 crate::compiler::parser::ExportDeclarationKind::ReExport { .. } => Ok(Type::Void),
             },
             Statement::ExportDefaultDeclaration { declaration } => {
-                self.check_statement(declaration)
+                self.check_statement(&declaration.inner)
             }
             Statement::BreakStatement | Statement::ContinueStatement => Ok(Type::Void),
             Statement::ImportDeclaration { .. } => Ok(Type::Void),
             Statement::DoWhileStatement { condition, body } => {
                 self.check_expression(condition)?;
-                self.check_statement(body)?;
+                self.check_statement(&body.inner)?;
                 Ok(Type::Void)
             }
             &Statement::YieldStatement(_) => todo!(),

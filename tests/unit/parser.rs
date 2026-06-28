@@ -9,7 +9,7 @@ fn test_number_literal() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::NumberLiteral(42.0)));
                 }
@@ -28,7 +28,7 @@ fn test_string_literal() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::StringLiteral(s) if s == "hello"));
                 }
@@ -47,7 +47,7 @@ fn test_binary_operation() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::BinaryOp { .. }));
                 }
@@ -66,7 +66,7 @@ fn test_variable_declaration() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::VariableDeclaration { declarations, .. } => {
                     assert_eq!(declarations.len(), 1);
                     match &declarations[0].id {
@@ -90,7 +90,7 @@ fn test_function_declaration() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::FunctionDeclaration {
                     name, params, body, ..
                 } => {
@@ -113,7 +113,7 @@ fn test_if_statement() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::IfStatement {
                     condition,
                     consequent: _,
@@ -137,7 +137,7 @@ fn test_while_statement() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::WhileStatement { condition, .. } => {
                     assert!(matches!(condition, Expression::BooleanLiteral(true)));
                 }
@@ -156,7 +156,7 @@ fn test_assignment() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::Assignment { .. }));
                 }
@@ -175,7 +175,7 @@ fn test_function_call() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::Call { .. }));
                 }
@@ -194,7 +194,7 @@ fn test_member_access() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(
                         expr,
@@ -219,7 +219,7 @@ fn test_computed_member_access() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::Member { computed: true, .. }));
                 }
@@ -238,7 +238,7 @@ fn test_unary_operation() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::UnaryOp { .. }));
                 }
@@ -257,7 +257,7 @@ fn test_complex_expression() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::Expression(expr) => {
                     assert!(matches!(expr, Expression::BinaryOp { .. }));
                 }
@@ -289,7 +289,7 @@ fn test_block_statement() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::BlockStatement(inner) => {
                     assert_eq!(inner.len(), 3);
                 }
@@ -308,7 +308,7 @@ fn test_return_statement() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::ReturnStatement(value) => {
                     assert!(value.is_some());
                 }
@@ -327,7 +327,7 @@ fn test_return_without_value() {
     match ast {
         AstNode::Program(stmts) => {
             assert_eq!(stmts.len(), 1);
-            match &stmts[0] {
+            match &stmts[0].inner {
                 Statement::ReturnStatement(value) => {
                     assert!(value.is_none());
                 }

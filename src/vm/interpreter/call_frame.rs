@@ -10,6 +10,7 @@ pub(crate) struct CallFrame {
     pub(crate) is_construct: bool,
     pub(crate) source_name: Option<String>,
     pub(crate) generator_heap_idx: Option<usize>,
+    pub(crate) source_line: Option<usize>,
 }
 
 #[derive(Debug, Clone)]

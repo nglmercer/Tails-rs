@@ -8,7 +8,7 @@ impl<'a> Parser<'a> {
 
     fn parse_union_type(&mut self) -> Result<TypeAnnotation> {
         let mut types = vec![self.parse_intersection_type()?];
-        while self.peek() == &Token::BitOr {
+        while self.peek().token == Token::BitOr {
             self.advance();
             types.push(self.parse_intersection_type()?);
         }
@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
 
     fn parse_intersection_type(&mut self) -> Result<TypeAnnotation> {
         let mut types = vec![self.parse_primary_type()?];
-        while self.peek() == &Token::BitAnd {
+        while self.peek().token == Token::BitAnd {
             self.advance();
             types.push(self.parse_primary_type()?);
         }
@@ -33,7 +33,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary_type(&mut self) -> Result<TypeAnnotation> {
-        let base = match self.peek().clone() {
+        let base = match self.peek().token.clone() {
             Token::Identifier(name) => {
                 self.advance();
                 match name.as_str() {
@@ -47,10 +47,10 @@ impl<'a> Parser<'a> {
                     "unknown" => Ok(TypeAnnotation::Unknown),
                     "never" => Ok(TypeAnnotation::Never),
                     _ => {
-                        if self.peek() == &Token::Less {
+                        if self.peek().token == Token::Less {
                             self.advance();
                             let mut args = vec![self.parse_type_annotation()?];
-                            while self.peek() == &Token::Comma {
+                            while self.peek().token == Token::Comma {
                                 self.advance();
                                 args.push(self.parse_type_annotation()?);
                             }
@@ -76,15 +76,15 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBracket => {
                 self.advance();
-                if self.peek() == &Token::RightBracket {
+                if self.peek().token == Token::RightBracket {
                     self.advance();
                     return Ok(TypeAnnotation::Array(Box::new(TypeAnnotation::Any)));
                 }
                 let first = self.parse_type_annotation()?;
                 let mut elements = vec![first];
-                while self.peek() == &Token::Comma {
+                while self.peek().token == Token::Comma {
                     self.advance();
-                    if self.peek() == &Token::RightBracket {
+                    if self.peek().token == Token::RightBracket {
                         break;
                     }
                     elements.push(self.parse_type_annotation()?);
@@ -95,9 +95,9 @@ impl<'a> Parser<'a> {
             Token::LeftBrace => {
                 self.advance();
                 let mut properties = Vec::new();
-                if self.peek() != &Token::RightBrace {
+                if self.peek().token != Token::RightBrace {
                     loop {
-                        let name = match self.advance() {
+                        let name = match self.advance().token {
                             Token::Identifier(n) => n,
                             t => {
                                 return Err(Error::ParseError(format!(
@@ -106,14 +106,14 @@ impl<'a> Parser<'a> {
                                 )))
                             }
                         };
-                        if self.peek() == &Token::LeftParen {
+                        if self.peek().token == Token::LeftParen {
                             self.advance();
                             let mut param_types = Vec::new();
-                            if self.peek() != &Token::RightParen {
+                            if self.peek().token != Token::RightParen {
                                 loop {
-                                    if matches!(self.peek(), Token::Identifier(_)) {
+                                    if matches!(self.peek().token, Token::Identifier(_)) {
                                         self.advance();
-                                        if self.peek() == &Token::Colon {
+                                        if self.peek().token == Token::Colon {
                                             self.advance();
                                             param_types.push(self.parse_type_annotation()?);
                                         } else {
@@ -122,7 +122,7 @@ impl<'a> Parser<'a> {
                                     } else {
                                         param_types.push(self.parse_type_annotation()?);
                                     }
-                                    if self.peek() == &Token::Comma {
+                                    if self.peek().token == Token::Comma {
                                         self.advance();
                                     } else {
                                         break;
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                                 }
                             }
                             self.expect(&Token::RightParen)?;
-                            let return_type = if self.peek() == &Token::Colon {
+                            let return_type = if self.peek().token == Token::Colon {
                                 self.advance();
                                 self.parse_type_annotation()?
                             } else {
@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
                                 false,
                             ));
                         } else {
-                            let optional = if self.peek() == &Token::Question {
+                            let optional = if self.peek().token == Token::Question {
                                 self.advance();
                                 true
                             } else {
@@ -155,7 +155,7 @@ impl<'a> Parser<'a> {
                             let ty = self.parse_type_annotation()?;
                             properties.push((name, ty, optional));
                         }
-                        if self.peek() == &Token::Comma {
+                        if self.peek().token == Token::Comma {
                             self.advance();
                         } else {
                             break;
@@ -168,14 +168,14 @@ impl<'a> Parser<'a> {
             Token::LeftParen => {
                 self.advance();
                 let mut param_types = Vec::new();
-                if self.peek() != &Token::RightParen {
+                if self.peek().token != Token::RightParen {
                     loop {
-                        if self.peek() == &Token::RightParen {
+                        if self.peek().token == Token::RightParen {
                             break;
                         }
-                        if matches!(self.peek(), Token::Identifier(_)) {
+                        if matches!(self.peek().token, Token::Identifier(_)) {
                             self.advance();
-                            if self.peek() == &Token::Colon {
+                            if self.peek().token == Token::Colon {
                                 self.advance();
                                 param_types.push(self.parse_type_annotation()?);
                             } else {
@@ -184,7 +184,7 @@ impl<'a> Parser<'a> {
                         } else {
                             param_types.push(self.parse_type_annotation()?);
                         }
-                        if self.peek() == &Token::Comma {
+                        if self.peek().token == Token::Comma {
                             self.advance();
                         } else {
                             break;
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
             }
             _ => Ok(TypeAnnotation::Any),
         }?;
-        if self.peek() == &Token::LeftBracket {
+        if self.peek().token == Token::LeftBracket {
             self.advance();
             self.expect(&Token::RightBracket)?;
             Ok(TypeAnnotation::Array(Box::new(base)))

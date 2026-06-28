@@ -103,7 +103,7 @@ impl TypeChecker {
         match node {
             AstNode::Program(statements) => {
                 for stmt in statements {
-                    self.check_statement(stmt)?;
+                    self.check_statement(&stmt.inner)?;
                 }
                 Ok(())
             }

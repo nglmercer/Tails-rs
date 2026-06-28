@@ -142,7 +142,7 @@ impl TypeChecker {
                     self.define_variable(param, pty.clone());
                 }
                 for stmt in body {
-                    self.check_statement(stmt)?;
+                    self.check_statement(&stmt.inner)?;
                 }
                 self.exit_scope();
                 Ok(Type::Function {
@@ -185,7 +185,7 @@ impl TypeChecker {
                     }
                     crate::compiler::parser::ArrowFunctionBody::Block(stmts) => {
                         for stmt in stmts {
-                            self.check_statement(stmt)?;
+                            self.check_statement(&stmt.inner)?;
                         }
                     }
                 }
@@ -291,7 +291,7 @@ impl TypeChecker {
                             self.define_variable(param, Type::Any);
                         }
                         for stmt in body {
-                            self.check_statement(stmt)?;
+                            self.check_statement(&stmt.inner)?;
                         }
                         self.exit_scope();
                     }

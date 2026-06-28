@@ -2,152 +2,152 @@ use super::*;
 use crate::errors::{Error, Result};
 
 impl<'a> Parser<'a> {
-    pub(crate) fn parse_expression(&mut self) -> Result<Expression> {
+    pub(crate) fn parse_expression(&mut self) -> Result<SpannedNode<Expression>> {
         self.parse_assignment()
     }
 
-    fn parse_assignment(&mut self) -> Result<Expression> {
+    fn parse_assignment(&mut self) -> Result<SpannedNode<Expression>> {
         let left = self.parse_ternary()?;
-        match self.peek().clone() {
+        match self.peek().token.clone() {
             Token::Assign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: None,
-                })
+                }))
             }
             Token::PlusAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::AddAssign),
-                })
+                }))
             }
             Token::MinusAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::SubAssign),
-                })
+                }))
             }
             Token::StarAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::MulAssign),
-                })
+                }))
             }
             Token::SlashAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::DivAssign),
-                })
+                }))
             }
             Token::PercentAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::ModAssign),
-                })
+                }))
             }
             Token::AndAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::AndAssign),
-                })
+                }))
             }
             Token::OrAssign => {
                 self.advance();
                 let value = self.parse_assignment()?;
-                Ok(Expression::Assignment {
-                    target: Box::new(left),
-                    value: Box::new(value),
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
                     op: Some(CompoundAssignmentOp::OrAssign),
-                })
+                }))
             }
             _ => Ok(left),
         }
     }
 
-    fn parse_ternary(&mut self) -> Result<Expression> {
+    fn parse_ternary(&mut self) -> Result<SpannedNode<Expression>> {
         let condition = self.parse_nullish()?;
-        if self.peek() == &Token::Question {
+        if self.peek().token == Token::Question {
             self.advance();
             let consequent = self.parse_assignment()?;
             self.expect(&Token::Colon)?;
             let alternate = self.parse_assignment()?;
-            Ok(Expression::ConditionalExpression {
-                test: Box::new(condition),
-                consequent: Box::new(consequent),
-                alternate: Box::new(alternate),
-            })
+            Ok(self.spanned(Expression::ConditionalExpression {
+                test: Box::new(condition.inner),
+                consequent: Box::new(consequent.inner),
+                alternate: Box::new(alternate.inner),
+            }))
         } else {
             Ok(condition)
         }
     }
 
-    fn parse_or(&mut self) -> Result<Expression> {
+    fn parse_or(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_and()?;
-        while self.peek() == &Token::Or {
+        while self.peek().token == Token::Or {
             self.advance();
             let right = self.parse_and()?;
-            left = Expression::BinaryOp {
+            left = self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::Or,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
 
-    fn parse_nullish(&mut self) -> Result<Expression> {
+    fn parse_nullish(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_or()?;
-        while self.peek() == &Token::NullishCoalescing {
+        while self.peek().token == Token::NullishCoalescing {
             self.advance();
             let right = self.parse_or()?;
-            left = Expression::BinaryOp {
+            left = self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::NullishCoalescing,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Expression> {
+    fn parse_and(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_equality()?;
-        while self.peek() == &Token::And {
+        while self.peek().token == Token::And {
             self.advance();
             let right = self.parse_equality()?;
-            left = Expression::BinaryOp {
+            left = self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::And,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Expression> {
+    fn parse_equality(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_instanceof()?;
         loop {
-            let op = match self.peek() {
+            let op = match self.peek().token {
                 Token::Equal => Some(BinaryOperator::Eq),
                 Token::StrictEqual => Some(BinaryOperator::StrictEq),
                 Token::NotEqual => Some(BinaryOperator::NotEqual),
@@ -157,11 +157,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_instanceof()?;
-                left = Expression::BinaryOp {
+                left = self.spanned(Expression::BinaryOp {
                     op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                };
+                    left: Box::new(left.inner),
+                    right: Box::new(right.inner),
+                });
             } else {
                 break;
             }
@@ -169,38 +169,38 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_instanceof(&mut self) -> Result<Expression> {
+    fn parse_instanceof(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_in()?;
-        while self.peek() == &Token::Instanceof {
+        while self.peek().token == Token::Instanceof {
             self.advance();
             let right = self.parse_in()?;
-            left = Expression::BinaryOp {
+            left = self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::Instanceof,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
 
-    fn parse_in(&mut self) -> Result<Expression> {
+    fn parse_in(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_comparison()?;
-        while self.peek() == &Token::In {
+        while self.peek().token == Token::In {
             self.advance();
             let right = self.parse_comparison()?;
-            left = Expression::BinaryOp {
+            left = self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::In,
-                left: Box::new(left),
-                right: Box::new(right),
-            };
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Expression> {
+    fn parse_comparison(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_shift()?;
         loop {
-            let op = match self.peek() {
+            let op = match self.peek().token {
                 Token::Less => Some(BinaryOperator::Less),
                 Token::Greater => Some(BinaryOperator::Greater),
                 Token::LessEqual => Some(BinaryOperator::LessEqual),
@@ -210,11 +210,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_shift()?;
-                left = Expression::BinaryOp {
+                left = self.spanned(Expression::BinaryOp {
                     op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                };
+                    left: Box::new(left.inner),
+                    right: Box::new(right.inner),
+                });
             } else {
                 break;
             }
@@ -222,10 +222,10 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_shift(&mut self) -> Result<Expression> {
+    fn parse_shift(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_additive()?;
         loop {
-            let op = match self.peek() {
+            let op = match self.peek().token {
                 Token::ShiftLeft => Some(BinaryOperator::ShiftLeft),
                 Token::ShiftRight => Some(BinaryOperator::ShiftRight),
                 _ => None,
@@ -233,11 +233,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_additive()?;
-                left = Expression::BinaryOp {
+                left = self.spanned(Expression::BinaryOp {
                     op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                };
+                    left: Box::new(left.inner),
+                    right: Box::new(right.inner),
+                });
             } else {
                 break;
             }
@@ -245,10 +245,10 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_additive(&mut self) -> Result<Expression> {
+    fn parse_additive(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_multiplicative()?;
         loop {
-            let op = match self.peek() {
+            let op = match self.peek().token {
                 Token::Plus => Some(BinaryOperator::Add),
                 Token::Minus => Some(BinaryOperator::Sub),
                 _ => None,
@@ -256,11 +256,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_multiplicative()?;
-                left = Expression::BinaryOp {
+                left = self.spanned(Expression::BinaryOp {
                     op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                };
+                    left: Box::new(left.inner),
+                    right: Box::new(right.inner),
+                });
             } else {
                 break;
             }
@@ -268,10 +268,10 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_multiplicative(&mut self) -> Result<Expression> {
+    fn parse_multiplicative(&mut self) -> Result<SpannedNode<Expression>> {
         let mut left = self.parse_power()?;
         loop {
-            let op = match self.peek() {
+            let op = match self.peek().token {
                 Token::Star => Some(BinaryOperator::Mul),
                 Token::Slash => Some(BinaryOperator::Div),
                 Token::Percent => Some(BinaryOperator::Mod),
@@ -280,11 +280,11 @@ impl<'a> Parser<'a> {
             if let Some(op) = op {
                 self.advance();
                 let right = self.parse_power()?;
-                left = Expression::BinaryOp {
+                left = self.spanned(Expression::BinaryOp {
                     op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                };
+                    left: Box::new(left.inner),
+                    right: Box::new(right.inner),
+                });
             } else {
                 break;
             }
@@ -292,128 +292,128 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_power(&mut self) -> Result<Expression> {
+    fn parse_power(&mut self) -> Result<SpannedNode<Expression>> {
         let left = self.parse_unary()?;
-        if self.peek() == &Token::Power {
+        if self.peek().token == Token::Power {
             self.advance();
             let right = self.parse_unary()?;
-            Ok(Expression::BinaryOp {
+            Ok(self.spanned(Expression::BinaryOp {
                 op: BinaryOperator::Power,
-                left: Box::new(left),
-                right: Box::new(right),
-            })
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            }))
         } else {
             Ok(left)
         }
     }
 
-    fn parse_unary(&mut self) -> Result<Expression> {
-        match self.peek().clone() {
+    fn parse_unary(&mut self) -> Result<SpannedNode<Expression>> {
+        match self.peek().token.clone() {
             Token::Minus => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Negate,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::Not => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Not,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::Typeof => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Typeof,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::Void => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Void,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::Delete => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Delete,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::BitNot => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UnaryOp {
+                Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::BitNot,
-                    operand: Box::new(operand),
-                })
+                    operand: Box::new(operand.inner),
+                }))
             }
             Token::Increment => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UpdateExpression {
+                Ok(self.spanned(Expression::UpdateExpression {
                     op: UpdateOperator::Increment,
-                    operand: Box::new(operand),
+                    operand: Box::new(operand.inner),
                     prefix: true,
-                })
+                }))
             }
             Token::Decrement => {
                 self.advance();
                 let operand = self.parse_unary()?;
-                Ok(Expression::UpdateExpression {
+                Ok(self.spanned(Expression::UpdateExpression {
                     op: UpdateOperator::Decrement,
-                    operand: Box::new(operand),
+                    operand: Box::new(operand.inner),
                     prefix: true,
-                })
+                }))
             }
             Token::New => self.parse_new_expression(),
             Token::Await => {
                 self.advance();
                 let argument = self.parse_unary()?;
-                Ok(Expression::AwaitExpression {
-                    argument: Box::new(argument),
-                })
+                Ok(self.spanned(Expression::AwaitExpression {
+                    argument: Box::new(argument.inner),
+                }))
             }
             _ => self.parse_postfix(),
         }
     }
 
-    fn parse_postfix(&mut self) -> Result<Expression> {
+    fn parse_postfix(&mut self) -> Result<SpannedNode<Expression>> {
         let mut expr = self.parse_call()?;
         loop {
-            match self.peek() {
+            match self.peek().token {
                 Token::Increment => {
                     self.advance();
-                    expr = Expression::UpdateExpression {
+                    expr = self.spanned(Expression::UpdateExpression {
                         op: UpdateOperator::Increment,
-                        operand: Box::new(expr),
+                        operand: Box::new(expr.inner),
                         prefix: false,
-                    };
+                    });
                 }
                 Token::Decrement => {
                     self.advance();
-                    expr = Expression::UpdateExpression {
+                    expr = self.spanned(Expression::UpdateExpression {
                         op: UpdateOperator::Decrement,
-                        operand: Box::new(expr),
+                        operand: Box::new(expr.inner),
                         prefix: false,
-                    };
+                    });
                 }
                 Token::As => {
                     self.advance();
                     let type_annotation = self.parse_type_annotation()?;
-                    expr = Expression::TypeAssertion {
-                        expression: Box::new(expr),
+                    expr = self.spanned(Expression::TypeAssertion {
+                        expression: Box::new(expr.inner),
                         type_annotation,
-                    };
+                    });
                 }
                 _ => break,
             }
@@ -421,10 +421,10 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_new_expression(&mut self) -> Result<Expression> {
+    fn parse_new_expression(&mut self) -> Result<SpannedNode<Expression>> {
         self.expect(&Token::New)?;
         let callee = self.parse_new_target()?;
-        let args = if self.peek() == &Token::LeftParen {
+        let args = if self.peek().token == Token::LeftParen {
             self.advance();
             let a = self.parse_args()?;
             self.expect(&Token::RightParen)?;
@@ -432,18 +432,18 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
-        Ok(Expression::NewExpression {
-            callee: Box::new(callee),
+        Ok(self.spanned(Expression::NewExpression {
+            callee: Box::new(callee.inner),
             args,
-        })
+        }))
     }
 
-    fn parse_new_target(&mut self) -> Result<Expression> {
-        match self.peek().clone() {
+    fn parse_new_target(&mut self) -> Result<SpannedNode<Expression>> {
+        match self.peek().token.clone() {
             Token::Identifier(name) => {
                 self.advance();
                 let mut expr = Expression::Identifier(name);
-                while self.peek() == &Token::Dot {
+                while self.peek().token == Token::Dot {
                     self.advance();
                     let prop_name = self.token_to_property_name()?;
                     expr = Expression::Member {
@@ -452,77 +452,77 @@ impl<'a> Parser<'a> {
                         computed: false,
                     };
                 }
-                Ok(expr)
+                Ok(self.spanned(expr))
             }
             _ => Err(Error::ParseError(format!(
                 "Expected identifier after 'new', got {:?}",
-                self.peek()
+                self.peek().token
             ))),
         }
     }
 
-    pub(crate) fn parse_call(&mut self) -> Result<Expression> {
+    pub(crate) fn parse_call(&mut self) -> Result<SpannedNode<Expression>> {
         let mut expr = self.parse_primary()?;
         loop {
-            if self.peek() == &Token::LeftParen {
+            if self.peek().token == Token::LeftParen {
                 self.advance();
                 let args = self.parse_args()?;
                 self.expect(&Token::RightParen)?;
-                if matches!(expr, Expression::OptionalMember { .. }) {
-                    expr = Expression::OptionalCall {
-                        callee: Box::new(expr),
+                if matches!(expr.inner, Expression::OptionalMember { .. }) {
+                    expr = self.spanned(Expression::OptionalCall {
+                        callee: Box::new(expr.inner),
                         args,
-                    };
+                    });
                 } else {
-                    expr = Expression::Call {
-                        callee: Box::new(expr),
+                    expr = self.spanned(Expression::Call {
+                        callee: Box::new(expr.inner),
                         args,
-                    };
+                    });
                 }
-            } else if self.peek() == &Token::QuestionDot {
+            } else if self.peek().token == Token::QuestionDot {
                 self.advance();
-                if self.peek() == &Token::LeftParen {
+                if self.peek().token == Token::LeftParen {
                     self.advance();
                     let args = self.parse_args()?;
                     self.expect(&Token::RightParen)?;
-                    expr = Expression::OptionalCall {
-                        callee: Box::new(expr),
+                    expr = self.spanned(Expression::OptionalCall {
+                        callee: Box::new(expr.inner),
                         args,
-                    };
-                } else if self.peek() == &Token::LeftBracket {
+                    });
+                } else if self.peek().token == Token::LeftBracket {
                     self.advance();
-                    let property = self.parse_expression()?;
+                    let property = self.parse_expression()?.inner;
                     self.expect(&Token::RightBracket)?;
-                    expr = Expression::OptionalMember {
-                        object: Box::new(expr),
+                    expr = self.spanned(Expression::OptionalMember {
+                        object: Box::new(expr.inner),
                         property: Box::new(property),
                         computed: true,
-                    };
+                    });
                 } else {
                     let property = self.token_to_property_name()?;
-                    expr = Expression::OptionalMember {
-                        object: Box::new(expr),
+                    expr = self.spanned(Expression::OptionalMember {
+                        object: Box::new(expr.inner),
                         property: Box::new(property),
                         computed: false,
-                    };
+                    });
                 }
-            } else if self.peek() == &Token::Dot {
+            } else if self.peek().token == Token::Dot {
                 self.advance();
                 let property = self.token_to_property_name()?;
-                expr = Expression::Member {
-                    object: Box::new(expr),
+                expr = self.spanned(Expression::Member {
+                    object: Box::new(expr.inner),
                     property: Box::new(property),
                     computed: false,
-                };
-            } else if self.peek() == &Token::LeftBracket {
+                });
+            } else if self.peek().token == Token::LeftBracket {
                 self.advance();
-                let property = self.parse_expression()?;
+                let property = self.parse_expression()?.inner;
                 self.expect(&Token::RightBracket)?;
-                expr = Expression::Member {
-                    object: Box::new(expr),
+                expr = self.spanned(Expression::Member {
+                    object: Box::new(expr.inner),
                     property: Box::new(property),
                     computed: true,
-                };
+                });
             } else {
                 break;
             }
@@ -532,10 +532,10 @@ impl<'a> Parser<'a> {
 
     fn parse_args(&mut self) -> Result<Vec<Expression>> {
         let mut args = Vec::new();
-        if self.peek() != &Token::RightParen {
+        if self.peek().token != Token::RightParen {
             loop {
-                args.push(self.parse_assignment()?);
-                if self.peek() == &Token::Comma {
+                args.push(self.parse_assignment()?.inner);
+                if self.peek().token == Token::Comma {
                     self.advance();
                 } else {
                     break;
@@ -545,24 +545,23 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    fn parse_primary(&mut self) -> Result<Expression> {
-        match self.peek().clone() {
+    fn parse_primary(&mut self) -> Result<SpannedNode<Expression>> {
+        match self.peek().token.clone() {
             Token::Number(n) => {
                 self.advance();
-                Ok(Expression::NumberLiteral(n))
+                Ok(self.spanned(Expression::NumberLiteral(n)))
             }
             Token::BigInt(ref s) => {
                 let s = s.clone();
                 self.advance();
-                Ok(Expression::BigIntLiteral(s))
+                Ok(self.spanned(Expression::BigIntLiteral(s)))
             }
             Token::String(s) => {
                 self.advance();
-                Ok(Expression::StringLiteral(s))
+                Ok(self.spanned(Expression::StringLiteral(s)))
             }
             Token::Regex(s) => {
                 self.advance();
-                // Parse regex pattern and flags
                 let parts: Vec<&str> = s.splitn(2, '/').collect();
                 let pattern = parts[0].to_string();
                 let flags = if parts.len() > 1 {
@@ -570,7 +569,7 @@ impl<'a> Parser<'a> {
                 } else {
                     String::new()
                 };
-                Ok(Expression::RegexLiteral { pattern, flags })
+                Ok(self.spanned(Expression::RegexLiteral { pattern, flags }))
             }
             Token::TemplateLiteral(parts) => {
                 self.advance();
@@ -579,43 +578,43 @@ impl<'a> Parser<'a> {
             Token::Identifier(name) => {
                 self.advance();
                 match name.as_str() {
-                    "true" => Ok(Expression::BooleanLiteral(true)),
-                    "false" => Ok(Expression::BooleanLiteral(false)),
-                    "null" => Ok(Expression::NullLiteral),
-                    "undefined" => Ok(Expression::UndefinedLiteral),
-                    "NaN" => Ok(Expression::NaNLiteral),
+                    "true" => Ok(self.spanned(Expression::BooleanLiteral(true))),
+                    "false" => Ok(self.spanned(Expression::BooleanLiteral(false))),
+                    "null" => Ok(self.spanned(Expression::NullLiteral)),
+                    "undefined" => Ok(self.spanned(Expression::UndefinedLiteral)),
+                    "NaN" => Ok(self.spanned(Expression::NaNLiteral)),
                     _ => {
-                        if self.peek() == &Token::Arrow {
+                        if self.peek().token == Token::Arrow {
                             self.advance();
                             self.parse_arrow_body(vec![name], None, None, false)
                         } else {
-                            Ok(Expression::Identifier(name))
+                            Ok(self.spanned(Expression::Identifier(name)))
                         }
                     }
                 }
             }
             Token::LeftParen => {
                 self.advance();
-                if self.peek() == &Token::RightParen {
+                if self.peek().token == Token::RightParen {
                     self.advance();
-                    if self.peek() == &Token::Arrow {
+                    if self.peek().token == Token::Arrow {
                         self.advance();
                         return self.parse_arrow_body(vec![], None, None, false);
                     }
                     return Err(Error::ParseError("Unexpected )".into()));
                 }
-                if let Token::Identifier(_) = self.peek().clone() {
+                if let Token::Identifier(_) = self.peek().token.clone() {
                     let saved = self.pos;
                     let (params, param_types) = self.parse_typed_params()?;
-                    if self.peek() == &Token::RightParen {
+                    if self.peek().token == Token::RightParen {
                         self.advance();
-                        let return_type = if self.peek() == &Token::Colon {
+                        let return_type = if self.peek().token == Token::Colon {
                             self.advance();
                             Some(self.parse_type_annotation()?)
                         } else {
                             None
                         };
-                        if self.peek() == &Token::Arrow {
+                        if self.peek().token == Token::Arrow {
                             self.advance();
                             return self.parse_arrow_body(
                                 params,
@@ -629,8 +628,8 @@ impl<'a> Parser<'a> {
                 }
                 let expr = self.parse_expression()?;
                 self.expect(&Token::RightParen)?;
-                if self.peek() == &Token::Arrow {
-                    let params = match &expr {
+                if self.peek().token == Token::Arrow {
+                    let params = match &expr.inner {
                         Expression::Identifier(name) => vec![name.clone()],
                         _ => {
                             return Err(Error::ParseError(
@@ -645,12 +644,12 @@ impl<'a> Parser<'a> {
             }
             Token::Function => {
                 self.advance();
-                let is_generator = self.peek() == &Token::Star;
+                let is_generator = self.peek().token == Token::Star;
                 if is_generator {
                     self.advance();
                 }
-                let name = if let Token::Identifier(_) = self.peek().clone() {
-                    match self.advance() {
+                let name = if let Token::Identifier(_) = self.peek().token.clone() {
+                    match self.advance().token {
                         Token::Identifier(n) => Some(n),
                         _ => unreachable!(),
                     }
@@ -660,7 +659,7 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::LeftParen)?;
                 let (params, param_types) = self.parse_typed_params()?;
                 self.expect(&Token::RightParen)?;
-                let return_type = if self.peek() == &Token::Colon {
+                let return_type = if self.peek().token == Token::Colon {
                     self.advance();
                     Some(self.parse_type_annotation()?)
                 } else {
@@ -669,7 +668,7 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_block_body()?;
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::FunctionExpression {
+                Ok(self.spanned(Expression::FunctionExpression {
                     name,
                     params,
                     param_types: Some(param_types),
@@ -677,18 +676,18 @@ impl<'a> Parser<'a> {
                     body,
                     is_async: false,
                     is_generator,
-                })
+                }))
             }
             Token::Async => {
                 self.advance();
-                if self.peek() == &Token::Function {
+                if self.peek().token == Token::Function {
                     self.advance();
-                    let is_generator = self.peek() == &Token::Star;
+                    let is_generator = self.peek().token == Token::Star;
                     if is_generator {
                         self.advance();
                     }
-                    let name = if let Token::Identifier(_) = self.peek().clone() {
-                        match self.advance() {
+                    let name = if let Token::Identifier(_) = self.peek().token.clone() {
+                        match self.advance().token {
                             Token::Identifier(n) => Some(n),
                             _ => unreachable!(),
                         }
@@ -698,7 +697,7 @@ impl<'a> Parser<'a> {
                     self.expect(&Token::LeftParen)?;
                     let (params, param_types) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
-                    let return_type = if self.peek() == &Token::Colon {
+                    let return_type = if self.peek().token == Token::Colon {
                         self.advance();
                         Some(self.parse_type_annotation()?)
                     } else {
@@ -707,7 +706,7 @@ impl<'a> Parser<'a> {
                     self.expect(&Token::LeftBrace)?;
                     let body = self.parse_block_body()?;
                     self.expect(&Token::RightBrace)?;
-                    Ok(Expression::FunctionExpression {
+                    Ok(self.spanned(Expression::FunctionExpression {
                         name,
                         params,
                         param_types: Some(param_types),
@@ -715,18 +714,18 @@ impl<'a> Parser<'a> {
                         body,
                         is_async: true,
                         is_generator,
-                    })
+                    }))
                 } else {
                     self.expect(&Token::LeftParen)?;
                     let (params, param_types) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
-                    let return_type = if self.peek() == &Token::Colon {
+                    let return_type = if self.peek().token == Token::Colon {
                         self.advance();
                         Some(self.parse_type_annotation()?)
                     } else {
                         None
                     };
-                    if self.peek() == &Token::Arrow {
+                    if self.peek().token == Token::Arrow {
                         self.advance();
                         self.parse_arrow_body(params, Some(param_types), return_type, true)
                     } else {
@@ -738,39 +737,39 @@ impl<'a> Parser<'a> {
             }
             Token::Class => {
                 self.advance();
-                let name = if let Token::Identifier(_) = self.peek().clone() {
-                    match self.advance() {
+                let name = if let Token::Identifier(_) = self.peek().token.clone() {
+                    match self.advance().token {
                         Token::Identifier(n) => Some(n),
                         _ => unreachable!(),
                     }
                 } else {
                     None
                 };
-                let superclass = if self.peek() == &Token::Extends {
+                let superclass = if self.peek().token == Token::Extends {
                     self.advance();
-                    Some(self.parse_call()?)
+                    Some(self.parse_call()?.inner)
                 } else {
                     None
                 };
                 self.expect(&Token::LeftBrace)?;
                 let body = self.parse_class_body()?;
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::ClassExpression {
+                Ok(self.spanned(Expression::ClassExpression {
                     name,
                     superclass: superclass.map(Box::new),
                     body,
-                })
+                }))
             }
             Token::Super => {
                 self.advance();
-                if self.peek() == &Token::LeftParen {
+                if self.peek().token == Token::LeftParen {
                     self.advance();
                     let args = self.parse_args()?;
                     self.expect(&Token::RightParen)?;
-                    Ok(Expression::SuperCall { args })
-                } else if self.peek() == &Token::Dot {
+                    Ok(self.spanned(Expression::SuperCall { args }))
+                } else if self.peek().token == Token::Dot {
                     self.advance();
-                    let property = match self.advance() {
+                    let property = match self.advance().token {
                         Token::Identifier(name) => Expression::Identifier(name),
                         t => {
                             return Err(Error::ParseError(format!(
@@ -779,18 +778,18 @@ impl<'a> Parser<'a> {
                             )))
                         }
                     };
-                    Ok(Expression::SuperMember {
+                    Ok(self.spanned(Expression::SuperMember {
                         property: Box::new(property),
                         computed: false,
-                    })
-                } else if self.peek() == &Token::LeftBracket {
+                    }))
+                } else if self.peek().token == Token::LeftBracket {
                     self.advance();
-                    let property = self.parse_expression()?;
+                    let property = self.parse_expression()?.inner;
                     self.expect(&Token::RightBracket)?;
-                    Ok(Expression::SuperMember {
+                    Ok(self.spanned(Expression::SuperMember {
                         property: Box::new(property),
                         computed: true,
-                    })
+                    }))
                 } else {
                     Err(Error::ParseError(
                         "Expected '.' or '(' after 'super'".into(),
@@ -799,40 +798,40 @@ impl<'a> Parser<'a> {
             }
             Token::This => {
                 self.advance();
-                Ok(Expression::Identifier("this".into()))
+                Ok(self.spanned(Expression::Identifier("this".into())))
             }
             Token::LeftBracket => {
                 self.advance();
                 let mut elements = Vec::new();
-                if self.peek() != &Token::RightBracket {
+                if self.peek().token != Token::RightBracket {
                     loop {
-                        if self.peek() == &Token::Ellipsis {
+                        if self.peek().token == Token::Ellipsis {
                             self.advance();
-                            let argument = Box::new(self.parse_expression()?);
+                            let argument = Box::new(self.parse_expression()?.inner);
                             elements.push(Expression::SpreadElement { argument });
                         } else {
-                            elements.push(self.parse_expression()?);
+                            elements.push(self.parse_expression()?.inner);
                         }
-                        if self.peek() != &Token::Comma {
+                        if self.peek().token != Token::Comma {
                             break;
                         }
                         self.advance();
-                        if self.peek() == &Token::RightBracket {
+                        if self.peek().token == Token::RightBracket {
                             break;
                         }
                     }
                 }
                 self.expect(&Token::RightBracket)?;
-                Ok(Expression::ArrayLiteral { elements })
+                Ok(self.spanned(Expression::ArrayLiteral { elements }))
             }
             Token::LeftBrace => {
                 self.advance();
                 let mut properties = Vec::new();
-                if self.peek() != &Token::RightBrace {
+                if self.peek().token != Token::RightBrace {
                     loop {
-                        if self.peek() == &Token::Ellipsis {
+                        if self.peek().token == Token::Ellipsis {
                             self.advance();
-                            let argument = Box::new(self.parse_expression()?);
+                            let argument = Box::new(self.parse_expression()?.inner);
                             properties.push(ObjectProperty {
                                 key: String::new(),
                                 value: Expression::SpreadElement { argument },
@@ -840,12 +839,12 @@ impl<'a> Parser<'a> {
                                 computed: false,
                                 computed_key: None,
                             });
-                        } else if self.peek() == &Token::LeftBracket {
+                        } else if self.peek().token == Token::LeftBracket {
                             self.advance();
-                            let key_expr = self.parse_expression()?;
+                            let key_expr = self.parse_expression()?.inner;
                             self.expect(&Token::RightBracket)?;
                             self.expect(&Token::Colon)?;
-                            let value = self.parse_expression()?;
+                            let value = self.parse_expression()?.inner;
                             properties.push(ObjectProperty {
                                 key: String::new(),
                                 value,
@@ -855,9 +854,9 @@ impl<'a> Parser<'a> {
                             });
                         } else {
                             let key = self.token_to_key_string()?;
-                            if self.peek() == &Token::Colon {
+                            if self.peek().token == Token::Colon {
                                 self.expect(&Token::Colon)?;
-                                let value = self.parse_expression()?;
+                                let value = self.parse_expression()?.inner;
                                 properties.push(ObjectProperty {
                                     key: key.clone(),
                                     value,
@@ -875,17 +874,17 @@ impl<'a> Parser<'a> {
                                 });
                             }
                         }
-                        if self.peek() != &Token::Comma {
+                        if self.peek().token != Token::Comma {
                             break;
                         }
                         self.advance();
-                        if self.peek() == &Token::RightBrace {
+                        if self.peek().token == Token::RightBrace {
                             break;
                         }
                     }
                 }
                 self.expect(&Token::RightBrace)?;
-                Ok(Expression::ObjectLiteral { properties })
+                Ok(self.spanned(Expression::ObjectLiteral { properties }))
             }
             token => Err(Error::ParseError(format!("Unexpected token {:?}", token))),
         }
@@ -894,7 +893,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_template_literal(
         &mut self,
         parts: Vec<TemplatePart>,
-    ) -> Result<Expression> {
+    ) -> Result<SpannedNode<Expression>> {
         let mut quasis = Vec::new();
         let mut expressions = Vec::new();
         let mut text_buf = String::new();
@@ -906,15 +905,15 @@ impl<'a> Parser<'a> {
                     text_buf.clear();
                     let mut sub_parser = Parser::new(&expr_tokens);
                     let expr = sub_parser.parse_expression()?;
-                    expressions.push(expr);
+                    expressions.push(expr.inner);
                 }
             }
         }
         quasis.push(text_buf);
-        Ok(Expression::TemplateLiteral {
+        Ok(self.spanned(Expression::TemplateLiteral {
             quasis,
             expressions,
-        })
+        }))
     }
 
     pub(crate) fn parse_arrow_body(
@@ -923,27 +922,27 @@ impl<'a> Parser<'a> {
         param_types: Option<Vec<Option<TypeAnnotation>>>,
         return_type: Option<TypeAnnotation>,
         is_async: bool,
-    ) -> Result<Expression> {
-        if self.peek() == &Token::LeftBrace {
+    ) -> Result<SpannedNode<Expression>> {
+        if self.peek().token == Token::LeftBrace {
             self.advance();
             let body = self.parse_block_body()?;
             self.expect(&Token::RightBrace)?;
-            Ok(Expression::ArrowFunction {
+            Ok(self.spanned(Expression::ArrowFunction {
                 params,
                 param_types,
                 return_type,
                 body: Box::new(ArrowFunctionBody::Block(body)),
                 is_async,
-            })
+            }))
         } else {
             let expr = self.parse_assignment()?;
-            Ok(Expression::ArrowFunction {
+            Ok(self.spanned(Expression::ArrowFunction {
                 params,
                 param_types,
                 return_type,
-                body: Box::new(ArrowFunctionBody::Expression(expr)),
+                body: Box::new(ArrowFunctionBody::Expression(expr.inner)),
                 is_async,
-            })
+            }))
         }
     }
 }

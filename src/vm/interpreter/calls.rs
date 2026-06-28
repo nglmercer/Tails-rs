@@ -35,6 +35,7 @@ impl Interpreter {
                         is_construct: false,
                         source_name: self.current_module_path.clone(),
                         generator_heap_idx: None,
+                        source_line: self.current_source_line(0),
                     });
 
                     for closure_var in &f_clone.closure {

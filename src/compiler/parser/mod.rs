@@ -2,8 +2,14 @@ mod expressions;
 mod statements;
 mod types;
 
-use crate::compiler::lexer::{TemplatePart, Token};
-use crate::errors::{Error, Result};
+use crate::compiler::lexer::{SpannedToken, TemplatePart, Token};
+use crate::errors::{Error, Result, Span};
+
+#[derive(Debug, Clone)]
+pub struct SpannedNode<T> {
+    pub inner: T,
+    pub span: Option<Span>,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeAnnotation {
@@ -42,9 +48,9 @@ pub enum TypeLiteral {
 
 #[derive(Debug, Clone)]
 pub enum AstNode {
-    Program(Vec<Statement>),
-    Statement(Statement),
-    Expression(Expression),
+    Program(Vec<SpannedNode<Statement>>),
+    Statement(SpannedNode<Statement>),
+    Expression(SpannedNode<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +79,7 @@ pub enum Statement {
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
         return_type: Option<TypeAnnotation>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
         is_async: bool,
         is_generator: bool,
     },
@@ -81,34 +87,34 @@ pub enum Statement {
     YieldStatement(Option<Expression>),
     IfStatement {
         condition: Expression,
-        consequent: Box<Statement>,
-        alternate: Option<Box<Statement>>,
+        consequent: Box<SpannedNode<Statement>>,
+        alternate: Option<Box<SpannedNode<Statement>>>,
     },
     WhileStatement {
         condition: Expression,
-        body: Box<Statement>,
+        body: Box<SpannedNode<Statement>>,
     },
-    BlockStatement(Vec<Statement>),
+    BlockStatement(Vec<SpannedNode<Statement>>),
     ForStatement {
         init: Option<Box<ForInit>>,
         condition: Option<Expression>,
         update: Option<Expression>,
-        body: Box<Statement>,
+        body: Box<SpannedNode<Statement>>,
     },
     ForInStatement {
         left: ForInLeft,
         right: Expression,
-        body: Box<Statement>,
+        body: Box<SpannedNode<Statement>>,
     },
     ForOfStatement {
         left: ForInLeft,
         right: Expression,
-        body: Box<Statement>,
+        body: Box<SpannedNode<Statement>>,
         is_async: bool,
     },
     DoWhileStatement {
         condition: Expression,
-        body: Box<Statement>,
+        body: Box<SpannedNode<Statement>>,
     },
     SwitchStatement {
         discriminant: Expression,
@@ -117,9 +123,9 @@ pub enum Statement {
     BreakStatement,
     ContinueStatement,
     TryStatement {
-        block: Vec<Statement>,
+        block: Vec<SpannedNode<Statement>>,
         handler: Option<CatchClause>,
-        finalizer: Option<Vec<Statement>>,
+        finalizer: Option<Vec<SpannedNode<Statement>>>,
     },
     ThrowStatement(Expression),
     ClassDeclaration {
@@ -135,7 +141,7 @@ pub enum Statement {
         kind: ExportDeclarationKind,
     },
     ExportDefaultDeclaration {
-        declaration: Box<Statement>,
+        declaration: Box<SpannedNode<Statement>>,
     },
     InterfaceDeclaration {
         name: String,
@@ -160,7 +166,7 @@ pub struct EnumMember {
 
 #[derive(Debug, Clone)]
 pub enum ForInit {
-    Variable(Statement),
+    Variable(SpannedNode<Statement>),
     Expression(Expression),
 }
 
@@ -173,13 +179,13 @@ pub enum ForInLeft {
 #[derive(Debug, Clone)]
 pub struct SwitchCase {
     pub test: Option<Expression>,
-    pub consequent: Vec<Statement>,
+    pub consequent: Vec<SpannedNode<Statement>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CatchClause {
     pub param: String,
-    pub body: Vec<Statement>,
+    pub body: Vec<SpannedNode<Statement>>,
 }
 
 #[derive(Debug, Clone)]
@@ -204,7 +210,7 @@ pub enum ClassMember {
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
         return_type: Option<TypeAnnotation>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
         is_static: bool,
         is_async: bool,
     },
@@ -214,19 +220,19 @@ pub enum ClassMember {
     },
     Constructor {
         params: Vec<ConstructorParam>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
     },
     Getter {
         name: String,
         return_type: Option<TypeAnnotation>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
         is_static: bool,
     },
     Setter {
         name: String,
         param: String,
         param_type: Option<TypeAnnotation>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
         is_static: bool,
     },
 }
@@ -245,7 +251,7 @@ pub struct ExportSpecifier {
 
 #[derive(Debug, Clone)]
 pub enum ExportDeclarationKind {
-    Local(Box<Statement>),
+    Local(Box<SpannedNode<Statement>>),
     ReExport {
         specifiers: Vec<ExportSpecifier>,
         source: String,
@@ -339,7 +345,7 @@ pub enum Expression {
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
         return_type: Option<TypeAnnotation>,
-        body: Vec<Statement>,
+        body: Vec<SpannedNode<Statement>>,
         is_async: bool,
         is_generator: bool,
     },
@@ -413,7 +419,7 @@ pub struct ObjectProperty {
 #[derive(Debug, Clone)]
 pub enum ArrowFunctionBody {
     Expression(Expression),
-    Block(Vec<Statement>),
+    Block(Vec<SpannedNode<Statement>>),
 }
 
 #[derive(Debug, Clone)]
@@ -471,55 +477,85 @@ pub enum UnaryOperator {
     BitNot,
 }
 
-pub fn parse(tokens: &[Token]) -> Result<AstNode> {
+pub fn parse(tokens: &[SpannedToken]) -> Result<AstNode> {
     let mut parser = Parser::new(tokens);
     parser.parse_program()
 }
 
 pub(crate) struct Parser<'a> {
-    tokens: &'a [Token],
+    tokens: &'a [SpannedToken],
     pos: usize,
+    current_span: Span,
+    eof_token: SpannedToken,
 }
 
 impl<'a> Parser<'a> {
-    fn new(tokens: &'a [Token]) -> Self {
-        Self { tokens, pos: 0 }
+    fn new(tokens: &'a [SpannedToken]) -> Self {
+        Self {
+            tokens,
+            pos: 0,
+            current_span: Span::new(1, 1, 0),
+            eof_token: SpannedToken {
+                token: Token::Eof,
+                span: Span::new(0, 0, 0),
+            },
+        }
     }
 
-    pub(crate) fn peek(&self) -> &Token {
-        self.tokens.get(self.pos).unwrap_or(&Token::Eof)
+    fn spanned<T>(&self, node: T) -> SpannedNode<T> {
+        SpannedNode {
+            inner: node,
+            span: Some(self.current_span),
+        }
     }
 
-    pub(crate) fn advance(&mut self) -> Token {
-        let token = self.tokens.get(self.pos).cloned().unwrap_or(Token::Eof);
+    #[allow(dead_code)]
+    pub(crate) fn current_span(&self) -> Span {
+        self.current_span
+    }
+
+    pub(crate) fn peek(&self) -> &SpannedToken {
+        if self.pos < self.tokens.len() {
+            &self.tokens[self.pos]
+        } else {
+            &self.eof_token
+        }
+    }
+
+    pub(crate) fn advance(&mut self) -> SpannedToken {
+        let st = self.tokens.get(self.pos).cloned().unwrap_or(SpannedToken {
+            token: Token::Eof,
+            span: self.current_span,
+        });
+        self.current_span = st.span;
         if self.pos < self.tokens.len() - 1 {
             self.pos += 1;
         }
-        token
+        st
     }
 
     pub(crate) fn expect(&mut self, expected: &Token) -> Result<()> {
-        let token = self.advance();
-        if token == *expected {
+        let st = self.advance();
+        if st.token == *expected {
             Ok(())
         } else {
             Err(Error::ParseError(format!(
                 "Expected {:?}, got {:?}",
-                expected, token
+                expected, st.token
             )))
         }
     }
 
     fn parse_program(&mut self) -> Result<AstNode> {
         let mut statements = Vec::new();
-        while self.peek() != &Token::Eof {
+        while self.peek().token != Token::Eof {
             statements.push(self.parse_statement()?);
         }
         Ok(AstNode::Program(statements))
     }
 
-    pub(crate) fn parse_statement(&mut self) -> Result<Statement> {
-        match self.peek().clone() {
+    pub(crate) fn parse_statement(&mut self) -> Result<SpannedNode<Statement>> {
+        match self.peek().token.clone() {
             Token::Const | Token::Let | Token::Var => self.parse_variable_declaration(),
             Token::Function => self.parse_function_declaration(),
             Token::Return => self.parse_return_statement(),
@@ -533,12 +569,12 @@ impl<'a> Parser<'a> {
             Token::Break => {
                 self.advance();
                 self.expect(&Token::Semicolon)?;
-                Ok(Statement::BreakStatement)
+                Ok(self.spanned(Statement::BreakStatement))
             }
             Token::Continue => {
                 self.advance();
                 self.expect(&Token::Semicolon)?;
-                Ok(Statement::ContinueStatement)
+                Ok(self.spanned(Statement::ContinueStatement))
             }
             Token::Try => self.parse_try_statement(),
             Token::Throw => self.parse_throw_statement(),
@@ -552,20 +588,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn parse_block_body(&mut self) -> Result<Vec<Statement>> {
+    pub(crate) fn parse_block_body(&mut self) -> Result<Vec<SpannedNode<Statement>>> {
         let mut statements = Vec::new();
-        while self.peek() != &Token::RightBrace && self.peek() != &Token::Eof {
+        while self.peek().token != Token::RightBrace && self.peek().token != Token::Eof {
             statements.push(self.parse_statement()?);
         }
         Ok(statements)
     }
 
-    pub(crate) fn parse_expression_statement(&mut self) -> Result<Statement> {
+    pub(crate) fn parse_expression_statement(&mut self) -> Result<SpannedNode<Statement>> {
         let expr = self.parse_expression()?;
-        if self.peek() == &Token::Semicolon {
+        if self.peek().token == Token::Semicolon {
             self.advance();
         }
-        Ok(Statement::Expression(expr))
+        Ok(self.spanned(Statement::Expression(expr.inner)))
     }
 
     pub(crate) fn parse_typed_params(
@@ -573,9 +609,9 @@ impl<'a> Parser<'a> {
     ) -> Result<(Vec<String>, Vec<Option<TypeAnnotation>>)> {
         let mut params = Vec::new();
         let mut param_types = Vec::new();
-        if self.peek() != &Token::RightParen {
+        if self.peek().token != Token::RightParen {
             loop {
-                let param = match self.advance() {
+                let param = match self.advance().token {
                     Token::Identifier(name) => name,
                     token => {
                         return Err(Error::ParseError(format!(
@@ -584,7 +620,7 @@ impl<'a> Parser<'a> {
                         )))
                     }
                 };
-                let ty = if self.peek() == &Token::Colon {
+                let ty = if self.peek().token == Token::Colon {
                     self.advance();
                     Some(self.parse_type_annotation()?)
                 } else {
@@ -592,7 +628,7 @@ impl<'a> Parser<'a> {
                 };
                 params.push(param);
                 param_types.push(ty);
-                if self.peek() == &Token::Comma {
+                if self.peek().token == Token::Comma {
                     self.advance();
                 } else {
                     break;
@@ -604,11 +640,11 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_constructor_params(&mut self) -> Result<Vec<ConstructorParam>> {
         let mut params = Vec::new();
-        if self.peek() != &Token::RightParen {
+        if self.peek().token != Token::RightParen {
             loop {
                 let mut access_modifiers = Vec::new();
                 loop {
-                    match self.peek() {
+                    match self.peek().token {
                         Token::Public => {
                             self.advance();
                             access_modifiers.push(AccessModifier::Public);
@@ -628,7 +664,7 @@ impl<'a> Parser<'a> {
                         _ => break,
                     }
                 }
-                let param = match self.advance() {
+                let param = match self.advance().token {
                     Token::Identifier(name) => name,
                     token => {
                         return Err(Error::ParseError(format!(
@@ -637,7 +673,7 @@ impl<'a> Parser<'a> {
                         )))
                     }
                 };
-                let type_annotation = if self.peek() == &Token::Colon {
+                let type_annotation = if self.peek().token == Token::Colon {
                     self.advance();
                     Some(self.parse_type_annotation()?)
                 } else {
@@ -648,7 +684,7 @@ impl<'a> Parser<'a> {
                     type_annotation,
                     access_modifiers,
                 });
-                if self.peek() == &Token::Comma {
+                if self.peek().token == Token::Comma {
                     self.advance();
                 } else {
                     break;
@@ -659,7 +695,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn token_to_key_string(&mut self) -> Result<String> {
-        match self.advance() {
+        match self.advance().token {
             Token::Identifier(n) => Ok(n),
             Token::String(s) => Ok(s),
             Token::Number(n) => Ok(n.to_string()),
@@ -715,7 +751,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn token_to_property_name(&mut self) -> Result<Expression> {
-        match self.advance() {
+        match self.advance().token {
             Token::Identifier(n) => Ok(Expression::Identifier(n)),
             Token::Catch => Ok(Expression::Identifier("catch".to_string())),
             Token::Finally => Ok(Expression::Identifier("finally".to_string())),

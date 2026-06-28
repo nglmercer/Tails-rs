@@ -99,6 +99,12 @@ impl Interpreter {
         );
     }
 
+    pub(crate) fn current_source_line(&self, pc: usize) -> Option<usize> {
+        self.current_module.as_ref().and_then(|m| {
+            m.source_lines.get(pc).copied().flatten()
+        })
+    }
+
     pub(crate) fn execute_from(
         &mut self,
         module: &CompiledModule,
@@ -339,6 +345,7 @@ impl Interpreter {
                                             is_construct: false,
                                             source_name: self.current_module_path.clone(),
                                         generator_heap_idx: None,
+                                        source_line: self.current_source_line(pc),
                                         });
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
@@ -432,7 +439,8 @@ impl Interpreter {
                                         is_construct: false,
                                         source_name: self.current_module_path.clone(),
                                         generator_heap_idx: None,
-                                    });
+                                    source_line: self.current_source_line(pc),
+                                        });
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
                                     }
@@ -511,7 +519,8 @@ impl Interpreter {
                                                             .current_module_path
                                                             .clone(),
                                                         generator_heap_idx: None,
-                                                    });
+                                                    source_line: self.current_source_line(pc),
+                                        });
                                                     for arg in args {
                                                         self.stack.push(arg);
                                                     }
@@ -569,6 +578,7 @@ impl Interpreter {
                                             is_construct: true,
                                             source_name: self.current_module_path.clone(),
                                         generator_heap_idx: None,
+                                        source_line: self.current_source_line(pc),
                                         });
                                         for closure_var in &f_clone.closure {
                                             self.stack.push(closure_var.clone());
@@ -720,7 +730,8 @@ impl Interpreter {
                                     is_construct: true,
                                     source_name: self.current_module_path.clone(),
                                         generator_heap_idx: None,
-                                });
+                                source_line: self.current_source_line(pc),
+                                        });
                                 for closure_var in &f_clone.closure {
                                     self.stack.push(closure_var.clone());
                                 }
@@ -1520,9 +1531,11 @@ impl Interpreter {
                 })
                 .unwrap_or_else(|| "<anonymous>".to_string());
 
-            let location = match &frame.source_name {
-                Some(name) => format!(" ({})", name),
-                None => String::new(),
+            let location = match (&frame.source_name, frame.source_line) {
+                (Some(name), Some(line)) => format!(" ({}:{})", name, line),
+                (Some(name), None) => format!(" ({})", name),
+                (None, Some(line)) => format!(" (line {})", line),
+                (None, None) => String::new(),
             };
 
             trace.push_str(&format!("\n    at {}{}", func_name, location));
@@ -1545,7 +1558,12 @@ impl Interpreter {
                 })
                 .unwrap_or_else(|| "<anonymous>".to_string());
 
-            let location = frame.source_name.as_deref().unwrap_or("<script>");
+            let location = match (&frame.source_name, frame.source_line) {
+                (Some(name), Some(line)) => format!("{}:{}", name, line),
+                (Some(name), None) => name.clone(),
+                (None, Some(line)) => format!("line {}", line),
+                (None, None) => "<script>".to_string(),
+            };
 
             frames.push(format!("    at {} ({})", func_name, location));
         }

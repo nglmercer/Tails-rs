@@ -1,5 +1,5 @@
 use super::CodeGenerator;
-use crate::compiler::parser::{Expression, ForInit, Statement};
+use crate::compiler::parser::{Expression, ForInit, SpannedNode, Statement};
 use crate::compiler::CompiledFunction;
 use crate::errors::Result;
 use std::collections::HashSet;
@@ -9,7 +9,7 @@ impl CodeGenerator {
         &mut self,
         name: Option<String>,
         params: &[String],
-        body: &[Statement],
+        body: &[SpannedNode<Statement>],
         is_generator: bool,
     ) -> Result<u32> {
         let func_idx = self.functions.len() as u32;
@@ -24,11 +24,11 @@ impl CodeGenerator {
             param_count: params.len(),
             closure_var_count: num_captures,
             is_generator,
+            source_line: self.current_source_line,
         });
 
         let jump_over = self.instructions.len();
-        self.instructions
-            .push(crate::compiler::Instruction::Jump(0));
+        self.emit(crate::compiler::Instruction::Jump(0));
 
         let func_start = self.instructions.len();
         self.functions[func_idx as usize].bytecode_index = func_start;
@@ -46,12 +46,12 @@ impl CodeGenerator {
         }
 
         for stmt in body {
-            self.generate_statement(stmt, false)?;
+            self.record_line_from_span(&stmt.span);
+            self.generate_statement(&stmt.inner, false)?;
         }
 
-        self.instructions
-            .push(crate::compiler::Instruction::LoadUndefined);
-        self.instructions.push(crate::compiler::Instruction::Return);
+        self.emit(crate::compiler::Instruction::LoadUndefined);
+        self.emit(crate::compiler::Instruction::Return);
 
         self.scope_depth -= 1;
         self.locals.truncate(prev_locals);
@@ -64,7 +64,7 @@ impl CodeGenerator {
 }
 
 pub(crate) fn find_outer_refs(
-    body: &[Statement],
+    body: &[SpannedNode<Statement>],
     inner_params: &[String],
     parent_locals: &[String],
 ) -> Vec<(String, u16)> {
@@ -95,9 +95,9 @@ pub(crate) fn find_outer_refs(
     result
 }
 
-fn collect_identifiers_body(body: &[Statement], out: &mut Vec<String>) {
+fn collect_identifiers_body(body: &[SpannedNode<Statement>], out: &mut Vec<String>) {
     for stmt in body {
-        collect_identifiers_stmt(stmt, out);
+        collect_identifiers_stmt(&stmt.inner, out);
     }
 }
 
@@ -119,18 +119,18 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
             alternate,
         } => {
             collect_identifiers_expr(condition, out);
-            collect_identifiers_stmt(consequent, out);
+            collect_identifiers_stmt(&consequent.inner, out);
             if let Some(alt) = alternate {
-                collect_identifiers_stmt(alt, out);
+                collect_identifiers_stmt(&alt.inner, out);
             }
         }
         Statement::WhileStatement { condition, body } => {
             collect_identifiers_expr(condition, out);
-            collect_identifiers_stmt(body, out);
+            collect_identifiers_stmt(&body.inner, out);
         }
         Statement::BlockStatement(stmts) => {
             for s in stmts {
-                collect_identifiers_stmt(s, out);
+                collect_identifiers_stmt(&s.inner, out);
             }
         }
         Statement::ForStatement {
@@ -141,7 +141,7 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
         } => {
             if let Some(for_init) = init {
                 match for_init.as_ref() {
-                    ForInit::Variable(stmt) => collect_identifiers_stmt(stmt, out),
+                    ForInit::Variable(stmt) => collect_identifiers_stmt(&stmt.inner, out),
                     ForInit::Expression(expr) => collect_identifiers_expr(expr, out),
                 }
             }
@@ -151,16 +151,16 @@ fn collect_identifiers_stmt(stmt: &Statement, out: &mut Vec<String>) {
             if let Some(upd) = update {
                 collect_identifiers_expr(upd, out);
             }
-            collect_identifiers_stmt(body, out);
+            collect_identifiers_stmt(&body.inner, out);
         }
         Statement::ForInStatement { right, body, .. }
         | Statement::ForOfStatement { right, body, .. } => {
             collect_identifiers_expr(right, out);
-            collect_identifiers_stmt(body, out);
+            collect_identifiers_stmt(&body.inner, out);
         }
         Statement::DoWhileStatement { condition, body } => {
             collect_identifiers_expr(condition, out);
-            collect_identifiers_stmt(body, out);
+            collect_identifiers_stmt(&body.inner, out);
         }
         Statement::SwitchStatement {
             discriminant,

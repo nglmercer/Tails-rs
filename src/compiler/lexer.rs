@@ -119,7 +119,7 @@ pub enum Token {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TemplatePart {
     Text(String),
-    Expression(Vec<Token>),
+    Expression(Vec<SpannedToken>),
 }
 
 fn tokenize_template_literal(
@@ -168,9 +168,9 @@ fn tokenize_template_literal(
                         }
                     }
                     let inner_tokens = tokenize(&expr_src)?;
-                    let filtered: Vec<Token> = inner_tokens
+                    let filtered: Vec<SpannedToken> = inner_tokens
                         .into_iter()
-                        .filter(|t| *t != Token::Eof)
+                        .filter(|t| t.token != Token::Eof)
                         .collect();
                     parts.push(TemplatePart::Expression(filtered));
                 } else {
@@ -201,21 +201,37 @@ fn tokenize_template_literal(
     }
 }
 
-pub fn tokenize(source: &str) -> Result<Vec<Token>> {
+pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
     let mut tokens = Vec::new();
     let mut chars = source.char_indices().peekable();
     let mut expects_regex = true; // Start of file expects expression start
+    let mut line: usize = 1;
+    let mut col: usize = 1;
 
-    while let Some(&(_pos, ch)) = chars.peek() {
+    let push = |tokens: &mut Vec<SpannedToken>, token: Token, line: usize, col: usize, offset: usize| {
+        tokens.push(SpannedToken {
+            token,
+            span: Span::new(line, col, offset),
+        });
+    };
+
+    while let Some(&(pos, ch)) = chars.peek() {
         match ch {
             ' ' | '\t' | '\r' => {
                 chars.next();
+                col += 1;
             }
             '\n' => {
                 chars.next();
+                line += 1;
+                col = 1;
             }
             '/' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 // Always check for comments first, regardless of regex context
                 if let Some(&(_, '/')) = chars.peek() {
                     while let Some(&(_, c)) = chars.peek() {
@@ -223,19 +239,29 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                             break;
                         }
                         chars.next();
+                        col += 1;
                     }
                 } else if let Some(&(_, '*')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     loop {
                         match chars.next() {
                             Some((_, '*')) => {
+                                col += 1;
                                 if let Some(&(_, '/')) = chars.peek() {
                                     chars.next();
+                                    col += 1;
                                     break;
                                 }
                             }
+                            Some((_, '\n')) => {
+                                line += 1;
+                                col = 1;
+                            }
                             None => return Err(Error::ParseError("Unterminated comment".into())),
-                            _ => {}
+                            Some(_) => {
+                                col += 1;
+                            }
                         }
                     }
                 } else if expects_regex {
@@ -247,10 +273,21 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                             Some((_, '\\')) if !escaped => {
                                 pattern.push('\\');
                                 escaped = true;
+                                col += 1;
                             }
-                            Some((_, '/')) if !escaped => break,
+                            Some((_, '/')) if !escaped => {
+                                col += 1;
+                                break;
+                            }
+                            Some((_, '\n')) => {
+                                pattern.push('\n');
+                                line += 1;
+                                col = 1;
+                                escaped = false;
+                            }
                             Some((_, c)) => {
                                 pattern.push(c);
+                                col += 1;
                                 escaped = false;
                             }
                             None => return Err(Error::ParseError("Unterminated regex".into())),
@@ -261,27 +298,33 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                         if c.is_ascii_alphabetic() {
                             flags.push(c);
                             chars.next();
+                            col += 1;
                         } else {
                             break;
                         }
                     }
-                    tokens.push(Token::Regex(format!("{}/{}", pattern, flags)));
+                    push(&mut tokens, Token::Regex(format!("{}/{}", pattern, flags)), tok_line, tok_col, tok_offset);
                     expects_regex = false;
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::SlashAssign);
+                    col += 1;
+                    push(&mut tokens, Token::SlashAssign, tok_line, tok_col, tok_offset);
                     expects_regex = false;
                 } else {
-                    tokens.push(Token::Slash);
+                    push(&mut tokens, Token::Slash, tok_line, tok_col, tok_offset);
                     expects_regex = true;
                 }
             }
             '0'..='9' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 let mut num = String::new();
                 while let Some(&(_, c)) = chars.peek() {
                     if c.is_ascii_digit() || c == '.' {
                         num.push(c);
                         chars.next();
+                        col += 1;
                     } else {
                         break;
                     }
@@ -289,91 +332,110 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                 // Check for BigInt suffix 'n'
                 if let Some(&(_, 'n')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::BigInt(num));
+                    col += 1;
+                    push(&mut tokens, Token::BigInt(num), tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Number(num.parse().unwrap_or(0.0)));
+                    push(&mut tokens, Token::Number(num.parse().unwrap_or(0.0)), tok_line, tok_col, tok_offset);
                 }
             }
             'a'..='z' | 'A'..='Z' | '_' | '$' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 let mut ident = String::new();
                 while let Some(&(_, c)) = chars.peek() {
                     if c.is_alphanumeric() || c == '_' || c == '$' {
                         ident.push(c);
                         chars.next();
+                        col += 1;
                     } else {
                         break;
                     }
                 }
-                match ident.as_str() {
-                    "const" => tokens.push(Token::Const),
-                    "let" => tokens.push(Token::Let),
-                    "var" => tokens.push(Token::Var),
-                    "function" => tokens.push(Token::Function),
-                    "return" => tokens.push(Token::Return),
-                    "if" => tokens.push(Token::If),
-                    "else" => tokens.push(Token::Else),
-                    "while" => tokens.push(Token::While),
-                    "for" => tokens.push(Token::For),
-                    "do" => tokens.push(Token::Do),
-                    "switch" => tokens.push(Token::Switch),
-                    "case" => tokens.push(Token::Case),
-                    "break" => tokens.push(Token::Break),
-                    "continue" => tokens.push(Token::Continue),
-                    "new" => tokens.push(Token::New),
-                    "void" => tokens.push(Token::Void),
-                    "delete" => tokens.push(Token::Delete),
-                    "typeof" => tokens.push(Token::Typeof),
-                    "instanceof" => tokens.push(Token::Instanceof),
-                    "in" => tokens.push(Token::In),
-                    "of" => tokens.push(Token::Of),
-                    "class" => tokens.push(Token::Class),
-                    "extends" => tokens.push(Token::Extends),
-                    "super" => tokens.push(Token::Super),
-                    "this" => tokens.push(Token::This),
-                    "import" => tokens.push(Token::Import),
-                    "export" => tokens.push(Token::Export),
-                    "default" => tokens.push(Token::Default),
-                    "from" => tokens.push(Token::From),
-                    "as" => tokens.push(Token::As),
-                    "type" => tokens.push(Token::Type),
-                    "interface" => tokens.push(Token::Interface),
-                    "enum" => tokens.push(Token::Enum),
-                    "async" => tokens.push(Token::Async),
-                    "await" => tokens.push(Token::Await),
-                    "yield" => tokens.push(Token::Yield),
-                    "try" => tokens.push(Token::Try),
-                    "catch" => tokens.push(Token::Catch),
-                    "finally" => tokens.push(Token::Finally),
-                    "throw" => tokens.push(Token::Throw),
-                    "static" => tokens.push(Token::Static),
-                    "public" => tokens.push(Token::Public),
-                    "private" => tokens.push(Token::Private),
-                    "protected" => tokens.push(Token::Protected),
-                    "readonly" => tokens.push(Token::Readonly),
-                    "constructor" => tokens.push(Token::Constructor),
-                    "get" => tokens.push(Token::Get),
-                    "set" => tokens.push(Token::Set),
-                    "true" => tokens.push(Token::Identifier("true".into())),
-                    "false" => tokens.push(Token::Identifier("false".into())),
-                    "null" => tokens.push(Token::Identifier("null".into())),
-                    "undefined" => tokens.push(Token::Identifier("undefined".into())),
-                    _ => tokens.push(Token::Identifier(ident)),
-                }
+                let token = match ident.as_str() {
+                    "const" => Token::Const,
+                    "let" => Token::Let,
+                    "var" => Token::Var,
+                    "function" => Token::Function,
+                    "return" => Token::Return,
+                    "if" => Token::If,
+                    "else" => Token::Else,
+                    "while" => Token::While,
+                    "for" => Token::For,
+                    "do" => Token::Do,
+                    "switch" => Token::Switch,
+                    "case" => Token::Case,
+                    "break" => Token::Break,
+                    "continue" => Token::Continue,
+                    "new" => Token::New,
+                    "void" => Token::Void,
+                    "delete" => Token::Delete,
+                    "typeof" => Token::Typeof,
+                    "instanceof" => Token::Instanceof,
+                    "in" => Token::In,
+                    "of" => Token::Of,
+                    "class" => Token::Class,
+                    "extends" => Token::Extends,
+                    "super" => Token::Super,
+                    "this" => Token::This,
+                    "import" => Token::Import,
+                    "export" => Token::Export,
+                    "default" => Token::Default,
+                    "from" => Token::From,
+                    "as" => Token::As,
+                    "type" => Token::Type,
+                    "interface" => Token::Interface,
+                    "enum" => Token::Enum,
+                    "async" => Token::Async,
+                    "await" => Token::Await,
+                    "yield" => Token::Yield,
+                    "try" => Token::Try,
+                    "catch" => Token::Catch,
+                    "finally" => Token::Finally,
+                    "throw" => Token::Throw,
+                    "static" => Token::Static,
+                    "public" => Token::Public,
+                    "private" => Token::Private,
+                    "protected" => Token::Protected,
+                    "readonly" => Token::Readonly,
+                    "constructor" => Token::Constructor,
+                    "get" => Token::Get,
+                    "set" => Token::Set,
+                    "true" => Token::Identifier("true".into()),
+                    "false" => Token::Identifier("false".into()),
+                    "null" => Token::Identifier("null".into()),
+                    "undefined" => Token::Identifier("undefined".into()),
+                    _ => Token::Identifier(ident),
+                };
+                push(&mut tokens, token, tok_line, tok_col, tok_offset);
             }
             '`' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 let parts = tokenize_template_literal(&mut chars)?;
-                tokens.push(Token::TemplateLiteral(parts));
+                push(&mut tokens, Token::TemplateLiteral(parts), tok_line, tok_col, tok_offset);
             }
             '"' | '\'' => {
                 let quote = ch;
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 let mut str = String::new();
                 loop {
                     match chars.next() {
-                        Some((_, c)) if c == quote => break,
+                        Some((_, c)) if c == quote => {
+                            col += 1;
+                            break;
+                        }
                         Some((_, '\\')) => {
+                            col += 1;
                             if let Some((_, c)) = chars.next() {
+                                col += 1;
                                 match c {
                                     'n' => str.push('\n'),
                                     't' => str.push('\t'),
@@ -389,226 +451,352 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                                 }
                             }
                         }
-                        Some((_, c)) => str.push(c),
+                        Some((_, '\n')) => {
+                            str.push('\n');
+                            line += 1;
+                            col = 1;
+                        }
+                        Some((_, c)) => {
+                            str.push(c);
+                            col += 1;
+                        }
                         None => return Err(Error::ParseError("Unterminated string".into())),
                     }
                 }
-                tokens.push(Token::String(str));
+                push(&mut tokens, Token::String(str), tok_line, tok_col, tok_offset);
             }
             '+' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '+')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::Increment);
+                    col += 1;
+                    push(&mut tokens, Token::Increment, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::PlusAssign);
+                    col += 1;
+                    push(&mut tokens, Token::PlusAssign, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Plus);
+                    push(&mut tokens, Token::Plus, tok_line, tok_col, tok_offset);
                 }
             }
             '-' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '-')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::Decrement);
+                    col += 1;
+                    push(&mut tokens, Token::Decrement, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::MinusAssign);
+                    col += 1;
+                    push(&mut tokens, Token::MinusAssign, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Minus);
+                    push(&mut tokens, Token::Minus, tok_line, tok_col, tok_offset);
                 }
             }
             '*' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::StarAssign);
+                    col += 1;
+                    push(&mut tokens, Token::StarAssign, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '*')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '=')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::PowerAssign);
+                        col += 1;
+                        push(&mut tokens, Token::PowerAssign, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::Power);
+                        push(&mut tokens, Token::Power, tok_line, tok_col, tok_offset);
                     }
                 } else {
-                    tokens.push(Token::Star);
+                    push(&mut tokens, Token::Star, tok_line, tok_col, tok_offset);
                 }
             }
             '%' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::PercentAssign);
+                    col += 1;
+                    push(&mut tokens, Token::PercentAssign, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Percent);
+                    push(&mut tokens, Token::Percent, tok_line, tok_col, tok_offset);
                 }
             }
             '(' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::LeftParen);
+                col += 1;
+                push(&mut tokens, Token::LeftParen, tok_line, tok_col, tok_offset);
             }
             ')' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::RightParen);
+                col += 1;
+                push(&mut tokens, Token::RightParen, tok_line, tok_col, tok_offset);
             }
             '{' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::LeftBrace);
+                col += 1;
+                push(&mut tokens, Token::LeftBrace, tok_line, tok_col, tok_offset);
             }
             '}' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::RightBrace);
+                col += 1;
+                push(&mut tokens, Token::RightBrace, tok_line, tok_col, tok_offset);
             }
             '[' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::LeftBracket);
+                col += 1;
+                push(&mut tokens, Token::LeftBracket, tok_line, tok_col, tok_offset);
             }
             ']' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::RightBracket);
+                col += 1;
+                push(&mut tokens, Token::RightBracket, tok_line, tok_col, tok_offset);
             }
             ';' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::Semicolon);
+                col += 1;
+                push(&mut tokens, Token::Semicolon, tok_line, tok_col, tok_offset);
             }
             ':' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::Colon);
+                col += 1;
+                push(&mut tokens, Token::Colon, tok_line, tok_col, tok_offset);
             }
             ',' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::Comma);
+                col += 1;
+                push(&mut tokens, Token::Comma, tok_line, tok_col, tok_offset);
             }
             '.' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '.')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '.')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::Ellipsis);
+                        col += 1;
+                        push(&mut tokens, Token::Ellipsis, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::Dot);
-                        tokens.push(Token::Dot);
+                        push(&mut tokens, Token::Dot, tok_line, tok_col, tok_offset);
+                        push(&mut tokens, Token::Dot, line, col - 1, pos + 1);
                     }
                 } else {
-                    tokens.push(Token::Dot);
+                    push(&mut tokens, Token::Dot, tok_line, tok_col, tok_offset);
                 }
             }
             '?' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '.')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::QuestionDot);
+                    col += 1;
+                    push(&mut tokens, Token::QuestionDot, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '?')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::NullishCoalescing);
+                    col += 1;
+                    push(&mut tokens, Token::NullishCoalescing, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Question);
+                    push(&mut tokens, Token::Question, tok_line, tok_col, tok_offset);
                 }
             }
             '=' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '=')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::StrictEqual);
+                        col += 1;
+                        push(&mut tokens, Token::StrictEqual, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::Equal);
+                        push(&mut tokens, Token::Equal, tok_line, tok_col, tok_offset);
                     }
                 } else if let Some(&(_, '>')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::Arrow);
+                    col += 1;
+                    push(&mut tokens, Token::Arrow, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Assign);
+                    push(&mut tokens, Token::Assign, tok_line, tok_col, tok_offset);
                 }
             }
             '!' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '=')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::StrictNotEqual);
+                        col += 1;
+                        push(&mut tokens, Token::StrictNotEqual, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::NotEqual);
+                        push(&mut tokens, Token::NotEqual, tok_line, tok_col, tok_offset);
                     }
                 } else {
-                    tokens.push(Token::Not);
+                    push(&mut tokens, Token::Not, tok_line, tok_col, tok_offset);
                 }
             }
             '<' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '<')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::ShiftLeft);
+                    col += 1;
+                    push(&mut tokens, Token::ShiftLeft, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::LessEqual);
+                    col += 1;
+                    push(&mut tokens, Token::LessEqual, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Less);
+                    push(&mut tokens, Token::Less, tok_line, tok_col, tok_offset);
                 }
             }
             '>' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '>')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::ShiftRight);
+                    col += 1;
+                    push(&mut tokens, Token::ShiftRight, tok_line, tok_col, tok_offset);
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
-                    tokens.push(Token::GreaterEqual);
+                    col += 1;
+                    push(&mut tokens, Token::GreaterEqual, tok_line, tok_col, tok_offset);
                 } else {
-                    tokens.push(Token::Greater);
+                    push(&mut tokens, Token::Greater, tok_line, tok_col, tok_offset);
                 }
             }
             '&' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '&')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '=')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::AndAssign);
+                        col += 1;
+                        push(&mut tokens, Token::AndAssign, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::And);
+                        push(&mut tokens, Token::And, tok_line, tok_col, tok_offset);
                     }
                 } else {
-                    tokens.push(Token::BitAnd);
+                    push(&mut tokens, Token::BitAnd, tok_line, tok_col, tok_offset);
                 }
             }
             '|' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
+                col += 1;
                 if let Some(&(_, '|')) = chars.peek() {
                     chars.next();
+                    col += 1;
                     if let Some(&(_, '=')) = chars.peek() {
                         chars.next();
-                        tokens.push(Token::OrAssign);
+                        col += 1;
+                        push(&mut tokens, Token::OrAssign, tok_line, tok_col, tok_offset);
                     } else {
-                        tokens.push(Token::Or);
+                        push(&mut tokens, Token::Or, tok_line, tok_col, tok_offset);
                     }
                 } else {
-                    tokens.push(Token::BitOr);
+                    push(&mut tokens, Token::BitOr, tok_line, tok_col, tok_offset);
                 }
             }
             '^' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::BitXor);
+                col += 1;
+                push(&mut tokens, Token::BitXor, tok_line, tok_col, tok_offset);
             }
             '~' => {
+                let tok_line = line;
+                let tok_col = col;
+                let tok_offset = pos;
                 chars.next();
-                tokens.push(Token::BitNot);
+                col += 1;
+                push(&mut tokens, Token::BitNot, tok_line, tok_col, tok_offset);
             }
             _ => {
                 chars.next();
+                col += 1;
             }
         }
 
         // After expression-ending tokens, `/` is division, not regex start.
         // After keywords/operators, `/` starts a regex literal.
-        if let Some(last_token) = tokens.last() {
+        if let Some(last) = tokens.last() {
             expects_regex = !matches!(
-                last_token,
+                last.token,
                 Token::Number(_)
                     | Token::BigInt(_)
                     | Token::String(_)
@@ -624,6 +812,6 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
         }
     }
 
-    tokens.push(Token::Eof);
+    push(&mut tokens, Token::Eof, line, col, source.len());
     Ok(tokens)
 }

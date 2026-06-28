@@ -6,67 +6,64 @@ impl CodeGenerator {
         match expr {
             Expression::NumberLiteral(n) => {
                 let idx = self.add_constant(Value::Float(*n));
-                self.instructions.push(Instruction::LoadConst(idx));
+                self.emit(Instruction::LoadConst(idx));
                 Ok(())
             }
             Expression::BigIntLiteral(s) => {
                 let val: i128 = s.parse().unwrap_or(0);
                 let idx = self.add_constant(Value::BigInt(val));
-                self.instructions.push(Instruction::LoadConst(idx));
+                self.emit(Instruction::LoadConst(idx));
                 Ok(())
             }
             Expression::StringLiteral(s) => {
                 let idx = self.add_constant(Value::String(s.clone()));
-                self.instructions.push(Instruction::LoadConst(idx));
+                self.emit(Instruction::LoadConst(idx));
                 Ok(())
             }
             Expression::RegexLiteral { pattern, flags } => {
                 // For now, create a RegExp object using the regex constructor
                 // Load the RegExp constructor
                 let reg_idx = self.add_constant(Value::String(pattern.clone()));
-                self.instructions.push(Instruction::LoadConst(reg_idx));
+                self.emit(Instruction::LoadConst(reg_idx));
                 if !flags.is_empty() {
                     let flags_idx = self.add_constant(Value::String(flags.clone()));
-                    self.instructions.push(Instruction::LoadConst(flags_idx));
-                    self.instructions
-                        .push(Instruction::LoadGlobal("RegExp".to_string()));
-                    self.instructions.push(Instruction::Construct(2));
+                    self.emit(Instruction::LoadConst(flags_idx));
+                    self.emit(Instruction::LoadGlobal("RegExp".to_string()));
+                    self.emit(Instruction::Construct(2));
                 } else {
-                    self.instructions
-                        .push(Instruction::LoadGlobal("RegExp".to_string()));
-                    self.instructions.push(Instruction::Construct(1));
+                    self.emit(Instruction::LoadGlobal("RegExp".to_string()));
+                    self.emit(Instruction::Construct(1));
                 }
                 Ok(())
             }
             Expression::BooleanLiteral(b) => {
                 if *b {
-                    self.instructions.push(Instruction::LoadTrue);
+                    self.emit(Instruction::LoadTrue);
                 } else {
-                    self.instructions.push(Instruction::LoadFalse);
+                    self.emit(Instruction::LoadFalse);
                 }
                 Ok(())
             }
             Expression::NullLiteral => {
-                self.instructions.push(Instruction::LoadNull);
+                self.emit(Instruction::LoadNull);
                 Ok(())
             }
             Expression::UndefinedLiteral => {
-                self.instructions.push(Instruction::LoadUndefined);
+                self.emit(Instruction::LoadUndefined);
                 Ok(())
             }
             Expression::NaNLiteral => {
                 let idx = self.add_constant(Value::Float(f64::NAN));
-                self.instructions.push(Instruction::LoadConst(idx));
+                self.emit(Instruction::LoadConst(idx));
                 Ok(())
             }
             Expression::Identifier(name) => {
                 if name == "this" {
-                    self.instructions.push(Instruction::LoadThis);
+                    self.emit(Instruction::LoadThis);
                 } else if let Some(local_idx) = self.resolve_local(name) {
-                    self.instructions.push(Instruction::LoadLocal(local_idx));
+                    self.emit(Instruction::LoadLocal(local_idx));
                 } else {
-                    self.instructions
-                        .push(Instruction::LoadGlobal(name.clone()));
+                    self.emit(Instruction::LoadGlobal(name.clone()));
                 }
                 Ok(())
             }
@@ -90,44 +87,43 @@ impl CodeGenerator {
                                 self.generate_expression(property)?;
                             } else if let Expression::Identifier(name) = property.as_ref() {
                                 let idx = self.add_constant(Value::String(name.clone()));
-                                self.instructions.push(Instruction::LoadConst(idx));
+                                self.emit(Instruction::LoadConst(idx));
                             } else {
                                 self.generate_expression(property)?;
                             }
-                            self.instructions.push(Instruction::Delete);
+                            self.emit(Instruction::Delete);
                         } else {
                             self.generate_expression(operand)?;
-                            self.instructions.push(Instruction::Pop);
-                            self.instructions.push(Instruction::LoadTrue);
+                            self.emit(Instruction::Pop);
+                            self.emit(Instruction::LoadTrue);
                         }
                     }
                     UnaryOperator::Void
                         if matches!(operand.as_ref(), Expression::Assignment { .. }) =>
                     {
                         self.generate_expression(operand)?;
-                        self.instructions.push(Instruction::Pop);
-                        self.instructions.push(Instruction::LoadUndefined);
+                        self.emit(Instruction::Pop);
+                        self.emit(Instruction::LoadUndefined);
                     }
                     _ => {
                         // Special handling for typeof of identifier - doesn't throw for undeclared variables
                         if let UnaryOperator::Typeof = op {
                             if let Expression::Identifier(name) = operand.as_ref() {
                                 if let Some(local_idx) = self.resolve_local(name) {
-                                    self.instructions.push(Instruction::LoadLocal(local_idx));
+                                    self.emit(Instruction::LoadLocal(local_idx));
                                 } else {
-                                    self.instructions
-                                        .push(Instruction::TypeOfGlobal(name.clone()));
+                                    self.emit(Instruction::TypeOfGlobal(name.clone()));
                                 }
                                 return Ok(());
                             }
                         }
                         self.generate_expression(operand)?;
                         match op {
-                            UnaryOperator::Negate => self.instructions.push(Instruction::Negate),
-                            UnaryOperator::Not => self.instructions.push(Instruction::Not),
-                            UnaryOperator::Typeof => self.instructions.push(Instruction::TypeOf),
-                            UnaryOperator::Void => self.instructions.push(Instruction::Void),
-                            UnaryOperator::BitNot => self.instructions.push(Instruction::BitNot),
+                            UnaryOperator::Negate => self.emit(Instruction::Negate),
+                            UnaryOperator::Not => self.emit(Instruction::Not),
+                            UnaryOperator::Typeof => self.emit(Instruction::TypeOf),
+                            UnaryOperator::Void => self.emit(Instruction::Void),
+                            UnaryOperator::BitNot => self.emit(Instruction::BitNot),
                             _ => {}
                         }
                     }
@@ -139,20 +135,19 @@ impl CodeGenerator {
                     self.generate_expression(target)?;
                     self.generate_expression(value)?;
                     match compound_op {
-                        CompoundAssignmentOp::AddAssign => self.instructions.push(Instruction::Add),
-                        CompoundAssignmentOp::SubAssign => self.instructions.push(Instruction::Sub),
-                        CompoundAssignmentOp::MulAssign => self.instructions.push(Instruction::Mul),
-                        CompoundAssignmentOp::DivAssign => self.instructions.push(Instruction::Div),
-                        CompoundAssignmentOp::ModAssign => self.instructions.push(Instruction::Mod),
-                        CompoundAssignmentOp::AndAssign => self.instructions.push(Instruction::And),
-                        CompoundAssignmentOp::OrAssign => self.instructions.push(Instruction::Or),
+                        CompoundAssignmentOp::AddAssign => self.emit(Instruction::Add),
+                        CompoundAssignmentOp::SubAssign => self.emit(Instruction::Sub),
+                        CompoundAssignmentOp::MulAssign => self.emit(Instruction::Mul),
+                        CompoundAssignmentOp::DivAssign => self.emit(Instruction::Div),
+                        CompoundAssignmentOp::ModAssign => self.emit(Instruction::Mod),
+                        CompoundAssignmentOp::AndAssign => self.emit(Instruction::And),
+                        CompoundAssignmentOp::OrAssign => self.emit(Instruction::Or),
                     }
                     if let Expression::Identifier(name) = target.as_ref() {
                         if let Some(local_idx) = self.resolve_local(name) {
-                            self.instructions.push(Instruction::StoreLocal(local_idx));
+                            self.emit(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions
-                                .push(Instruction::StoreGlobal(name.clone()));
+                            self.emit(Instruction::StoreGlobal(name.clone()));
                         }
                     } else if let Expression::Member {
                         object,
@@ -165,12 +160,12 @@ impl CodeGenerator {
                             self.generate_expression(property)?;
                         } else if let Expression::Identifier(name) = property.as_ref() {
                             let idx = self.add_constant(Value::String(name.clone()));
-                            self.instructions.push(Instruction::LoadConst(idx));
+                            self.emit(Instruction::LoadConst(idx));
                         } else {
                             self.generate_expression(property)?;
                         }
-                        self.instructions.push(Instruction::SetProperty);
-                        self.instructions.push(Instruction::Pop);
+                        self.emit(Instruction::SetProperty);
+                        self.emit(Instruction::Pop);
                     } else {
                         return Err(crate::errors::Error::RuntimeError(
                             "Invalid assignment target".into(),
@@ -188,19 +183,18 @@ impl CodeGenerator {
                             self.generate_expression(property)?;
                         } else if let Expression::Identifier(name) = property.as_ref() {
                             let idx = self.add_constant(Value::String(name.clone()));
-                            self.instructions.push(Instruction::LoadConst(idx));
+                            self.emit(Instruction::LoadConst(idx));
                         } else {
                             self.generate_expression(property)?;
                         }
                         self.generate_expression(value)?;
-                        self.instructions.push(Instruction::SetProperty);
+                        self.emit(Instruction::SetProperty);
                     } else if let Expression::Identifier(name) = target.as_ref() {
                         self.generate_expression(value)?;
                         if let Some(local_idx) = self.resolve_local(name) {
-                            self.instructions.push(Instruction::StoreLocal(local_idx));
+                            self.emit(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions
-                                .push(Instruction::StoreGlobal(name.clone()));
+                            self.emit(Instruction::StoreGlobal(name.clone()));
                         }
                     } else {
                         return Err(crate::errors::Error::RuntimeError(
@@ -222,21 +216,20 @@ impl CodeGenerator {
                         self.generate_expression(property)?;
                     } else if let Expression::Identifier(name) = property.as_ref() {
                         let idx = self.add_constant(Value::String(name.clone()));
-                        self.instructions.push(Instruction::LoadConst(idx));
+                        self.emit(Instruction::LoadConst(idx));
                     } else {
                         self.generate_expression(property)?;
                     }
                     for arg in args {
                         self.generate_expression(arg)?;
                     }
-                    self.instructions
-                        .push(Instruction::CallMethod(args.len() as u16));
+                    self.emit(Instruction::CallMethod(args.len() as u16));
                 } else {
                     for arg in args {
                         self.generate_expression(arg)?;
                     }
                     self.generate_expression(callee)?;
-                    self.instructions.push(Instruction::Call(args.len() as u16));
+                    self.emit(Instruction::Call(args.len() as u16));
                 }
                 Ok(())
             }
@@ -250,11 +243,11 @@ impl CodeGenerator {
                     self.generate_expression(property)?;
                 } else if let Expression::Identifier(name) = property.as_ref() {
                     let idx = self.add_constant(Value::String(name.clone()));
-                    self.instructions.push(Instruction::LoadConst(idx));
+                    self.emit(Instruction::LoadConst(idx));
                 } else {
                     self.generate_expression(property)?;
                 }
-                self.instructions.push(Instruction::GetProperty);
+                self.emit(Instruction::GetProperty);
                 Ok(())
             }
             Expression::OptionalMember {
@@ -263,23 +256,23 @@ impl CodeGenerator {
                 computed,
             } => {
                 self.generate_expression(object)?;
-                self.instructions.push(Instruction::Dup);
+                self.emit(Instruction::Dup);
                 let check_undef = self.instructions.len();
-                self.instructions.push(Instruction::JumpIfUndefined(0));
+                self.emit(Instruction::JumpIfUndefined(0));
                 if *computed {
                     self.generate_expression(property)?;
                 } else if let Expression::Identifier(name) = property.as_ref() {
                     let idx = self.add_constant(Value::String(name.clone()));
-                    self.instructions.push(Instruction::LoadConst(idx));
+                    self.emit(Instruction::LoadConst(idx));
                 } else {
                     self.generate_expression(property)?;
                 }
-                self.instructions.push(Instruction::GetProperty);
+                self.emit(Instruction::GetProperty);
                 let skip_end = self.instructions.len();
-                self.instructions.push(Instruction::Jump(0));
+                self.emit(Instruction::Jump(0));
                 self.patch_jump(check_undef, self.instructions.len());
-                self.instructions.push(Instruction::Pop);
-                self.instructions.push(Instruction::LoadUndefined);
+                self.emit(Instruction::Pop);
+                self.emit(Instruction::LoadUndefined);
                 self.patch_jump(skip_end, self.instructions.len());
                 Ok(())
             }
@@ -291,42 +284,41 @@ impl CodeGenerator {
                 } = callee.as_ref()
                 {
                     self.generate_expression(object)?;
-                    self.instructions.push(Instruction::Dup);
+                    self.emit(Instruction::Dup);
                     let check_undef = self.instructions.len();
-                    self.instructions.push(Instruction::JumpIfUndefined(0));
+                    self.emit(Instruction::JumpIfUndefined(0));
                     if *computed {
                         self.generate_expression(property)?;
                     } else if let Expression::Identifier(name) = property.as_ref() {
                         let idx = self.add_constant(Value::String(name.clone()));
-                        self.instructions.push(Instruction::LoadConst(idx));
+                        self.emit(Instruction::LoadConst(idx));
                     } else {
                         self.generate_expression(property)?;
                     }
                     for arg in args {
                         self.generate_expression(arg)?;
                     }
-                    self.instructions
-                        .push(Instruction::CallMethod(args.len() as u16));
+                    self.emit(Instruction::CallMethod(args.len() as u16));
                     let skip_end = self.instructions.len();
-                    self.instructions.push(Instruction::Jump(0));
+                    self.emit(Instruction::Jump(0));
                     self.patch_jump(check_undef, self.instructions.len());
-                    self.instructions.push(Instruction::Pop);
-                    self.instructions.push(Instruction::LoadUndefined);
+                    self.emit(Instruction::Pop);
+                    self.emit(Instruction::LoadUndefined);
                     self.patch_jump(skip_end, self.instructions.len());
                 } else {
                     self.generate_expression(callee)?;
-                    self.instructions.push(Instruction::Dup);
+                    self.emit(Instruction::Dup);
                     let check_undef = self.instructions.len();
-                    self.instructions.push(Instruction::JumpIfUndefined(0));
+                    self.emit(Instruction::JumpIfUndefined(0));
                     for arg in args {
                         self.generate_expression(arg)?;
                     }
-                    self.instructions.push(Instruction::Call(args.len() as u16));
+                    self.emit(Instruction::Call(args.len() as u16));
                     let skip_end = self.instructions.len();
-                    self.instructions.push(Instruction::Jump(0));
+                    self.emit(Instruction::Jump(0));
                     self.patch_jump(check_undef, self.instructions.len());
-                    self.instructions.push(Instruction::Pop);
-                    self.instructions.push(Instruction::LoadUndefined);
+                    self.emit(Instruction::Pop);
+                    self.emit(Instruction::LoadUndefined);
                     self.patch_jump(skip_end, self.instructions.len());
                 }
                 Ok(())
@@ -353,10 +345,11 @@ impl CodeGenerator {
                     param_count: params.len(),
                     closure_var_count: num_captures,
                     is_generator: *is_generator,
+                    source_line: self.current_source_line,
                 });
 
                 let jump_over = self.instructions.len();
-                self.instructions.push(Instruction::Jump(0));
+                self.emit(Instruction::Jump(0));
 
                 let func_start = self.instructions.len();
                 self.functions[func_idx as usize].bytecode_index = func_start;
@@ -374,11 +367,12 @@ impl CodeGenerator {
                 }
 
                 for stmt in body {
-                    self.generate_statement(stmt, false)?;
+                    self.record_line_from_span(&stmt.span);
+                    self.generate_statement(&stmt.inner, false)?;
                 }
 
-                self.instructions.push(Instruction::LoadUndefined);
-                self.instructions.push(Instruction::Return);
+                self.emit(Instruction::LoadUndefined);
+                self.emit(Instruction::Return);
 
                 self.scope_depth -= 1;
                 self.locals.truncate(prev_locals);
@@ -389,10 +383,9 @@ impl CodeGenerator {
 
                 if num_captures > 0 {
                     let capture_slots: Vec<u16> = outer_refs.iter().map(|(_, s)| *s).collect();
-                    self.instructions
-                        .push(Instruction::MakeClosure(func_idx, capture_slots));
+                    self.emit(Instruction::MakeClosure(func_idx, capture_slots));
                 } else {
-                    self.instructions.push(Instruction::MakeFunction(func_idx));
+                    self.emit(Instruction::MakeFunction(func_idx));
                 }
                 Ok(())
             }
@@ -407,7 +400,7 @@ impl CodeGenerator {
 
                 let (body_stmts, is_expr) = match body.as_ref() {
                     ArrowFunctionBody::Expression(expr) => {
-                        (vec![Statement::ReturnStatement(Some(expr.clone()))], true)
+                        (vec![SpannedNode { inner: Statement::ReturnStatement(Some(expr.clone())), span: None }], true)
                     }
                     ArrowFunctionBody::Block(stmts) => (stmts.clone(), false),
                 };
@@ -424,10 +417,11 @@ impl CodeGenerator {
                     param_count: params.len(),
                     closure_var_count: num_captures,
                     is_generator: false,
+                    source_line: self.current_source_line,
                 });
 
                 let jump_over = self.instructions.len();
-                self.instructions.push(Instruction::Jump(0));
+                self.emit(Instruction::Jump(0));
 
                 let func_start = self.instructions.len();
                 self.functions[func_idx as usize].bytecode_index = func_start;
@@ -445,14 +439,15 @@ impl CodeGenerator {
                 }
 
                 for stmt in &body_stmts {
-                    self.generate_statement(stmt, false)?;
+                    self.record_line_from_span(&stmt.span);
+                    self.generate_statement(&stmt.inner, false)?;
                 }
 
                 if is_expr {
                     // already return statements
                 } else {
-                    self.instructions.push(Instruction::LoadUndefined);
-                    self.instructions.push(Instruction::Return);
+                    self.emit(Instruction::LoadUndefined);
+                    self.emit(Instruction::Return);
                 }
 
                 self.scope_depth -= 1;
@@ -464,10 +459,9 @@ impl CodeGenerator {
 
                 if num_captures > 0 {
                     let capture_slots: Vec<u16> = outer_refs.iter().map(|(_, s)| *s).collect();
-                    self.instructions
-                        .push(Instruction::MakeClosure(func_idx, capture_slots));
+                    self.emit(Instruction::MakeClosure(func_idx, capture_slots));
                 } else {
-                    self.instructions.push(Instruction::MakeFunction(func_idx));
+                    self.emit(Instruction::MakeFunction(func_idx));
                 }
                 Ok(())
             }
@@ -476,8 +470,7 @@ impl CodeGenerator {
                 for arg in args {
                     self.generate_expression(arg)?;
                 }
-                self.instructions
-                    .push(Instruction::Construct(args.len() as u16));
+                self.emit(Instruction::Construct(args.len() as u16));
                 Ok(())
             }
             Expression::ConditionalExpression {
@@ -487,10 +480,10 @@ impl CodeGenerator {
             } => {
                 self.generate_expression(test)?;
                 let jump_if_not = self.instructions.len();
-                self.instructions.push(Instruction::JumpIfNot(0));
+                self.emit(Instruction::JumpIfNot(0));
                 self.generate_expression(consequent)?;
                 let jump_to_end = self.instructions.len();
-                self.instructions.push(Instruction::Jump(0));
+                self.emit(Instruction::Jump(0));
                 self.patch_jump(jump_if_not, self.instructions.len());
                 self.generate_expression(alternate)?;
                 self.patch_jump(jump_to_end, self.instructions.len());
@@ -505,36 +498,33 @@ impl CodeGenerator {
                     if *prefix {
                         self.generate_expression(operand)?;
                         let one = self.add_constant(Value::Float(1.0));
-                        self.instructions.push(Instruction::LoadConst(one));
+                        self.emit(Instruction::LoadConst(one));
                         match op {
-                            UpdateOperator::Increment => self.instructions.push(Instruction::Add),
-                            UpdateOperator::Decrement => self.instructions.push(Instruction::Sub),
+                            UpdateOperator::Increment => self.emit(Instruction::Add),
+                            UpdateOperator::Decrement => self.emit(Instruction::Sub),
                         }
                         if let Some(local_idx) = self.resolve_local(name) {
-                            self.instructions.push(Instruction::StoreLocal(local_idx));
+                            self.emit(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions
-                                .push(Instruction::StoreGlobal(name.clone()));
+                            self.emit(Instruction::StoreGlobal(name.clone()));
                         }
                     } else {
                         self.generate_expression(operand)?;
                         if let Some(local_idx) = self.resolve_local(name) {
-                            self.instructions.push(Instruction::LoadLocal(local_idx));
+                            self.emit(Instruction::LoadLocal(local_idx));
                         } else {
-                            self.instructions
-                                .push(Instruction::LoadGlobal(name.clone()));
+                            self.emit(Instruction::LoadGlobal(name.clone()));
                         }
                         let one = self.add_constant(Value::Float(1.0));
-                        self.instructions.push(Instruction::LoadConst(one));
+                        self.emit(Instruction::LoadConst(one));
                         match op {
-                            UpdateOperator::Increment => self.instructions.push(Instruction::Add),
-                            UpdateOperator::Decrement => self.instructions.push(Instruction::Sub),
+                            UpdateOperator::Increment => self.emit(Instruction::Add),
+                            UpdateOperator::Decrement => self.emit(Instruction::Sub),
                         }
                         if let Some(local_idx) = self.resolve_local(name) {
-                            self.instructions.push(Instruction::StoreLocal(local_idx));
+                            self.emit(Instruction::StoreLocal(local_idx));
                         } else {
-                            self.instructions
-                                .push(Instruction::StoreGlobal(name.clone()));
+                            self.emit(Instruction::StoreGlobal(name.clone()));
                         }
                     }
                 } else {
@@ -549,28 +539,28 @@ impl CodeGenerator {
                 if expressions.is_empty() {
                     let s = quasis.join("");
                     let idx = self.add_constant(Value::String(s));
-                    self.instructions.push(Instruction::LoadConst(idx));
+                    self.emit(Instruction::LoadConst(idx));
                 } else {
                     let first = &quasis[0];
                     if !first.is_empty() {
                         let idx = self.add_constant(Value::String(first.clone()));
-                        self.instructions.push(Instruction::LoadConst(idx));
+                        self.emit(Instruction::LoadConst(idx));
                     }
 
                     for i in 0..expressions.len() {
                         if first.is_empty() && i == 0 {
                             self.generate_expression(&expressions[i])?;
-                            self.instructions.push(Instruction::ToString);
+                            self.emit(Instruction::ToString);
                         } else {
                             self.generate_expression(&expressions[i])?;
-                            self.instructions.push(Instruction::ToString);
-                            self.instructions.push(Instruction::Add);
+                            self.emit(Instruction::ToString);
+                            self.emit(Instruction::Add);
                         }
 
                         if i + 1 < quasis.len() && !quasis[i + 1].is_empty() {
                             let idx = self.add_constant(Value::String(quasis[i + 1].clone()));
-                            self.instructions.push(Instruction::LoadConst(idx));
-                            self.instructions.push(Instruction::Add);
+                            self.emit(Instruction::LoadConst(idx));
+                            self.emit(Instruction::Add);
                         }
                     }
                 }
@@ -667,35 +657,33 @@ impl CodeGenerator {
                     self.generate_expression(superclass.as_ref().unwrap())?;
                 }
 
-                self.instructions
-                    .push(Instruction::MakeClass(class_info_idx));
+                self.emit(Instruction::MakeClass(class_info_idx));
                 Ok(())
             }
             Expression::AwaitExpression { argument } => {
                 self.generate_expression(argument)?;
-                self.instructions.push(Instruction::Await);
+                self.emit(Instruction::Await);
                 Ok(())
             }
             Expression::SuperCall { args } => {
-                self.instructions.push(Instruction::LoadThis);
+                self.emit(Instruction::LoadThis);
                 for arg in args {
                     self.generate_expression(arg)?;
                 }
-                self.instructions
-                    .push(Instruction::SuperConstruct(args.len() as u16));
+                self.emit(Instruction::SuperConstruct(args.len() as u16));
                 Ok(())
             }
             Expression::SuperMember { property, computed } => {
-                self.instructions.push(Instruction::LoadThis);
+                self.emit(Instruction::LoadThis);
                 if *computed {
                     self.generate_expression(property)?;
                 } else if let Expression::Identifier(name) = property.as_ref() {
                     let idx = self.add_constant(Value::String(name.clone()));
-                    self.instructions.push(Instruction::LoadConst(idx));
+                    self.emit(Instruction::LoadConst(idx));
                 } else {
                     self.generate_expression(property)?;
                 }
-                self.instructions.push(Instruction::SuperGet);
+                self.emit(Instruction::SuperGet);
                 Ok(())
             }
             Expression::ArrayLiteral { elements } => {
@@ -703,18 +691,18 @@ impl CodeGenerator {
                     .iter()
                     .any(|e| matches!(e, Expression::SpreadElement { .. }));
                 if has_spread {
-                    self.instructions.push(Instruction::NewArray(0));
+                    self.emit(Instruction::NewArray(0));
                     for elem in elements {
                         match elem {
                             Expression::SpreadElement { argument } => {
-                                self.instructions.push(Instruction::Dup);
+                                self.emit(Instruction::Dup);
                                 self.generate_expression(argument)?;
-                                self.instructions.push(Instruction::SpreadArray);
+                                self.emit(Instruction::SpreadArray);
                             }
                             _ => {
-                                self.instructions.push(Instruction::Dup);
+                                self.emit(Instruction::Dup);
                                 self.generate_expression(elem)?;
-                                self.instructions.push(Instruction::ArrayPush);
+                                self.emit(Instruction::ArrayPush);
                             }
                         }
                     }
@@ -722,23 +710,22 @@ impl CodeGenerator {
                     for elem in elements.iter().rev() {
                         self.generate_expression(elem)?;
                     }
-                    self.instructions
-                        .push(Instruction::NewArray(elements.len() as u32));
+                    self.emit(Instruction::NewArray(elements.len() as u32));
                 }
                 Ok(())
             }
             Expression::ObjectLiteral { properties } => {
                 let has_spread = properties.iter().any(|p| p.key.is_empty());
                 if has_spread {
-                    self.instructions.push(Instruction::NewObject);
+                    self.emit(Instruction::NewObject);
                     for prop in properties {
                         if prop.key.is_empty()
                             && matches!(prop.value, Expression::SpreadElement { .. })
                         {
                             if let Expression::SpreadElement { argument } = &prop.value {
-                                self.instructions.push(Instruction::Dup);
+                                self.emit(Instruction::Dup);
                                 self.generate_expression(argument)?;
-                                self.instructions.push(Instruction::SpreadObject);
+                                self.emit(Instruction::SpreadObject);
                             }
                         } else {
                             if prop.computed {
@@ -747,26 +734,26 @@ impl CodeGenerator {
                                 }
                             } else {
                                 let key_idx = self.add_constant(Value::String(prop.key.clone()));
-                                self.instructions.push(Instruction::LoadConst(key_idx));
+                                self.emit(Instruction::LoadConst(key_idx));
                             }
                             self.generate_expression(&prop.value)?;
-                            self.instructions.push(Instruction::SetProperty);
+                            self.emit(Instruction::SetProperty);
                         }
                     }
                 } else {
-                    self.instructions.push(Instruction::NewObject);
+                    self.emit(Instruction::NewObject);
                     for prop in properties {
                         if prop.computed {
                             if let Some(key_expr) = &prop.computed_key {
                                 self.generate_expression(key_expr)?;
-                                self.instructions.push(Instruction::ToString);
+                                self.emit(Instruction::ToString);
                             }
                         } else {
                             let key_idx = self.add_constant(Value::String(prop.key.clone()));
-                            self.instructions.push(Instruction::LoadConst(key_idx));
+                            self.emit(Instruction::LoadConst(key_idx));
                         }
                         self.generate_expression(&prop.value)?;
-                        self.instructions.push(Instruction::SetProperty);
+                        self.emit(Instruction::SetProperty);
                     }
                 }
                 Ok(())
@@ -788,26 +775,26 @@ impl CodeGenerator {
 
     fn generate_binary_op(&mut self, op: &BinaryOperator) -> Result<()> {
         match op {
-            BinaryOperator::Add => self.instructions.push(Instruction::Add),
-            BinaryOperator::Sub => self.instructions.push(Instruction::Sub),
-            BinaryOperator::Mul => self.instructions.push(Instruction::Mul),
-            BinaryOperator::Div => self.instructions.push(Instruction::Div),
-            BinaryOperator::Mod => self.instructions.push(Instruction::Mod),
-            BinaryOperator::Power => self.instructions.push(Instruction::Power),
-            BinaryOperator::Eq => self.instructions.push(Instruction::Eq),
-            BinaryOperator::StrictEq => self.instructions.push(Instruction::StrictEq),
-            BinaryOperator::NotEqual => self.instructions.push(Instruction::NotEqual),
-            BinaryOperator::StrictNotEqual => self.instructions.push(Instruction::StrictNotEqual),
-            BinaryOperator::Less => self.instructions.push(Instruction::Less),
-            BinaryOperator::Greater => self.instructions.push(Instruction::Greater),
-            BinaryOperator::LessEqual => self.instructions.push(Instruction::LessEqual),
-            BinaryOperator::GreaterEqual => self.instructions.push(Instruction::GreaterEqual),
-            BinaryOperator::And => self.instructions.push(Instruction::And),
-            BinaryOperator::Or => self.instructions.push(Instruction::Or),
-            BinaryOperator::Instanceof => self.instructions.push(Instruction::InstanceOf),
-            BinaryOperator::In => self.instructions.push(Instruction::In),
+            BinaryOperator::Add => self.emit(Instruction::Add),
+            BinaryOperator::Sub => self.emit(Instruction::Sub),
+            BinaryOperator::Mul => self.emit(Instruction::Mul),
+            BinaryOperator::Div => self.emit(Instruction::Div),
+            BinaryOperator::Mod => self.emit(Instruction::Mod),
+            BinaryOperator::Power => self.emit(Instruction::Power),
+            BinaryOperator::Eq => self.emit(Instruction::Eq),
+            BinaryOperator::StrictEq => self.emit(Instruction::StrictEq),
+            BinaryOperator::NotEqual => self.emit(Instruction::NotEqual),
+            BinaryOperator::StrictNotEqual => self.emit(Instruction::StrictNotEqual),
+            BinaryOperator::Less => self.emit(Instruction::Less),
+            BinaryOperator::Greater => self.emit(Instruction::Greater),
+            BinaryOperator::LessEqual => self.emit(Instruction::LessEqual),
+            BinaryOperator::GreaterEqual => self.emit(Instruction::GreaterEqual),
+            BinaryOperator::And => self.emit(Instruction::And),
+            BinaryOperator::Or => self.emit(Instruction::Or),
+            BinaryOperator::Instanceof => self.emit(Instruction::InstanceOf),
+            BinaryOperator::In => self.emit(Instruction::In),
             BinaryOperator::NullishCoalescing => {
-                self.instructions.push(Instruction::NullishCoalescing)
+                self.emit(Instruction::NullishCoalescing)
             }
             _ => {}
         }

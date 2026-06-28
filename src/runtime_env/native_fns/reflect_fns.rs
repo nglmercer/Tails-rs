@@ -141,6 +141,7 @@ pub(super) fn native_reflect_construct(
                 is_construct: true,
                 source_name: None,
                 generator_heap_idx: None,
+                source_line: None,
             });
 
             for closure_var in &f.closure {
