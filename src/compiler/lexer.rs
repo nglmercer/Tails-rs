@@ -204,6 +204,7 @@ fn tokenize_template_literal(
 pub fn tokenize(source: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::new();
     let mut chars = source.char_indices().peekable();
+    let mut expects_regex = true; // Start of file expects expression start
 
     while let Some(&(_pos, ch)) = chars.peek() {
         match ch {
@@ -215,6 +216,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             }
             '/' => {
                 chars.next();
+                // Always check for comments first, regardless of regex context
                 if let Some(&(_, '/')) = chars.peek() {
                     while let Some(&(_, c)) = chars.peek() {
                         if c == '\n' {
@@ -236,11 +238,42 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                             _ => {}
                         }
                     }
+                } else if expects_regex {
+                    // Parse regex literal
+                    let mut pattern = String::new();
+                    let mut escaped = false;
+                    loop {
+                        match chars.next() {
+                            Some((_, '\\')) if !escaped => {
+                                pattern.push('\\');
+                                escaped = true;
+                            }
+                            Some((_, '/')) if !escaped => break,
+                            Some((_, c)) => {
+                                pattern.push(c);
+                                escaped = false;
+                            }
+                            None => return Err(Error::ParseError("Unterminated regex".into())),
+                        }
+                    }
+                    let mut flags = String::new();
+                    while let Some(&(_, c)) = chars.peek() {
+                        if c.is_ascii_alphabetic() {
+                            flags.push(c);
+                            chars.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    tokens.push(Token::Regex(format!("{}/{}", pattern, flags)));
+                    expects_regex = false;
                 } else if let Some(&(_, '=')) = chars.peek() {
                     chars.next();
                     tokens.push(Token::SlashAssign);
+                    expects_regex = false;
                 } else {
                     tokens.push(Token::Slash);
+                    expects_regex = true;
                 }
             }
             '0'..='9' => {
@@ -569,6 +602,25 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
             _ => {
                 chars.next();
             }
+        }
+
+        // After expression-ending tokens, `/` is division, not regex start.
+        // After keywords/operators, `/` starts a regex literal.
+        if let Some(last_token) = tokens.last() {
+            expects_regex = !matches!(
+                last_token,
+                Token::Number(_)
+                    | Token::BigInt(_)
+                    | Token::String(_)
+                    | Token::Regex(_)
+                    | Token::Identifier(_)
+                    | Token::RightParen
+                    | Token::RightBracket
+                    | Token::RightBrace
+                    | Token::Increment
+                    | Token::Decrement
+                    | Token::This
+            );
         }
     }
 

@@ -527,13 +527,28 @@ impl Interpreter {
                             }
                         }
                         Value::NativeFunction(native_idx) => {
+                            // For TypedArray constructors (index 102), pass the type name
+                            let mut final_args = args.clone();
+                            if *native_idx == 102 {
+                                // Find the type name from globals
+                                if let Some(name) = self.globals.iter().find_map(|(k, v)| {
+                                    if let Value::NativeFunction(idx) = v {
+                                        if *idx == 102 {
+                                            return Some(k.clone());
+                                        }
+                                    }
+                                    None
+                                }) {
+                                    final_args.insert(0, Value::String(name));
+                                }
+                            }
                             let proto_idx = self.find_native_prototype(*native_idx);
                             let new_obj_heap_idx = self.gc.allocate(
                                 &mut self.heap,
                                 HeapValue::Object(JsObject::with_prototype(proto_idx)),
                             );
                             let this_val = Value::Object(new_obj_heap_idx);
-                            let result = self.call_native(*native_idx, &this_val, &args)?;
+                            let result = self.call_native(*native_idx, &this_val, &final_args)?;
                             match result {
                                 Value::Object(_)
                                 | Value::Array(_)
@@ -1491,10 +1506,7 @@ impl Interpreter {
                 })
                 .unwrap_or_else(|| "<anonymous>".to_string());
 
-            let location = frame
-                .source_name
-                .as_deref()
-                .unwrap_or("<script>");
+            let location = frame.source_name.as_deref().unwrap_or("<script>");
 
             frames.push(format!("    at {} ({})", func_name, location));
         }

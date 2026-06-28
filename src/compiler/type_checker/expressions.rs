@@ -7,6 +7,7 @@ impl TypeChecker {
             Expression::NumberLiteral(n) => Ok(Type::NumberLiteral(*n)),
             Expression::BigIntLiteral(_) => Ok(Type::Any),
             Expression::StringLiteral(s) => Ok(Type::StringLiteral(s.clone())),
+            Expression::RegexLiteral { .. } => Ok(Type::Any),
             Expression::BooleanLiteral(b) => Ok(Type::BooleanLiteral(*b)),
             Expression::NullLiteral => Ok(Type::Null),
             Expression::UndefinedLiteral => Ok(Type::Undefined),

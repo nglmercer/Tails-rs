@@ -660,12 +660,11 @@ impl Interpreter {
                 "BYTES_PER_ELEMENT".into(),
                 Value::Integer(TypedArray::element_size(&parse_typed_array_type(name)) as i64),
             );
-            proto_props.insert("length".into(), Value::NativeFunction(0)); // placeholder
-            proto_props.insert("get".into(), Value::NativeFunction(0));
-            proto_props.insert("set".into(), Value::NativeFunction(0));
-            proto_props.insert("subarray".into(), Value::NativeFunction(0));
-            proto_props.insert("slice".into(), Value::NativeFunction(0));
-            proto_props.insert("set".into(), Value::NativeFunction(0));
+            proto_props.insert("length".into(), Value::NativeFunction(107));
+            proto_props.insert("get".into(), Value::NativeFunction(105));
+            proto_props.insert("set".into(), Value::NativeFunction(106));
+            proto_props.insert("subarray".into(), Value::NativeFunction(110));
+            proto_props.insert("slice".into(), Value::NativeFunction(111));
             let proto_idx = self.gc.allocate(
                 &mut self.heap,
                 HeapValue::Object(JsObject {
@@ -682,9 +681,9 @@ impl Interpreter {
                 "BYTES_PER_ELEMENT".into(),
                 Value::Integer(TypedArray::element_size(&parse_typed_array_type(name)) as i64),
             );
-            ctor_props.insert("from".into(), Value::NativeFunction(0));
-            ctor_props.insert("of".into(), Value::NativeFunction(0));
-            let ctor_obj_idx = self.gc.allocate(
+            ctor_props.insert("from".into(), Value::NativeFunction(103));
+            ctor_props.insert("of".into(), Value::NativeFunction(104));
+            let _ctor_obj_idx = self.gc.allocate(
                 &mut self.heap,
                 HeapValue::Object(JsObject {
                     properties: ctor_props,
@@ -693,21 +692,21 @@ impl Interpreter {
                 }),
             );
             self.globals
-                .insert((*name).into(), Value::Object(ctor_obj_idx));
+                .insert((*name).into(), Value::NativeFunction(102));
         }
 
         // Map
         let mut map_proto_props = HashMap::new();
-        map_proto_props.insert("get".into(), Value::NativeFunction(0));
-        map_proto_props.insert("set".into(), Value::NativeFunction(0));
-        map_proto_props.insert("has".into(), Value::NativeFunction(0));
-        map_proto_props.insert("delete".into(), Value::NativeFunction(0));
-        map_proto_props.insert("clear".into(), Value::NativeFunction(0));
-        map_proto_props.insert("forEach".into(), Value::NativeFunction(0));
-        map_proto_props.insert("keys".into(), Value::NativeFunction(0));
-        map_proto_props.insert("values".into(), Value::NativeFunction(0));
-        map_proto_props.insert("entries".into(), Value::NativeFunction(0));
-        map_proto_props.insert("size".into(), Value::NativeFunction(0));
+        map_proto_props.insert("get".into(), Value::NativeFunction(113));
+        map_proto_props.insert("set".into(), Value::NativeFunction(114));
+        map_proto_props.insert("has".into(), Value::NativeFunction(115));
+        map_proto_props.insert("delete".into(), Value::NativeFunction(116));
+        map_proto_props.insert("clear".into(), Value::NativeFunction(117));
+        map_proto_props.insert("size".into(), Value::NativeFunction(118));
+        map_proto_props.insert("forEach".into(), Value::NativeFunction(119));
+        map_proto_props.insert("keys".into(), Value::NativeFunction(120));
+        map_proto_props.insert("values".into(), Value::NativeFunction(121));
+        map_proto_props.insert("entries".into(), Value::NativeFunction(122));
         let map_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -719,7 +718,7 @@ impl Interpreter {
 
         let mut map_ctor_props = HashMap::new();
         map_ctor_props.insert("prototype".into(), Value::Object(map_proto_idx));
-        let map_ctor_idx = self.gc.allocate(
+        let _map_ctor_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
                 properties: map_ctor_props,
@@ -728,19 +727,19 @@ impl Interpreter {
             }),
         );
         self.globals
-            .insert("Map".into(), Value::Object(map_ctor_idx));
+            .insert("Map".into(), Value::NativeFunction(112));
 
         // Set
         let mut set_proto_props = HashMap::new();
-        set_proto_props.insert("add".into(), Value::NativeFunction(0));
-        set_proto_props.insert("has".into(), Value::NativeFunction(0));
-        set_proto_props.insert("delete".into(), Value::NativeFunction(0));
-        set_proto_props.insert("clear".into(), Value::NativeFunction(0));
-        set_proto_props.insert("forEach".into(), Value::NativeFunction(0));
-        set_proto_props.insert("values".into(), Value::NativeFunction(0));
-        set_proto_props.insert("keys".into(), Value::NativeFunction(0));
-        set_proto_props.insert("entries".into(), Value::NativeFunction(0));
-        set_proto_props.insert("size".into(), Value::NativeFunction(0));
+        set_proto_props.insert("add".into(), Value::NativeFunction(124));
+        set_proto_props.insert("has".into(), Value::NativeFunction(125));
+        set_proto_props.insert("delete".into(), Value::NativeFunction(126));
+        set_proto_props.insert("clear".into(), Value::NativeFunction(127));
+        set_proto_props.insert("size".into(), Value::NativeFunction(128));
+        set_proto_props.insert("forEach".into(), Value::NativeFunction(129));
+        set_proto_props.insert("values".into(), Value::NativeFunction(130));
+        set_proto_props.insert("keys".into(), Value::NativeFunction(131));
+        set_proto_props.insert("entries".into(), Value::NativeFunction(132));
         let set_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -752,7 +751,7 @@ impl Interpreter {
 
         let mut set_ctor_props = HashMap::new();
         set_ctor_props.insert("prototype".into(), Value::Object(set_proto_idx));
-        let set_ctor_idx = self.gc.allocate(
+        let _set_ctor_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
                 properties: set_ctor_props,
@@ -761,14 +760,14 @@ impl Interpreter {
             }),
         );
         self.globals
-            .insert("Set".into(), Value::Object(set_ctor_idx));
+            .insert("Set".into(), Value::NativeFunction(123));
 
         // WeakMap
         let mut weakmap_proto_props = HashMap::new();
-        weakmap_proto_props.insert("get".into(), Value::NativeFunction(0));
-        weakmap_proto_props.insert("set".into(), Value::NativeFunction(0));
-        weakmap_proto_props.insert("has".into(), Value::NativeFunction(0));
-        weakmap_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        weakmap_proto_props.insert("get".into(), Value::NativeFunction(134));
+        weakmap_proto_props.insert("set".into(), Value::NativeFunction(135));
+        weakmap_proto_props.insert("has".into(), Value::NativeFunction(136));
+        weakmap_proto_props.insert("delete".into(), Value::NativeFunction(137));
         let weakmap_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -780,7 +779,7 @@ impl Interpreter {
 
         let mut weakmap_ctor_props = HashMap::new();
         weakmap_ctor_props.insert("prototype".into(), Value::Object(weakmap_proto_idx));
-        let weakmap_ctor_idx = self.gc.allocate(
+        let _weakmap_ctor_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
                 properties: weakmap_ctor_props,
@@ -789,13 +788,13 @@ impl Interpreter {
             }),
         );
         self.globals
-            .insert("WeakMap".into(), Value::Object(weakmap_ctor_idx));
+            .insert("WeakMap".into(), Value::NativeFunction(133));
 
         // WeakSet
         let mut weakset_proto_props = HashMap::new();
-        weakset_proto_props.insert("add".into(), Value::NativeFunction(0));
-        weakset_proto_props.insert("has".into(), Value::NativeFunction(0));
-        weakset_proto_props.insert("delete".into(), Value::NativeFunction(0));
+        weakset_proto_props.insert("add".into(), Value::NativeFunction(139));
+        weakset_proto_props.insert("has".into(), Value::NativeFunction(140));
+        weakset_proto_props.insert("delete".into(), Value::NativeFunction(141));
         let weakset_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -807,7 +806,7 @@ impl Interpreter {
 
         let mut weakset_ctor_props = HashMap::new();
         weakset_ctor_props.insert("prototype".into(), Value::Object(weakset_proto_idx));
-        let weakset_ctor_idx = self.gc.allocate(
+        let _weakset_ctor_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
                 properties: weakset_ctor_props,
@@ -816,7 +815,7 @@ impl Interpreter {
             }),
         );
         self.globals
-            .insert("WeakSet".into(), Value::Object(weakset_ctor_idx));
+            .insert("WeakSet".into(), Value::NativeFunction(138));
 
         // Generator
         let mut generator_proto_props = HashMap::new();

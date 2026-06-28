@@ -41,24 +41,26 @@ fn test_keywords() {
 
 #[test]
 fn test_operators() {
-    let tokens = tokenize("+ - * / % = == === != !== < > <= >=").unwrap();
-    // + - * / % = == === != !== < > <= >= Eof = 15 tokens
-    assert_eq!(tokens.len(), 15);
+    let tokens = tokenize("+ - * 0 / % 0 = == === != !== < > <= >=").unwrap();
+    // + - * 0 / % 0 = == === != !== < > <= >= Eof = 17 tokens
+    assert_eq!(tokens.len(), 17);
     assert_eq!(tokens[0], Token::Plus);
     assert_eq!(tokens[1], Token::Minus);
     assert_eq!(tokens[2], Token::Star);
-    assert_eq!(tokens[3], Token::Slash);
-    assert_eq!(tokens[4], Token::Percent);
-    assert_eq!(tokens[5], Token::Assign);
-    assert_eq!(tokens[6], Token::Equal);
-    assert_eq!(tokens[7], Token::StrictEqual);
-    assert_eq!(tokens[8], Token::NotEqual);
-    assert_eq!(tokens[9], Token::StrictNotEqual);
-    assert_eq!(tokens[10], Token::Less);
-    assert_eq!(tokens[11], Token::Greater);
-    assert_eq!(tokens[12], Token::LessEqual);
-    assert_eq!(tokens[13], Token::GreaterEqual);
-    assert_eq!(tokens[14], Token::Eof);
+    assert_eq!(tokens[3], Token::Number(0.0));
+    assert_eq!(tokens[4], Token::Slash);
+    assert_eq!(tokens[5], Token::Percent);
+    assert_eq!(tokens[6], Token::Number(0.0));
+    assert_eq!(tokens[7], Token::Assign);
+    assert_eq!(tokens[8], Token::Equal);
+    assert_eq!(tokens[9], Token::StrictEqual);
+    assert_eq!(tokens[10], Token::NotEqual);
+    assert_eq!(tokens[11], Token::StrictNotEqual);
+    assert_eq!(tokens[12], Token::Less);
+    assert_eq!(tokens[13], Token::Greater);
+    assert_eq!(tokens[14], Token::LessEqual);
+    assert_eq!(tokens[15], Token::GreaterEqual);
+    assert_eq!(tokens[16], Token::Eof);
 }
 
 #[test]

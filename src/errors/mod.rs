@@ -13,7 +13,11 @@ impl Span {
     }
 
     pub fn unknown() -> Self {
-        Self { line: 0, col: 0, offset: 0 }
+        Self {
+            line: 0,
+            col: 0,
+            offset: 0,
+        }
     }
 }
 
@@ -38,22 +42,46 @@ pub enum ErrorKind {
 #[allow(non_snake_case)]
 impl Error {
     pub fn ParseError(msg: String) -> Self {
-        Self { kind: ErrorKind::ParseError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::ParseError(msg),
+            span: None,
+            file: None,
+        }
     }
     pub fn TypeError(msg: String) -> Self {
-        Self { kind: ErrorKind::TypeError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::TypeError(msg),
+            span: None,
+            file: None,
+        }
     }
     pub fn ReferenceError(msg: String) -> Self {
-        Self { kind: ErrorKind::ReferenceError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::ReferenceError(msg),
+            span: None,
+            file: None,
+        }
     }
     pub fn SyntaxError(msg: String) -> Self {
-        Self { kind: ErrorKind::SyntaxError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::SyntaxError(msg),
+            span: None,
+            file: None,
+        }
     }
     pub fn RuntimeError(msg: String) -> Self {
-        Self { kind: ErrorKind::RuntimeError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::RuntimeError(msg),
+            span: None,
+            file: None,
+        }
     }
     pub fn InternalError(msg: String) -> Self {
-        Self { kind: ErrorKind::InternalError(msg), span: None, file: None }
+        Self {
+            kind: ErrorKind::InternalError(msg),
+            span: None,
+            file: None,
+        }
     }
 
     pub fn with_span(mut self, span: Span) -> Self {
@@ -109,7 +137,8 @@ impl Error {
                         let padding = " ".repeat(line_num_str.len());
                         out.push_str(&format!("   {} |\n", padding));
                         out.push_str(&format!("{} | {}\n", line_num_str, line_content));
-                        let col_marker = " ".repeat((span.col.saturating_sub(1)).min(line_content.len()));
+                        let col_marker =
+                            " ".repeat((span.col.saturating_sub(1)).min(line_content.len()));
                         out.push_str(&format!("   {} | {}^\n", padding, col_marker));
                     }
                 }

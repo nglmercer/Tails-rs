@@ -293,6 +293,10 @@ pub enum Expression {
     NumberLiteral(f64),
     BigIntLiteral(String),
     StringLiteral(String),
+    RegexLiteral {
+        pattern: String,
+        flags: String,
+    },
     BooleanLiteral(bool),
     NullLiteral,
     UndefinedLiteral,

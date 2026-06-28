@@ -353,6 +353,107 @@ impl Interpreter {
                     return self.get_property_with_this(&proto_val, key, this);
                 }
             }
+            Value::Map(_map_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "size" => {
+                            // Return the size directly (getter)
+                            if let Value::Map(map_idx) = this {
+                                if let HeapValue::Map(map) = &self.heap[*map_idx] {
+                                    return Ok(Value::Float(map.size() as f64));
+                                }
+                            }
+                        }
+                        "get" => return Ok(Value::NativeFunction(113)),
+                        "set" => return Ok(Value::NativeFunction(114)),
+                        "has" => return Ok(Value::NativeFunction(115)),
+                        "delete" => return Ok(Value::NativeFunction(116)),
+                        "clear" => return Ok(Value::NativeFunction(117)),
+                        "forEach" => return Ok(Value::NativeFunction(119)),
+                        "keys" => return Ok(Value::NativeFunction(120)),
+                        "values" => return Ok(Value::NativeFunction(121)),
+                        "entries" => return Ok(Value::NativeFunction(122)),
+                        _ => {}
+                    }
+                }
+            }
+            Value::Set(_set_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "size" => {
+                            // Return the size directly (getter)
+                            if let Value::Set(set_idx) = this {
+                                if let HeapValue::Set(set) = &self.heap[*set_idx] {
+                                    return Ok(Value::Float(set.size() as f64));
+                                }
+                            }
+                        }
+                        "add" => return Ok(Value::NativeFunction(124)),
+                        "has" => return Ok(Value::NativeFunction(125)),
+                        "delete" => return Ok(Value::NativeFunction(126)),
+                        "clear" => return Ok(Value::NativeFunction(127)),
+                        "forEach" => return Ok(Value::NativeFunction(129)),
+                        "values" => return Ok(Value::NativeFunction(130)),
+                        "keys" => return Ok(Value::NativeFunction(131)),
+                        "entries" => return Ok(Value::NativeFunction(132)),
+                        _ => {}
+                    }
+                }
+            }
+            Value::WeakMap(_weakmap_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "get" => return Ok(Value::NativeFunction(134)),
+                        "set" => return Ok(Value::NativeFunction(135)),
+                        "has" => return Ok(Value::NativeFunction(136)),
+                        "delete" => return Ok(Value::NativeFunction(137)),
+                        _ => {}
+                    }
+                }
+            }
+            Value::WeakSet(_weakset_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "add" => return Ok(Value::NativeFunction(139)),
+                        "has" => return Ok(Value::NativeFunction(140)),
+                        "delete" => return Ok(Value::NativeFunction(141)),
+                        _ => {}
+                    }
+                }
+            }
+            Value::TypedArray(_ta_idx) => {
+                if let Value::String(key_str) = key {
+                    match key_str.as_str() {
+                        "length" => {
+                            // Return the length directly (getter)
+                            if let Value::TypedArray(ta_idx) = this {
+                                if let HeapValue::TypedArray(ta) = &self.heap[*ta_idx] {
+                                    return Ok(Value::Float(ta.byte_length as f64));
+                                }
+                            }
+                        }
+                        "byteLength" => {
+                            if let Value::TypedArray(ta_idx) = this {
+                                if let HeapValue::TypedArray(ta) = &self.heap[*ta_idx] {
+                                    return Ok(Value::Float(ta.byte_length as f64));
+                                }
+                            }
+                        }
+                        "byteOffset" => {
+                            if let Value::TypedArray(ta_idx) = this {
+                                if let HeapValue::TypedArray(ta) = &self.heap[*ta_idx] {
+                                    return Ok(Value::Float(ta.byte_offset as f64));
+                                }
+                            }
+                        }
+                        "get" => return Ok(Value::NativeFunction(105)),
+                        "set" => return Ok(Value::NativeFunction(106)),
+                        "subarray" => return Ok(Value::NativeFunction(110)),
+                        "slice" => return Ok(Value::NativeFunction(111)),
+                        _ => {}
+                    }
+                }
+            }
             _ => {}
         }
         Ok(Value::Undefined)

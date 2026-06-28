@@ -20,6 +20,24 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::LoadConst(idx));
                 Ok(())
             }
+            Expression::RegexLiteral { pattern, flags } => {
+                // For now, create a RegExp object using the regex constructor
+                // Load the RegExp constructor
+                let reg_idx = self.add_constant(Value::String(pattern.clone()));
+                self.instructions.push(Instruction::LoadConst(reg_idx));
+                if !flags.is_empty() {
+                    let flags_idx = self.add_constant(Value::String(flags.clone()));
+                    self.instructions.push(Instruction::LoadConst(flags_idx));
+                    self.instructions
+                        .push(Instruction::LoadGlobal("RegExp".to_string()));
+                    self.instructions.push(Instruction::Construct(2));
+                } else {
+                    self.instructions
+                        .push(Instruction::LoadGlobal("RegExp".to_string()));
+                    self.instructions.push(Instruction::Construct(1));
+                }
+                Ok(())
+            }
             Expression::BooleanLiteral(b) => {
                 if *b {
                     self.instructions.push(Instruction::LoadTrue);

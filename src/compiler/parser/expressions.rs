@@ -560,6 +560,18 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(Expression::StringLiteral(s))
             }
+            Token::Regex(s) => {
+                self.advance();
+                // Parse regex pattern and flags
+                let parts: Vec<&str> = s.splitn(2, '/').collect();
+                let pattern = parts[0].to_string();
+                let flags = if parts.len() > 1 {
+                    parts[1].to_string()
+                } else {
+                    String::new()
+                };
+                Ok(Expression::RegexLiteral { pattern, flags })
+            }
             Token::TemplateLiteral(parts) => {
                 self.advance();
                 self.parse_template_literal(parts)
