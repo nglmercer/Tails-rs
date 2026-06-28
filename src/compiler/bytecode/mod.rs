@@ -952,10 +952,9 @@ impl CodeGenerator {
                             self.instructions.push(Instruction::Dup);
                             let idx = self.add_constant(Value::String("slice".to_string()));
                             self.instructions.push(Instruction::LoadConst(idx));
-                            self.instructions.push(Instruction::GetProperty);
                             let start_idx = self.add_constant(Value::Integer(i as i64));
                             self.instructions.push(Instruction::LoadConst(start_idx));
-                            self.instructions.push(Instruction::Call(1));
+                            self.instructions.push(Instruction::CallMethod(1));
                             self.generate_destructuring_pattern(pat)?;
                         }
                         ArrayBindingElement::Skip => {

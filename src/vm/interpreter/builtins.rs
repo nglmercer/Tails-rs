@@ -825,9 +825,9 @@ impl Interpreter {
 
         // Generator
         let mut generator_proto_props = HashMap::new();
-        generator_proto_props.insert("next".into(), Value::NativeFunction(0));
-        generator_proto_props.insert("return".into(), Value::NativeFunction(0));
-        generator_proto_props.insert("throw".into(), Value::NativeFunction(0));
+        generator_proto_props.insert("next".into(), Value::NativeFunction(142));
+        generator_proto_props.insert("return".into(), Value::NativeFunction(143));
+        generator_proto_props.insert("throw".into(), Value::NativeFunction(144));
         let generator_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -836,6 +836,7 @@ impl Interpreter {
                 extensible: true,
             }),
         );
+        self.generator_proto_idx = Some(generator_proto_idx);
 
         let mut generator_ctor_props = HashMap::new();
         generator_ctor_props.insert("prototype".into(), Value::Object(generator_proto_idx));

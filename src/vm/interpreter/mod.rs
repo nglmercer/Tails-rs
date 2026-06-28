@@ -43,6 +43,7 @@ pub struct Interpreter {
     pub(crate) date_proto_idx: Option<usize>,
     pub(crate) regexp_proto_idx: Option<usize>,
     pub(crate) buffer_proto_idx: Option<usize>,
+    pub(crate) generator_proto_idx: Option<usize>,
 }
 
 impl Interpreter {
@@ -69,6 +70,7 @@ impl Interpreter {
             date_proto_idx: None,
             regexp_proto_idx: None,
             buffer_proto_idx: None,
+            generator_proto_idx: None,
         };
         interp.init_builtins();
         Ok(interp)
@@ -115,6 +117,10 @@ impl Interpreter {
 
             let instruction = module.instructions[pc].clone();
 
+            if cfg!(debug_assertions) && std::env::var("GEN_TRACE").is_ok() {
+                eprintln!("[GEN_TRACE] pc={}, instr={:?}", pc, instruction);
+            }
+
             match &instruction {
                 Instruction::Jump(target) => {
                     pc = *target as usize;
@@ -149,7 +155,6 @@ impl Interpreter {
                         pc = *target as usize;
                         continue;
                     }
-                    self.stack.push(value);
                 }
                 Instruction::JumpIfNotUndefined(target) => {
                     let value = self
@@ -202,16 +207,14 @@ impl Interpreter {
                     if let Some(frame) = self.call_stack.last() {
                         let saved_pc = pc + 1;
                         let saved_stack: Vec<Value> = self.stack[frame.base_pointer..].to_vec();
-                        let saved_call_stack: Vec<CallFrame> =
-                            self.call_stack[..self.call_stack.len() - 1].to_vec();
-                        let generator_obj = self.create_generator_object(
-                            yield_value.clone(),
-                            saved_pc,
-                            saved_stack,
-                            saved_call_stack,
-                            frame.func_heap_idx,
-                        );
-                        self.stack.push(generator_obj);
+                        if let Some(gen_heap_idx) = frame.generator_heap_idx {
+                            if let HeapValue::Generator(gen) = &mut self.heap[gen_heap_idx] {
+                                gen.yield_value = yield_value.clone();
+                                gen.resume_pc = saved_pc;
+                                gen.saved_stack = saved_stack;
+                                gen.func_heap_idx = frame.func_heap_idx;
+                            }
+                        }
                         return Ok(yield_value);
                     }
                 }
@@ -244,6 +247,9 @@ impl Interpreter {
                                 };
 
                             if is_generator {
+                                if cfg!(debug_assertions) && std::env::var("GEN_TRACE").is_ok() {
+                                    eprintln!("[GEN_TRACE] Detected generator, creating object");
+                                }
                                 // Create a generator object instead of executing immediately
                                 let gen_idx = self.heap.len();
                                 self.heap.push(HeapValue::Generator(JsGenerator {
@@ -329,6 +335,7 @@ impl Interpreter {
                                             this_value: None,
                                             is_construct: false,
                                             source_name: self.current_module_path.clone(),
+                                        generator_heap_idx: None,
                                         });
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
@@ -421,6 +428,7 @@ impl Interpreter {
                                         this_value: Some(object),
                                         is_construct: false,
                                         source_name: self.current_module_path.clone(),
+                                        generator_heap_idx: None,
                                     });
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
@@ -499,6 +507,7 @@ impl Interpreter {
                                                         source_name: self
                                                             .current_module_path
                                                             .clone(),
+                                                        generator_heap_idx: None,
                                                     });
                                                     for arg in args {
                                                         self.stack.push(arg);
@@ -556,6 +565,7 @@ impl Interpreter {
                                             this_value: Some(this_val.clone()),
                                             is_construct: true,
                                             source_name: self.current_module_path.clone(),
+                                        generator_heap_idx: None,
                                         });
                                         for closure_var in &f_clone.closure {
                                             self.stack.push(closure_var.clone());
@@ -706,6 +716,7 @@ impl Interpreter {
                                     this_value: Some(this_val.clone()),
                                     is_construct: true,
                                     source_name: self.current_module_path.clone(),
+                                        generator_heap_idx: None,
                                 });
                                 for closure_var in &f_clone.closure {
                                     self.stack.push(closure_var.clone());

@@ -140,6 +140,7 @@ pub(super) fn native_reflect_construct(
                 this_value: Some(this_val.clone()),
                 is_construct: true,
                 source_name: None,
+                generator_heap_idx: None,
             });
 
             for closure_var in &f.closure {

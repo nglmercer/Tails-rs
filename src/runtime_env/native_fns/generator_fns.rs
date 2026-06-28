@@ -14,7 +14,6 @@ pub(super) fn native_generator_next(
 
     let value = args.first().cloned().unwrap_or(Value::Undefined);
 
-    // First, get the generator info without mutating
     let (func_heap_idx, resume_pc) =
         if let crate::vm::interpreter::HeapValue::Generator(gen) = &interp.heap[idx] {
             (gen.func_heap_idx, gen.resume_pc)
@@ -22,23 +21,19 @@ pub(super) fn native_generator_next(
             return Err(Error::TypeError("Not a Generator".into()));
         };
 
-    // Now mutate to push the value and save stack
     if let crate::vm::interpreter::HeapValue::Generator(gen) = &mut interp.heap[idx] {
-        // Push the value to the stack so it becomes the result of the yield expression
         interp.stack.push(value);
 
-        // Restore the saved stack
         if !gen.saved_stack.is_empty() {
             interp.stack.append(&mut gen.saved_stack);
         }
 
-        // Execute from the resume PC using execute_from
         let module = interp.current_module.clone();
         if let Some(module) = module {
-            // Set up call frame for generator execution
             let return_address = module.instructions.len();
             let base_pointer = interp.stack.len();
             let closure_count = 0;
+            let call_frame_len_before = interp.call_stack.len();
 
             interp.call_stack.push(crate::vm::interpreter::CallFrame {
                 return_address,
@@ -48,28 +43,71 @@ pub(super) fn native_generator_next(
                 this_value: None,
                 is_construct: false,
                 source_name: None,
+                generator_heap_idx: Some(idx),
             });
 
-            // Execute from the resume PC using the module's execute_from
             let result = interp.execute_from(&module, resume_pc);
 
+            // Pop the call frame we pushed
+            if interp.call_stack.len() > call_frame_len_before {
+                interp.call_stack.pop();
+            }
+
             // Save the current stack state back to generator
-            if let Some(frame) = interp.call_stack.last() {
-                if let crate::vm::interpreter::HeapValue::Generator(gen2) = &mut interp.heap[idx] {
-                    gen2.saved_stack = interp.stack[frame.base_pointer..].to_vec();
-                    gen2.resume_pc = frame.return_address;
+            if let crate::vm::interpreter::HeapValue::Generator(gen2) = &mut interp.heap[idx] {
+                if let Ok(ref _val) = result {
+                    // Generator yielded - save state
+                    if interp.stack.len() > base_pointer {
+                        gen2.saved_stack = interp.stack[base_pointer..].to_vec();
+                    } else {
+                        gen2.saved_stack = Vec::new();
+                    }
+                } else {
+                    // Generator completed or errored
+                    gen2.saved_stack = Vec::new();
+                    gen2.resume_pc = usize::MAX;
                 }
             }
 
-            return result;
+            return match result {
+                Ok(yield_value) => {
+                    // Create {value: yield_value, done: false}
+                    let mut result_obj = std::collections::HashMap::new();
+                    result_obj.insert("value".into(), yield_value);
+                    result_obj.insert("done".into(), Value::Boolean(false));
+                    let obj_idx = interp.gc.allocate(
+                        &mut interp.heap,
+                        crate::vm::interpreter::HeapValue::Object(
+                            crate::vm::interpreter::JsObject {
+                                properties: result_obj,
+                                prototype: None,
+                                extensible: true,
+                            },
+                        ),
+                    );
+                    Ok(Value::Object(obj_idx))
+                }
+                Err(_) => {
+                    // Generator threw or completed
+                    let mut result_obj = std::collections::HashMap::new();
+                    result_obj.insert("value".into(), Value::Undefined);
+                    result_obj.insert("done".into(), Value::Boolean(true));
+                    let obj_idx = interp.gc.allocate(
+                        &mut interp.heap,
+                        crate::vm::interpreter::HeapValue::Object(
+                            crate::vm::interpreter::JsObject {
+                                properties: result_obj,
+                                prototype: None,
+                                extensible: true,
+                            },
+                        ),
+                    );
+                    Ok(Value::Object(obj_idx))
+                }
+            };
         }
 
-        // Return the yield value
-        if let crate::vm::interpreter::HeapValue::Generator(gen) = &interp.heap[idx] {
-            Ok(gen.yield_value.clone())
-        } else {
-            Ok(Value::Undefined)
-        }
+        Ok(gen.yield_value.clone())
     } else {
         Err(Error::TypeError("Not a Generator".into()))
     }
@@ -108,7 +146,6 @@ pub(super) fn native_generator_throw(
     let error = args.first().cloned().unwrap_or(Value::Undefined);
 
     if let crate::vm::interpreter::HeapValue::Generator(_gen) = &mut interp.heap[idx] {
-        // For now, just throw the error
         Err(Error::RuntimeError(format!("Generator throw: {:?}", error)))
     } else {
         Err(Error::TypeError("Not a Generator".into()))

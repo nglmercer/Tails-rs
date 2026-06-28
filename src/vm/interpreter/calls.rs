@@ -34,6 +34,7 @@ impl Interpreter {
                         this_value: Some(this.clone()),
                         is_construct: false,
                         source_name: self.current_module_path.clone(),
+                        generator_heap_idx: None,
                     });
 
                     for closure_var in &f_clone.closure {

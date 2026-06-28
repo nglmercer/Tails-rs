@@ -9,6 +9,7 @@ pub(crate) struct CallFrame {
     pub(crate) this_value: Option<Value>,
     pub(crate) is_construct: bool,
     pub(crate) source_name: Option<String>,
+    pub(crate) generator_heap_idx: Option<usize>,
 }
 
 #[derive(Debug, Clone)]

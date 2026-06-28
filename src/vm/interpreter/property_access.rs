@@ -457,6 +457,12 @@ impl Interpreter {
                     }
                 }
             }
+            Value::Generator(_gen_idx) => {
+                if let Some(proto_idx) = self.generator_proto_idx {
+                    let proto_val = Value::Object(proto_idx);
+                    return self.get_property_with_this(&proto_val, key, this);
+                }
+            }
             _ => {}
         }
         Ok(Value::Undefined)
