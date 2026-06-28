@@ -11,6 +11,7 @@ impl Interpreter {
             (l, Value::String(b)) => {
                 Ok(Value::String(format!("{}{}", self.to_string_coerce(l), b)))
             }
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(Value::BigInt(a + b)),
             _ => {
                 let l = self.to_number(&left)?;
                 let r = self.to_number(&right)?;
@@ -19,7 +20,7 @@ impl Interpreter {
         }
     }
 
-    pub(super) fn to_string_coerce(&self, value: &Value) -> String {
+    pub(crate) fn to_string_coerce(&self, value: &Value) -> String {
         match value {
             Value::Undefined => "undefined".to_string(),
             Value::Null => "null".to_string(),
@@ -43,44 +44,91 @@ impl Interpreter {
     }
 
     pub(super) fn sub(&self, left: Value, right: Value) -> Result<Value> {
-        let l = self.to_number(&left)?;
-        let r = self.to_number(&right)?;
-        Ok(Value::Float(l - r))
+        match (&left, &right) {
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(Value::BigInt(a - b)),
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                Ok(Value::Float(l - r))
+            }
+        }
     }
 
     pub(super) fn mul(&self, left: Value, right: Value) -> Result<Value> {
-        let l = self.to_number(&left)?;
-        let r = self.to_number(&right)?;
-        Ok(Value::Float(l * r))
+        match (&left, &right) {
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(Value::BigInt(a * b)),
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                Ok(Value::Float(l * r))
+            }
+        }
     }
 
     pub(super) fn div(&self, left: Value, right: Value) -> Result<Value> {
-        let l = self.to_number(&left)?;
-        let r = self.to_number(&right)?;
-        if r == 0.0 {
-            return Err(Error::RuntimeError("Division by zero".into()));
+        match (&left, &right) {
+            (Value::BigInt(a), Value::BigInt(b)) => {
+                if *b == 0 {
+                    return Err(Error::RuntimeError("Division by zero".into()));
+                }
+                Ok(Value::BigInt(a / b))
+            }
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                if r == 0.0 {
+                    return Err(Error::RuntimeError("Division by zero".into()));
+                }
+                Ok(Value::Float(l / r))
+            }
         }
-        Ok(Value::Float(l / r))
     }
 
     pub(super) fn modulo(&self, left: Value, right: Value) -> Result<Value> {
-        let l = self.to_number(&left)?;
-        let r = self.to_number(&right)?;
-        if r == 0.0 {
-            return Err(Error::RuntimeError("Division by zero".into()));
+        match (&left, &right) {
+            (Value::BigInt(a), Value::BigInt(b)) => {
+                if *b == 0 {
+                    return Err(Error::RuntimeError("Division by zero".into()));
+                }
+                Ok(Value::BigInt(a % b))
+            }
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                if r == 0.0 {
+                    return Err(Error::RuntimeError("Division by zero".into()));
+                }
+                Ok(Value::Float(l % r))
+            }
         }
-        Ok(Value::Float(l % r))
     }
 
     pub(super) fn power(&self, left: Value, right: Value) -> Result<Value> {
-        let l = self.to_number(&left)?;
-        let r = self.to_number(&right)?;
-        Ok(Value::Float(l.powf(r)))
+        match (&left, &right) {
+            (Value::BigInt(a), Value::BigInt(b)) => {
+                if *b < 0 {
+                    return Err(Error::TypeError(
+                        "BigInt negative exponent not allowed".into(),
+                    ));
+                }
+                Ok(Value::BigInt(a.pow(*b as u32)))
+            }
+            _ => {
+                let l = self.to_number(&left)?;
+                let r = self.to_number(&right)?;
+                Ok(Value::Float(l.powf(r)))
+            }
+        }
     }
 
     pub(super) fn negate(&self, value: Value) -> Result<Value> {
-        let n = self.to_number(&value)?;
-        Ok(Value::Float(-n))
+        match &value {
+            Value::BigInt(n) => Ok(Value::BigInt(-n)),
+            _ => {
+                let n = self.to_number(&value)?;
+                Ok(Value::Float(-n))
+            }
+        }
     }
 
     pub(crate) fn is_truthy(&self, value: &Value) -> bool {
@@ -121,6 +169,7 @@ impl Interpreter {
             (Value::Float(a), Value::Float(b)) => a == b && !a.is_nan() && !b.is_nan(),
             (Value::Integer(a), Value::Float(b)) => *a as f64 == *b && !b.is_nan(),
             (Value::Float(a), Value::Integer(b)) => *a == *b as f64 && !a.is_nan(),
+            (Value::BigInt(a), Value::BigInt(b)) => a == b,
             _ => false,
         }
     }
@@ -128,6 +177,7 @@ impl Interpreter {
     pub(super) fn less_than(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(a < b),
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(a < b),
             _ => {
                 let l = self.to_number(left)?;
                 let r = self.to_number(right)?;
@@ -139,6 +189,7 @@ impl Interpreter {
     pub(super) fn greater_than(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(a > b),
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(a > b),
             _ => {
                 let l = self.to_number(left)?;
                 let r = self.to_number(right)?;
@@ -150,6 +201,7 @@ impl Interpreter {
     pub(super) fn less_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(a <= b),
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(a <= b),
             _ => {
                 let l = self.to_number(left)?;
                 let r = self.to_number(right)?;
@@ -161,6 +213,7 @@ impl Interpreter {
     pub(super) fn greater_than_or_equal(&self, left: &Value, right: &Value) -> Result<bool> {
         match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(a >= b),
+            (Value::BigInt(a), Value::BigInt(b)) => Ok(a >= b),
             _ => {
                 let l = self.to_number(left)?;
                 let r = self.to_number(right)?;
@@ -215,6 +268,8 @@ impl Interpreter {
             Value::Set(_) => "[Set]".to_string(),
             Value::WeakMap(_) => "[WeakMap]".to_string(),
             Value::WeakSet(_) => "[WeakSet]".to_string(),
+            Value::Date(_) => "[Date]".to_string(),
+            Value::RegExp(_) => "[RegExp]".to_string(),
         }
     }
 
@@ -240,6 +295,8 @@ impl Interpreter {
             Value::Set(_) => "[Set]".to_string(),
             Value::WeakMap(_) => "[WeakMap]".to_string(),
             Value::WeakSet(_) => "[WeakSet]".to_string(),
+            Value::Date(_) => "[Date]".to_string(),
+            Value::RegExp(_) => "[RegExp]".to_string(),
         }
     }
 }

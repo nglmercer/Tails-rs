@@ -160,13 +160,18 @@ cargo run --bin tails -- examples/all_features.ts
 - **Type annotations** (TypeScript)
 - **Typed Arrays**: `Int8Array`, `Uint8Array`, `Float32Array`, etc. with full API
 - **ES6+ Collections**: `Map`, `Set`, `WeakMap`, `WeakSet` with full API
-- **Symbol**: `Symbol()`, `Symbol.for()`, `Symbol.keyFor()`, well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, etc.)
+- **Symbol**: `Symbol()`, `Symbol.for()`, `Symbol.keyFor()`, well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, `Symbol.asyncIterator`, etc.)
 - **for...of loop**: Iterator protocol with `Symbol.iterator`, built-in array/string iterators
+- **for await...of**: Async iteration with `Symbol.asyncIterator`, automatic promise resolution
+- **Iterator helpers**: `map()`, `filter()`, `take()`, `drop()`, `forEach()`, `toArray()` with chaining
 - **Function.prototype**: `.bind()`, `.call()`, `.apply()`
 - **Object methods**: `Object.is()`, `Object.freeze()`, `Object.seal()`, `Object.isExtensible()`, `Object.preventExtensions()`, `Object.isFrozen()`, `Object.isSealed()`
 - **Promise enhancements**: `Promise.allSettled()`, `Promise.any()`, `Promise.withResolvers()`
 - **Array enhancements**: `copyWithin()`, `fill()`, `findLast()`, `findLastIndex()`, `flatMap()`, `lastIndexOf()`, `Array.isArray()`, `Array.from()`, `Array.of()`
 - **Reflect API**: `Reflect.get()`, `Reflect.set()`, `Reflect.apply()`, `Reflect.construct()`, `Reflect.isExtensible()`, `Reflect.preventExtensions()`, etc.
+- **BigInt**: Full primitive type with `42n` literals, arithmetic, comparison, `BigInt()` constructor
+- **Date**: `new Date()`, getters/setters, ISO parsing, `Date.now()`, `Date.parse()`, `Date.UTC()`
+- **RegExp**: `new RegExp()`, `test()`, `exec()`, flags (`g`, `i`, `m`, `s`, `u`, `y`), `String.prototype.match/replace/search`
 
 ## Roadmap
 
@@ -176,20 +181,20 @@ cargo run --bin tails -- examples/all_features.ts
 - **Reflect API** — Native implementations for `get`, `set`, `apply`, `construct`, `isExtensible`, `preventExtensions`, etc.
 - **Generators** — Runtime support for `function*`, `yield`, and `.next()`
 - **for...of loop** — Iterator protocol execution with `Symbol.iterator`
-- **Symbol** type and well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, `Symbol.hasInstance`, etc.)
+- **Symbol** type and well-known symbols (`Symbol.iterator`, `Symbol.toStringTag`, `Symbol.hasInstance`, `Symbol.asyncIterator`, etc.)
 - **Function prototypes** — `Function.prototype.bind()`, `.call()`, `.apply()`
 - **Array enhancements** — `copyWithin`, `fill`, `findLast`, `findLastIndex`, `flatMap`, `lastIndexOf`, `Array.isArray()`, `Array.from()`, `Array.of()`
 - **Object methods** — `Object.is()`, `Object.seal()`, `Object.isSealed()`, `Object.freeze()`, `Object.isFrozen()`, `Object.isExtensible()`, `Object.preventExtensions()`
 - **Promise enhancements** — `Promise.any()`, `Promise.allSettled()`, `Promise.withResolvers()`
+- **BigInt** — Full primitive type with literals (`42n`), arithmetic, comparison, `BigInt()` constructor
+- **Date** — Full implementation with `new Date()`, getters/setters, ISO string parsing, `Date.now()`, `Date.parse()`, `Date.UTC()`
+- **RegExp** — Full implementation with `new RegExp()`, `test()`, `exec()`, flags support, `String.prototype.match/replace/search`
+- **Iterator helpers** — `map()`, `filter()`, `take()`, `drop()`, `forEach()`, `toArray()` on array/string iterators, with chaining support
+- **for await...of** — Async iteration with `Symbol.asyncIterator` support, automatic promise resolution
 
 ### 🔮 Future / Research
-- **Iteration & Generators**
-  - Async generators and `for await...of`
-  - Iterator helpers (`map`, `filter`, `take`, `drop` on iterables)
 - **Built-in Objects**
-  - `Date` and `RegExp` (full implementation)
-  - `BigInt` primitive type
-  - `Error` subclasses (`TypeError`, `ReferenceError`, `SyntaxError`, `RangeError`)
+  - `Error` subclasses with real stack traces
 - **Encoding & Intl**
   - `atob()` / `btoa()`
   - Basic Intl APIs (`Intl.DateTimeFormat`, `Intl.NumberFormat`)

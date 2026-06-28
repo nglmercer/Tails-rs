@@ -1,17 +1,21 @@
 mod array_fns;
 mod collection_fns;
 mod console;
+mod date_fns;
 mod error_fns;
 mod function_fns;
 mod generator_fns;
 mod global_fns;
 mod helpers;
+mod iterator_fns;
 mod json_fns;
 mod math_fns;
+mod number_fns;
 mod object_fns;
 mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;
+mod regexp_fns;
 mod string_fns;
 mod symbol_fns;
 mod typed_array_fns;
@@ -203,4 +207,78 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     promise_fns::native_promise_all_settled,
     promise_fns::native_promise_any,
     promise_fns::native_promise_with_resolvers,
+    // BigInt
+    number_fns::native_bigint_constructor,
+    // Date (170-213)
+    date_fns::native_date_constructor,
+    date_fns::native_date_now,
+    date_fns::native_date_parse,
+    date_fns::native_date_utc,
+    date_fns::native_date_get_time,
+    date_fns::native_date_get_full_year,
+    date_fns::native_date_get_month,
+    date_fns::native_date_get_date,
+    date_fns::native_date_get_day,
+    date_fns::native_date_get_hours,
+    date_fns::native_date_get_minutes,
+    date_fns::native_date_get_seconds,
+    date_fns::native_date_get_milliseconds,
+    date_fns::native_date_get_timezone_offset,
+    date_fns::native_date_get_utc_full_year,
+    date_fns::native_date_get_utc_month,
+    date_fns::native_date_get_utc_date,
+    date_fns::native_date_get_utc_day,
+    date_fns::native_date_get_utc_hours,
+    date_fns::native_date_get_utc_minutes,
+    date_fns::native_date_get_utc_seconds,
+    date_fns::native_date_get_utc_milliseconds,
+    date_fns::native_date_set_time,
+    date_fns::native_date_set_full_year,
+    date_fns::native_date_set_month,
+    date_fns::native_date_set_date,
+    date_fns::native_date_set_hours,
+    date_fns::native_date_set_minutes,
+    date_fns::native_date_set_seconds,
+    date_fns::native_date_set_milliseconds,
+    date_fns::native_date_set_utc_full_year,
+    date_fns::native_date_set_utc_month,
+    date_fns::native_date_set_utc_date,
+    date_fns::native_date_set_utc_hours,
+    date_fns::native_date_set_utc_minutes,
+    date_fns::native_date_set_utc_seconds,
+    date_fns::native_date_set_utc_milliseconds,
+    date_fns::native_date_to_string,
+    date_fns::native_date_to_iso_string,
+    date_fns::native_date_to_utc_string,
+    date_fns::native_date_to_date_string,
+    date_fns::native_date_to_time_string,
+    date_fns::native_date_to_json,
+    date_fns::native_date_value_of,
+    // RegExp (214-227)
+    regexp_fns::native_regexp_constructor,
+    regexp_fns::native_regexp_test,
+    regexp_fns::native_regexp_exec,
+    regexp_fns::native_regexp_to_string,
+    regexp_fns::native_regexp_source,
+    regexp_fns::native_regexp_flags,
+    regexp_fns::native_regexp_global,
+    regexp_fns::native_regexp_ignore_case,
+    regexp_fns::native_regexp_multiline,
+    regexp_fns::native_regexp_dot_all,
+    regexp_fns::native_regexp_unicode,
+    regexp_fns::native_regexp_sticky,
+    regexp_fns::native_regexp_last_index,
+    // RegExp-aware String methods (228-230)
+    regexp_fns::native_string_match,
+    regexp_fns::native_string_replace,
+    regexp_fns::native_string_search,
+    // Iterator helpers (230-235)
+    iterator_fns::native_iterator_map,
+    iterator_fns::native_iterator_filter,
+    iterator_fns::native_iterator_take,
+    iterator_fns::native_iterator_drop,
+    iterator_fns::native_iterator_for_each,
+    iterator_fns::native_iterator_to_array,
+    // Array[Symbol.iterator] (236)
+    iterator_fns::native_array_iterator,
 ];

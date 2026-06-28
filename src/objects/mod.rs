@@ -1,5 +1,6 @@
 pub mod js_array;
 pub mod js_collections;
+pub mod js_date;
 pub mod js_promise;
 pub mod js_proxy;
 use std::fmt;
@@ -11,6 +12,7 @@ pub const SYMBOL_HAS_INSTANCE: u64 = 3;
 pub const SYMBOL_TO_PRIMITIVE: u64 = 4;
 pub const SYMBOL_SPECIES: u64 = 5;
 pub const SYMBOL_UNSCOPABLES: u64 = 6;
+pub const SYMBOL_ASYNC_ITERATOR: u64 = 7;
 /// Starting ID for user-created symbols
 pub const USER_SYMBOL_START: u64 = 1000;
 
@@ -36,6 +38,8 @@ pub enum Value {
     Set(usize),
     WeakMap(usize),
     WeakSet(usize),
+    Date(usize),
+    RegExp(usize),
 }
 
 impl PartialEq for Value {
@@ -63,6 +67,8 @@ impl PartialEq for Value {
             (Value::Set(a), Value::Set(b)) => a == b,
             (Value::WeakMap(a), Value::WeakMap(b)) => a == b,
             (Value::WeakSet(a), Value::WeakSet(b)) => a == b,
+            (Value::Date(a), Value::Date(b)) => a == b,
+            (Value::RegExp(a), Value::RegExp(b)) => a == b,
             _ => false,
         }
     }
@@ -91,6 +97,8 @@ impl fmt::Display for Value {
             Value::Set(_) => write!(f, "[Set]"),
             Value::WeakMap(_) => write!(f, "[WeakMap]"),
             Value::WeakSet(_) => write!(f, "[WeakSet]"),
+            Value::Date(_) => write!(f, "[Date]"),
+            Value::RegExp(_) => write!(f, "[RegExp]"),
         }
     }
 }

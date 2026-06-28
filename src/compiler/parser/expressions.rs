@@ -551,6 +551,11 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(Expression::NumberLiteral(n))
             }
+            Token::BigInt(ref s) => {
+                let s = s.clone();
+                self.advance();
+                Ok(Expression::BigIntLiteral(s))
+            }
             Token::String(s) => {
                 self.advance();
                 Ok(Expression::StringLiteral(s))

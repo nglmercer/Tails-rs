@@ -174,6 +174,8 @@ pub enum Instruction {
     LoadGlobalOrUndefined(String),
     TypeOfGlobal(String),
     GetIterator,
+    GetAsyncIterator,
     IteratorNext(u32),
+    AsyncIteratorNext(u32),
     IteratorClose,
 }

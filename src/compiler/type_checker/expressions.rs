@@ -5,6 +5,7 @@ impl TypeChecker {
     pub(crate) fn check_expression(&mut self, expr: &Expression) -> Result<Type> {
         match expr {
             Expression::NumberLiteral(n) => Ok(Type::NumberLiteral(*n)),
+            Expression::BigIntLiteral(_) => Ok(Type::Any),
             Expression::StringLiteral(s) => Ok(Type::StringLiteral(s.clone())),
             Expression::BooleanLiteral(b) => Ok(Type::BooleanLiteral(*b)),
             Expression::NullLiteral => Ok(Type::Null),

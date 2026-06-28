@@ -1029,6 +1029,7 @@ dependencies = [
  "log",
  "notify",
  "object_store",
+ "regex",
  "rustc-hash",
  "serde",
  "serde_json",

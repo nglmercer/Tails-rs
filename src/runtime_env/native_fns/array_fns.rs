@@ -579,10 +579,9 @@ pub(super) fn native_array_last_index_of(
         from_index.min(len - 1)
     };
     for i in (0..=start).rev() {
-        if i >= 0 && (i as usize) < elements.len()
-            && elements[i as usize] == search {
-                return Ok(Value::Integer(i));
-            }
+        if i >= 0 && (i as usize) < elements.len() && elements[i as usize] == search {
+            return Ok(Value::Integer(i));
+        }
     }
     Ok(Value::Float(-1.0))
 }

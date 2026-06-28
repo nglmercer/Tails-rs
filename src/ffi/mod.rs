@@ -511,6 +511,7 @@ pub fn value_to_tails_value(value: Value) -> TailsValue {
             tag: TailsValueType::Object as u32,
             data: 0,
         },
+        Value::Date(_) | Value::RegExp(_) => TailsValue { tag: 0, data: 0 },
     }
 }
 

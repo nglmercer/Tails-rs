@@ -156,6 +156,10 @@ impl Interpreter {
                             let idx = *f as usize;
                             return Ok(arr.elements.get(idx).cloned().unwrap_or(Value::Undefined));
                         }
+                        Value::Symbol(sym_id) if *sym_id == crate::objects::SYMBOL_ITERATOR => {
+                            // Return a function that creates an array iterator
+                            return Ok(Value::NativeFunction(236)); // array_iterator_fn
+                        }
                         _ => {}
                     }
                 }
@@ -262,6 +266,18 @@ impl Interpreter {
                             "unscopables" => {
                                 return Ok(Value::Symbol(crate::objects::SYMBOL_UNSCOPABLES))
                             }
+                            "asyncIterator" => {
+                                return Ok(Value::Symbol(crate::objects::SYMBOL_ASYNC_ITERATOR))
+                            }
+                            _ => {}
+                        }
+                    }
+                    // Date static methods
+                    if *idx == 170 {
+                        match key_str.as_str() {
+                            "now" => return Ok(Value::NativeFunction(171)),
+                            "parse" => return Ok(Value::NativeFunction(172)),
+                            "UTC" => return Ok(Value::NativeFunction(173)),
                             _ => {}
                         }
                     }
@@ -287,6 +303,26 @@ impl Interpreter {
                         _ => {
                             return self.get_property_with_this(&target, key, this);
                         }
+                    }
+                }
+            }
+            Value::Date(_date_idx) => {
+                if let Value::String(_key_str) = key {
+                    // Look up method on Date prototype
+                    let proto_idx = self.date_proto_idx;
+                    if let Some(proto_idx) = proto_idx {
+                        let proto_val = Value::Object(proto_idx);
+                        return self.get_property_with_this(&proto_val, key, this);
+                    }
+                }
+            }
+            Value::RegExp(_re_idx) => {
+                if let Value::String(_key_str) = key {
+                    // Look up method on RegExp prototype
+                    let proto_idx = self.regexp_proto_idx;
+                    if let Some(proto_idx) = proto_idx {
+                        let proto_val = Value::Object(proto_idx);
+                        return self.get_property_with_this(&proto_val, key, this);
                     }
                 }
             }

@@ -291,6 +291,7 @@ pub struct VariableDeclarator {
 #[derive(Debug, Clone)]
 pub enum Expression {
     NumberLiteral(f64),
+    BigIntLiteral(String),
     StringLiteral(String),
     BooleanLiteral(bool),
     NullLiteral,

@@ -242,6 +242,8 @@ impl GarbageCollector {
                     HeapValue::Set(_) => {}
                     HeapValue::WeakMap(_) => {}
                     HeapValue::WeakSet(_) => {}
+                    HeapValue::Date(_) => {}
+                    HeapValue::RegExp(_) => {}
                 }
             }
         }
@@ -263,8 +265,13 @@ impl GarbageCollector {
             | Value::Set(idx)
             | Value::WeakMap(idx)
             | Value::WeakSet(idx)
+            | Value::Date(idx)
+            | Value::RegExp(idx)
                 if *idx < self.marked.len() =>
             {
+                self.marked[*idx] = true;
+            }
+            Value::Generator(idx) if *idx < self.marked.len() => {
                 self.marked[*idx] = true;
             }
             _ => {}

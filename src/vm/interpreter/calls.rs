@@ -107,6 +107,8 @@ impl Interpreter {
             74 => "ReferenceError",
             75 => "SyntaxError",
             76 => "RangeError",
+            170 => return self.date_proto_idx,
+            214 => return self.regexp_proto_idx,
             _ => return None,
         };
         for (i, hv) in self.heap.iter().enumerate() {

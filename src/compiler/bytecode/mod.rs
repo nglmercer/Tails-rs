@@ -331,7 +331,7 @@ impl CodeGenerator {
                 left,
                 right,
                 body,
-                is_async: _,
+                is_async,
             } => {
                 self.scope_depth += 1;
                 let prev_locals_count = self.locals.len();
@@ -347,7 +347,11 @@ impl CodeGenerator {
 
                 // Evaluate the iterable and get an iterator
                 self.generate_expression(right)?;
-                self.instructions.push(Instruction::GetIterator);
+                if *is_async {
+                    self.instructions.push(Instruction::GetAsyncIterator);
+                } else {
+                    self.instructions.push(Instruction::GetIterator);
+                }
 
                 // Store iterator in a local
                 let iter_slot = self.locals.len() as u16;
@@ -360,7 +364,11 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::LoadLocal(iter_slot));
                 // IteratorNext: calls next(), if done jumps to target, else pushes value
                 let iter_next_pos = self.instructions.len();
-                self.instructions.push(Instruction::IteratorNext(0)); // placeholder
+                if *is_async {
+                    self.instructions.push(Instruction::AsyncIteratorNext(0)); // placeholder
+                } else {
+                    self.instructions.push(Instruction::IteratorNext(0)); // placeholder
+                }
 
                 // Store the yielded value into the loop variable
                 self.instructions.push(Instruction::StoreLocal(var_slot));
@@ -373,9 +381,16 @@ impl CodeGenerator {
 
                 // Patch IteratorNext jump target (when done)
                 let loop_end = self.instructions.len() as u32;
-                if let Instruction::IteratorNext(ref mut target) = self.instructions[iter_next_pos]
-                {
-                    *target = loop_end;
+                if *is_async {
+                    if let Instruction::AsyncIteratorNext(ref mut target) = self.instructions[iter_next_pos]
+                    {
+                        *target = loop_end;
+                    }
+                } else {
+                    if let Instruction::IteratorNext(ref mut target) = self.instructions[iter_next_pos]
+                    {
+                        *target = loop_end;
+                    }
                 }
 
                 self.locals.pop(); // __iter

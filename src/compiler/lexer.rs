@@ -247,7 +247,13 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>> {
                         break;
                     }
                 }
-                tokens.push(Token::Number(num.parse().unwrap_or(0.0)));
+                // Check for BigInt suffix 'n'
+                if let Some(&(_, 'n')) = chars.peek() {
+                    chars.next();
+                    tokens.push(Token::BigInt(num));
+                } else {
+                    tokens.push(Token::Number(num.parse().unwrap_or(0.0)));
+                }
             }
             'a'..='z' | 'A'..='Z' | '_' | '$' => {
                 let mut ident = String::new();

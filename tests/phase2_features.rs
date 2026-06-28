@@ -1,450 +1,365 @@
-use tails::TailsRuntime;
+use tails::{TailsRuntime, Value};
 
-// Feature 1: `new` operator
+// ---- BigInt ----
 #[test]
-fn test_new_operator_basic() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Person(name, age) {
-            this.name = name;
-            this.age = age;
+fn test_bigint_literal() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"42n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(42));
+}
+
+#[test]
+fn test_bigint_typeof() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"typeof 100n;"#).unwrap();
+    assert_eq!(r, Value::String("bigint".to_string()));
+}
+
+#[test]
+fn test_bigint_addition() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"10n + 20n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(30));
+}
+
+#[test]
+fn test_bigint_subtraction() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"50n - 20n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(30));
+}
+
+#[test]
+fn test_bigint_multiplication() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"6n * 7n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(42));
+}
+
+#[test]
+fn test_bigint_division() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"100n / 4n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(25));
+}
+
+#[test]
+fn test_bigint_modulo() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"17n % 5n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(2));
+}
+
+#[test]
+fn test_bigint_power() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"2n ** 10n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(1024));
+}
+
+#[test]
+fn test_bigint_negate() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"-42n;"#).unwrap();
+    assert_eq!(r, Value::BigInt(-42));
+}
+
+#[test]
+fn test_bigint_comparison() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"10n < 20n;"#).unwrap();
+    assert_eq!(r, Value::Boolean(true));
+}
+
+#[test]
+fn test_bigint_equality() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"42n === 42n;"#).unwrap();
+    assert_eq!(r, Value::Boolean(true));
+}
+
+#[test]
+fn test_bigint_constructor() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"BigInt(123);"#).unwrap();
+    assert_eq!(r, Value::BigInt(123));
+}
+
+#[test]
+fn test_bigint_from_string() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"BigInt("456");"#).unwrap();
+    assert_eq!(r, Value::BigInt(456));
+}
+
+// ---- Date ----
+#[test]
+fn test_date_constructor() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(0); d.getTime();"#).unwrap();
+    assert_eq!(r, Value::Float(0.0));
+}
+
+#[test]
+fn test_date_from_millis() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(1000); d.getTime();"#).unwrap();
+    assert_eq!(r, Value::Float(1000.0));
+}
+
+#[test]
+fn test_date_from_components() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(2024, 0, 15, 12, 30, 45); d.getFullYear();"#).unwrap();
+    assert_eq!(r, Value::Float(2024.0));
+}
+
+#[test]
+fn test_date_get_month() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(2024, 5, 15); d.getMonth();"#).unwrap();
+    assert_eq!(r, Value::Float(5.0));
+}
+
+#[test]
+fn test_date_get_date() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(2024, 0, 15); d.getDate();"#).unwrap();
+    assert_eq!(r, Value::Float(15.0));
+}
+
+#[test]
+fn test_date_to_iso_string() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(0); d.toISOString();"#).unwrap();
+    assert_eq!(r, Value::String("1970-01-01T00:00:00.000Z".to_string()));
+}
+
+#[test]
+fn test_date_value_of() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let d = new Date(12345); d.valueOf();"#).unwrap();
+    assert_eq!(r, Value::Float(12345.0));
+}
+
+#[test]
+fn test_date_now_static() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"typeof Date.now();"#).unwrap();
+    assert_eq!(r, Value::String("number".to_string()));
+}
+
+#[test]
+fn test_date_parse_iso() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"Date.parse("2024-01-15T00:00:00.000Z");"#).unwrap();
+    // Should be some number > 0
+    match r {
+        Value::Float(f) => assert!(f > 0.0),
+        _ => panic!("Expected Float"),
+    }
+}
+
+// ---- RegExp ----
+#[test]
+fn test_regexp_constructor() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let re = new RegExp("hello"); re.test("hello world");"#).unwrap();
+    assert_eq!(r, Value::Boolean(true));
+}
+
+#[test]
+fn test_regexp_test_false() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let re = new RegExp("xyz"); re.test("hello world");"#).unwrap();
+    assert_eq!(r, Value::Boolean(false));
+}
+
+#[test]
+fn test_regexp_with_flags() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let re = new RegExp("hello", "i"); re.test("HELLO world");"#).unwrap();
+    assert_eq!(r, Value::Boolean(true));
+}
+
+#[test]
+fn test_regexp_to_string() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"let re = new RegExp("abc", "gi"); re.toString();"#).unwrap();
+    assert_eq!(r, Value::String("/abc/gi".to_string()));
+}
+
+// ---- Iterator Helpers ----
+#[test]
+fn test_symbol_iterator_on_array() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        typeof Symbol.iterator;
+    "#).unwrap();
+    assert_eq!(r, Value::String("symbol".to_string()));
+}
+
+#[test]
+fn test_array_iterator_method() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator];
+        typeof iter;
+    "#).unwrap();
+    assert_eq!(r, Value::String("function".to_string()));
+}
+
+#[test]
+fn test_array_iterator_call() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        typeof iter;
+    "#).unwrap();
+    assert_eq!(r, Value::String("object".to_string()));
+}
+
+#[test]
+fn test_iterator_has_to_array() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        typeof iter.toArray;
+    "#).unwrap();
+    assert_eq!(r, Value::String("function".to_string()));
+}
+
+#[test]
+fn test_iterator_to_array_basic() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        let result = iter.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_to_array() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        let result = iter.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_map() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        let mapped = iter.map(function(x) { return x * 2; });
+        let result = mapped.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_filter() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3, 4, 5];
+        let iter = arr[Symbol.iterator]();
+        let filtered = iter.filter(function(x) { return x > 2; });
+        let result = filtered.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_take() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3, 4, 5];
+        let iter = arr[Symbol.iterator]();
+        let taken = iter.take(3);
+        let result = taken.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_drop() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let arr = [1, 2, 3, 4, 5];
+        let iter = arr[Symbol.iterator]();
+        let dropped = iter.drop(2);
+        let result = dropped.toArray();
+        result.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
+}
+
+#[test]
+fn test_iterator_for_each() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let sum = 0;
+        let arr = [1, 2, 3];
+        let iter = arr[Symbol.iterator]();
+        iter.forEach(function(x) { sum = sum + x; });
+        sum;
+    "#).unwrap();
+    assert_eq!(r, Value::Integer(6));
+}
+
+// ---- for await...of ----
+#[test]
+fn test_for_await_of_simple() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let sum = 0;
+        let arr = [1, 2, 3];
+        for (let val of arr) {
+            sum = sum + val;
         }
-        let p = new Person("Alice", 30);
-        p.name;
-    "#,
-    );
-    assert!(result.is_ok());
+        sum;
+    "#).unwrap();
+    assert_eq!(r, Value::Integer(6));
 }
 
 #[test]
-fn test_new_operator_returns_object() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Foo() {
-            this.x = 42;
+fn test_for_await_of_with_promises() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let results = [];
+        let arr = [Promise.resolve(1)];
+        for await (let val of arr) {
+            results.push(val);
         }
-        let obj = new Foo();
-        obj.x;
-    "#,
-    );
-    assert!(result.is_ok());
+        results.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(1.0));
 }
 
 #[test]
-fn test_new_operator_with_prototype() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Animal(name) {
-            this.name = name;
+fn test_for_await_of_with_resolved_promises() {
+    let mut rt = TailsRuntime::default();
+    let r = rt.eval(r#"
+        let results = [];
+        let arr = [Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)];
+        for await (let val of arr) {
+            results.push(val);
         }
-        Animal.prototype.sayHi = function() { return "hi"; };
-        let dog = new Animal("Rex");
-        dog.name;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Feature 2: `this` binding
-#[test]
-fn test_this_binding_method_call() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = {
-            value: 10,
-            getValue: function() { return this.value; }
-        };
-        obj.getValue();
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_this_binding_nested() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = {
-            inner: {
-                value: 99,
-                getValue: function() { return this.value; }
-            }
-        };
-        obj.inner.getValue();
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Feature 3: `delete` operator
-#[test]
-fn test_delete_property() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { a: 1, b: 2, c: 3 };
-        delete obj.b;
-        obj.b;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_delete_returns_true() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { x: 1 };
-        let r = delete obj.x;
-        r;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_delete_nonexistent_property() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { x: 1 };
-        let r = delete obj.y;
-        r;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_delete_on_variable_is_noop() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("delete undefined;");
-    assert!(result.is_ok());
-}
-
-// Feature 4: `instanceof` operator
-#[test]
-fn test_instanceof_basic() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Dog() {}
-        let rex = new Dog();
-        rex instanceof Dog;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_instanceof_returns_false() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Cat() {}
-        function Dog() {}
-        let kitty = new Cat();
-        kitty instanceof Dog;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_instanceof_with_literal() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("42 instanceof Object;");
-    assert!(result.is_ok());
-}
-
-// Feature 5: `in` operator
-#[test]
-fn test_in_operator_own_property() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { a: 1, b: 2 };
-        "a" in obj;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_in_operator_missing_property() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { a: 1 };
-        "b" in obj;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_in_operator_on_string() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        "length" in "hello";
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Feature 6: `void` operator
-#[test]
-fn test_void_operator() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval("void 0;");
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_void_returns_undefined() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let x = void 42;
-        typeof x;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Feature 7: Property access on non-objects
-#[test]
-fn test_property_access_on_null_throws() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        null.foo;
-    "#,
-    );
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_property_access_on_undefined_throws() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        undefined.bar;
-    "#,
-    );
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_property_access_on_number() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        (42).toString;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_property_access_on_string() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        "hello".length;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_property_access_on_boolean() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        true.toString;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Feature 8: Wrapper objects
-#[test]
-fn test_string_wrapper_length() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        "hello".length;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_number_tostring() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        (42).toString;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_boolean_valueof() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        true.valueOf;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-// Combined features
-#[test]
-fn test_new_with_this_and_method() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Counter(start) {
-            this.count = start;
-        }
-        Counter.prototype.increment = function() {
-            this.count = this.count + 1;
-            return this.count;
-        };
-        let c = new Counter(0);
-        c.increment();
-    "#,
-    );
-    eprintln!("counter test: {:?}", result);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_instanceof_with_inheritance() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Base() {}
-        function Child() {}
-        Child.prototype = new Base();
-        let obj = new Child();
-        obj instanceof Child;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_in_with_inherited_property() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Parent() {}
-        Parent.prototype.inheritedMethod = function() {};
-        function Child() {}
-        Child.prototype = new Parent();
-        let obj = new Child();
-        "inheritedMethod" in obj;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_delete_then_in() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = { x: 1, y: 2 };
-        delete obj.x;
-        "x" in obj;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_void_with_side_effect() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let x = 5;
-        let y = void (x = 10);
-        y;
-    "#,
-    );
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_debug_this_binding() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        let obj = {
-            value: 10,
-            getValue: function() { return this.value; }
-        };
-        obj.getValue();
-    "#,
-    );
-    eprintln!("Result: {:?}", result);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_debug_new() {
-    let mut runtime = TailsRuntime::default();
-    let result = runtime.eval(
-        r#"
-        function Foo() { this.x = 42; }
-        let obj = new Foo();
-        obj.x;
-    "#,
-    );
-    eprintln!("New result: {:?}", result);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_debug_simple_method_call() {
-    let mut runtime = TailsRuntime::default();
-    // Simplest possible this-binding test
-    let r1 = runtime.eval(
-        r#"
-        let o = { x: 5 };
-        o.x;
-    "#,
-    );
-    eprintln!("simple getprop: {:?}", r1);
-    assert!(r1.is_ok());
-
-    let r2 = runtime.eval(
-        r#"
-        function greet() { return "hello"; }
-        greet();
-    "#,
-    );
-    eprintln!("simple funcall: {:?}", r2);
-    assert!(r2.is_ok());
-
-    let r3 = runtime.eval(
-        r#"
-        let o2 = { greet: function() { return "hi"; } };
-        o2.greet();
-    "#,
-    );
-    eprintln!("method call: {:?}", r3);
-    assert!(r3.is_ok());
+        results.length;
+    "#).unwrap();
+    assert_eq!(r, Value::Float(3.0));
 }

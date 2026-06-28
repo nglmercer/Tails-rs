@@ -9,6 +9,12 @@ impl CodeGenerator {
                 self.instructions.push(Instruction::LoadConst(idx));
                 Ok(())
             }
+            Expression::BigIntLiteral(s) => {
+                let val: i128 = s.parse().unwrap_or(0);
+                let idx = self.add_constant(Value::BigInt(val));
+                self.instructions.push(Instruction::LoadConst(idx));
+                Ok(())
+            }
             Expression::StringLiteral(s) => {
                 let idx = self.add_constant(Value::String(s.clone()));
                 self.instructions.push(Instruction::LoadConst(idx));

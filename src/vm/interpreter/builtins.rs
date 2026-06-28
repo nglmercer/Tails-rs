@@ -136,6 +136,92 @@ impl Interpreter {
         self.globals
             .insert("Array".into(), Value::Object(array_obj_idx));
 
+        // BigInt
+        self.globals
+            .insert("BigInt".into(), Value::NativeFunction(169));
+
+        // Date
+        let mut date_proto_props = HashMap::new();
+        date_proto_props.insert("getTime".into(), Value::NativeFunction(174));
+        date_proto_props.insert("getFullYear".into(), Value::NativeFunction(175));
+        date_proto_props.insert("getMonth".into(), Value::NativeFunction(176));
+        date_proto_props.insert("getDate".into(), Value::NativeFunction(177));
+        date_proto_props.insert("getDay".into(), Value::NativeFunction(178));
+        date_proto_props.insert("getHours".into(), Value::NativeFunction(179));
+        date_proto_props.insert("getMinutes".into(), Value::NativeFunction(180));
+        date_proto_props.insert("getSeconds".into(), Value::NativeFunction(181));
+        date_proto_props.insert("getMilliseconds".into(), Value::NativeFunction(182));
+        date_proto_props.insert("getTimezoneOffset".into(), Value::NativeFunction(183));
+        date_proto_props.insert("getUTCFullYear".into(), Value::NativeFunction(184));
+        date_proto_props.insert("getUTCMonth".into(), Value::NativeFunction(185));
+        date_proto_props.insert("getUTCDate".into(), Value::NativeFunction(186));
+        date_proto_props.insert("getUTCDay".into(), Value::NativeFunction(187));
+        date_proto_props.insert("getUTCHours".into(), Value::NativeFunction(188));
+        date_proto_props.insert("getUTCMinutes".into(), Value::NativeFunction(189));
+        date_proto_props.insert("getUTCSeconds".into(), Value::NativeFunction(190));
+        date_proto_props.insert("getUTCMilliseconds".into(), Value::NativeFunction(191));
+        date_proto_props.insert("setTime".into(), Value::NativeFunction(192));
+        date_proto_props.insert("setFullYear".into(), Value::NativeFunction(193));
+        date_proto_props.insert("setMonth".into(), Value::NativeFunction(194));
+        date_proto_props.insert("setDate".into(), Value::NativeFunction(195));
+        date_proto_props.insert("setHours".into(), Value::NativeFunction(196));
+        date_proto_props.insert("setMinutes".into(), Value::NativeFunction(197));
+        date_proto_props.insert("setSeconds".into(), Value::NativeFunction(198));
+        date_proto_props.insert("setMilliseconds".into(), Value::NativeFunction(199));
+        date_proto_props.insert("setUTCFullYear".into(), Value::NativeFunction(200));
+        date_proto_props.insert("setUTCMonth".into(), Value::NativeFunction(201));
+        date_proto_props.insert("setUTCDate".into(), Value::NativeFunction(202));
+        date_proto_props.insert("setUTCHours".into(), Value::NativeFunction(203));
+        date_proto_props.insert("setUTCMinutes".into(), Value::NativeFunction(204));
+        date_proto_props.insert("setUTCSeconds".into(), Value::NativeFunction(205));
+        date_proto_props.insert("setUTCMilliseconds".into(), Value::NativeFunction(206));
+        date_proto_props.insert("toString".into(), Value::NativeFunction(207));
+        date_proto_props.insert("toISOString".into(), Value::NativeFunction(208));
+        date_proto_props.insert("toUTCString".into(), Value::NativeFunction(209));
+        date_proto_props.insert("toDateString".into(), Value::NativeFunction(210));
+        date_proto_props.insert("toTimeString".into(), Value::NativeFunction(211));
+        date_proto_props.insert("toJSON".into(), Value::NativeFunction(212));
+        date_proto_props.insert("valueOf".into(), Value::NativeFunction(213));
+        let date_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: date_proto_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+        // Register Date as a NativeFunction for constructor
+        self.globals.insert("Date".into(), Value::NativeFunction(170));
+        // Store the prototype index for Date constructor
+        self.date_proto_idx = Some(date_proto_idx);
+
+        // RegExp
+        let mut regexp_proto_props = HashMap::new();
+        regexp_proto_props.insert("test".into(), Value::NativeFunction(215));
+        regexp_proto_props.insert("exec".into(), Value::NativeFunction(216));
+        regexp_proto_props.insert("toString".into(), Value::NativeFunction(217));
+        regexp_proto_props.insert("source".into(), Value::NativeFunction(218));
+        regexp_proto_props.insert("flags".into(), Value::NativeFunction(219));
+        regexp_proto_props.insert("global".into(), Value::NativeFunction(220));
+        regexp_proto_props.insert("ignoreCase".into(), Value::NativeFunction(221));
+        regexp_proto_props.insert("multiline".into(), Value::NativeFunction(222));
+        regexp_proto_props.insert("dotAll".into(), Value::NativeFunction(223));
+        regexp_proto_props.insert("unicode".into(), Value::NativeFunction(224));
+        regexp_proto_props.insert("sticky".into(), Value::NativeFunction(225));
+        regexp_proto_props.insert("lastIndex".into(), Value::NativeFunction(226));
+        let regexp_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: regexp_proto_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+        // Register RegExp as a NativeFunction for constructor
+        self.globals.insert("RegExp".into(), Value::NativeFunction(214));
+        // Store the prototype index for RegExp constructor
+        self.regexp_proto_idx = Some(regexp_proto_idx);
+
         // Math
         let mut math_props = HashMap::new();
         math_props.insert("PI".into(), Value::Float(std::f64::consts::PI));
