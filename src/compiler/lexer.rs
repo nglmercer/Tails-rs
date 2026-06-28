@@ -1,4 +1,10 @@
-use crate::errors::{Error, Result};
+use crate::errors::{Error, Result, Span};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpannedToken {
+    pub token: Token,
+    pub span: Span,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {

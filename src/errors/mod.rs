@@ -1,24 +1,147 @@
-use thiserror::Error;
+use std::fmt;
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("Parse error: {0}")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Span {
+    pub line: usize,
+    pub col: usize,
+    pub offset: usize,
+}
+
+impl Span {
+    pub fn new(line: usize, col: usize, offset: usize) -> Self {
+        Self { line, col, offset }
+    }
+
+    pub fn unknown() -> Self {
+        Self { line: 0, col: 0, offset: 0 }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Error {
+    pub kind: ErrorKind,
+    pub span: Option<Span>,
+    pub file: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ErrorKind {
     ParseError(String),
-
-    #[error("Type error: {0}")]
     TypeError(String),
-
-    #[error("Reference error: {0}")]
     ReferenceError(String),
-
-    #[error("Syntax error: {0}")]
     SyntaxError(String),
-
-    #[error("Runtime error: {0}")]
     RuntimeError(String),
-
-    #[error("Internal error: {0}")]
     InternalError(String),
 }
 
+// Backward-compatible enum-style constructors
+#[allow(non_snake_case)]
+impl Error {
+    pub fn ParseError(msg: String) -> Self {
+        Self { kind: ErrorKind::ParseError(msg), span: None, file: None }
+    }
+    pub fn TypeError(msg: String) -> Self {
+        Self { kind: ErrorKind::TypeError(msg), span: None, file: None }
+    }
+    pub fn ReferenceError(msg: String) -> Self {
+        Self { kind: ErrorKind::ReferenceError(msg), span: None, file: None }
+    }
+    pub fn SyntaxError(msg: String) -> Self {
+        Self { kind: ErrorKind::SyntaxError(msg), span: None, file: None }
+    }
+    pub fn RuntimeError(msg: String) -> Self {
+        Self { kind: ErrorKind::RuntimeError(msg), span: None, file: None }
+    }
+    pub fn InternalError(msg: String) -> Self {
+        Self { kind: ErrorKind::InternalError(msg), span: None, file: None }
+    }
+
+    pub fn with_span(mut self, span: Span) -> Self {
+        self.span = Some(span);
+        self
+    }
+
+    pub fn with_file(mut self, file: impl Into<String>) -> Self {
+        self.file = Some(file.into());
+        self
+    }
+
+    pub fn kind_name(&self) -> &str {
+        match &self.kind {
+            ErrorKind::ParseError(_) => "ParseError",
+            ErrorKind::TypeError(_) => "TypeError",
+            ErrorKind::ReferenceError(_) => "ReferenceError",
+            ErrorKind::SyntaxError(_) => "SyntaxError",
+            ErrorKind::RuntimeError(_) => "RuntimeError",
+            ErrorKind::InternalError(_) => "InternalError",
+        }
+    }
+
+    pub fn message(&self) -> &str {
+        match &self.kind {
+            ErrorKind::ParseError(m) => m,
+            ErrorKind::TypeError(m) => m,
+            ErrorKind::ReferenceError(m) => m,
+            ErrorKind::SyntaxError(m) => m,
+            ErrorKind::RuntimeError(m) => m,
+            ErrorKind::InternalError(m) => m,
+        }
+    }
+
+    pub fn display(&self, source: Option<&str>) -> String {
+        let mut out = String::new();
+        let kind_name = self.kind_name();
+        let msg = self.message();
+
+        out.push_str(&format!("\x1B[31m{}: {}\x1B[0m\n", kind_name, msg));
+
+        let file_str = self.file.as_deref().unwrap_or("<input>");
+        if let Some(span) = &self.span {
+            if span.line > 0 {
+                out.push_str(&format!("  --> {}:{}:{}\n", file_str, span.line, span.col));
+
+                if let Some(source) = source {
+                    let lines: Vec<&str> = source.lines().collect();
+                    if span.line > 0 && span.line <= lines.len() {
+                        let line_idx = span.line - 1;
+                        let line_content = lines[line_idx];
+                        let line_num_str = format!("{}", span.line);
+                        let padding = " ".repeat(line_num_str.len());
+                        out.push_str(&format!("   {} |\n", padding));
+                        out.push_str(&format!("{} | {}\n", line_num_str, line_content));
+                        let col_marker = " ".repeat((span.col.saturating_sub(1)).min(line_content.len()));
+                        out.push_str(&format!("   {} | {}^\n", padding, col_marker));
+                    }
+                }
+            }
+        }
+
+        out
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.kind_name(), self.message())
+    }
+}
+
+impl std::error::Error for Error {}
+
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub fn parse_error(msg: impl Into<String>) -> Error {
+    Error::ParseError(msg.into())
+}
+
+pub fn type_error(msg: impl Into<String>) -> Error {
+    Error::TypeError(msg.into())
+}
+
+pub fn reference_error(msg: impl Into<String>) -> Error {
+    Error::ReferenceError(msg.into())
+}
+
+pub fn runtime_error(msg: impl Into<String>) -> Error {
+    Error::RuntimeError(msg.into())
+}

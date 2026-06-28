@@ -297,8 +297,9 @@ fn test_error_handling() {
     let result = runtime.eval("undefinedVariable");
     assert!(result.is_err());
     match result {
-        Err(tails::Error::ReferenceError(msg)) => {
-            assert!(msg.contains("undefinedVariable"));
+        Err(e) => {
+            assert!(e.kind_name() == "ReferenceError");
+            assert!(e.message().contains("undefinedVariable"));
         }
         _ => panic!("Expected ReferenceError"),
     }
@@ -310,8 +311,9 @@ fn test_division_by_zero() {
     let result = runtime.eval("10 / 0");
     assert!(result.is_err());
     match result {
-        Err(tails::Error::RuntimeError(msg)) => {
-            assert!(msg.contains("Division by zero"));
+        Err(e) => {
+            assert!(e.kind_name() == "RuntimeError");
+            assert!(e.message().contains("Division by zero"));
         }
         _ => panic!("Expected RuntimeError for division by zero"),
     }

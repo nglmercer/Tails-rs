@@ -39,7 +39,20 @@ impl TailsRuntime {
             compiler.set_known_globals(globals);
         }
         let compiled = compiler.compile(source)?;
-        self.interpreter.execute(&compiled)
+        match self.interpreter.execute(&compiled) {
+            Ok(val) => Ok(val),
+            Err(e) => {
+                let backtrace = self.interpreter.call_stack_backtrace();
+                if backtrace.is_empty() {
+                    Err(e)
+                } else {
+                    let mut e = e;
+                    let msg = format!("{}{}", e.message(), backtrace);
+                    e.kind = crate::errors::ErrorKind::RuntimeError(msg);
+                    Err(e)
+                }
+            }
+        }
     }
 
     pub fn eval_module(&mut self, source: &str, base_path: &Path) -> Result<Value> {

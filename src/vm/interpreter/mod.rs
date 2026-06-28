@@ -1476,6 +1476,35 @@ impl Interpreter {
 
         trace
     }
+
+    pub(crate) fn call_stack_backtrace(&self) -> String {
+        let mut frames = Vec::new();
+        for frame in self.call_stack.iter().rev() {
+            let func_name = frame
+                .func_heap_idx
+                .and_then(|idx| {
+                    if let HeapValue::Function(f) = &self.heap[idx] {
+                        f.name.clone()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "<anonymous>".to_string());
+
+            let location = frame
+                .source_name
+                .as_deref()
+                .unwrap_or("<script>");
+
+            frames.push(format!("    at {} ({})", func_name, location));
+        }
+
+        if frames.is_empty() {
+            String::new()
+        } else {
+            format!("\nCall stack:\n{}", frames.join("\n"))
+        }
+    }
 }
 
 impl Default for Interpreter {

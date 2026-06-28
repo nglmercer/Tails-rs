@@ -92,7 +92,9 @@ fn run_script(script_path: &Path) -> Result<()> {
             eprintln!("[tails] Finished in {}ms.", elapsed.as_millis());
         }
         Err(e) => {
-            eprintln!("\x1B[31m[tails] Error: {:?}\x1B[0m", e);
+            let file_str = script_path.to_string_lossy().to_string();
+            let e_with_file = e.with_file(file_str);
+            eprint!("{}", e_with_file.display(Some(&source)));
             eprintln!("[tails] Failed in {}ms.", elapsed.as_millis());
         }
     }
