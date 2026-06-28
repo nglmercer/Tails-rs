@@ -143,11 +143,11 @@ pub(super) fn from_json_value(interp: &mut Interpreter, val: serde_json::Value) 
             Value::Array(heap_idx)
         }
         serde_json::Value::Object(map) => {
-            let heap_idx = interp.heap.len();
             let mut props = std::collections::HashMap::new();
             for (k, v) in map {
                 props.insert(k, from_json_value(interp, v));
             }
+            let heap_idx = interp.heap.len();
             interp.heap.push(crate::vm::interpreter::HeapValue::Object(
                 crate::vm::interpreter::JsObject {
                     properties: props,

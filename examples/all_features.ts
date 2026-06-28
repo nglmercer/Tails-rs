@@ -377,7 +377,7 @@ console.log("NumberFormat:", nf.format(1234567.89));
 
 // --- URL ---
 console.log("\n--- URL ---");
-let url = URL("https://example.com/path?foo=bar&baz=qux");
+let url = new URL("https://example.com/path?foo=bar&baz=qux");
 console.log("URL href:", url.href);
 console.log("URL protocol:", url.protocol);
 console.log("URL searchParams get:", url.searchParams.get("foo"));
