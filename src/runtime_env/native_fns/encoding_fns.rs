@@ -7,7 +7,7 @@ use super::helpers::to_string_value;
 const BASE64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 fn base64_encode(data: &[u8]) -> String {
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
@@ -72,9 +72,8 @@ pub(super) fn native_atob(
         .unwrap_or_default();
 
     let decoded = base64_decode(&encoded)?;
-    let s = String::from_utf8(decoded).unwrap_or_else(|e| {
-        String::from_utf8_lossy(e.as_bytes()).to_string()
-    });
+    let s = String::from_utf8(decoded)
+        .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).to_string());
     Ok(Value::String(s))
 }
 

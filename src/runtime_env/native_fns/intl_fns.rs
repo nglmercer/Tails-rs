@@ -90,12 +90,24 @@ pub(super) fn native_datetime_format_format(
             let ds = obj
                 .properties
                 .get("dateStyle")
-                .and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None })
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_else(|| "medium".to_string());
             let ts = obj
                 .properties
                 .get("timeStyle")
-                .and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None })
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_else(|| "short".to_string());
             let has_parts = obj.properties.contains_key("weekday")
                 || obj.properties.contains_key("year")
@@ -145,7 +157,14 @@ pub(super) fn native_datetime_format_format(
             .as_millis() as i64
     };
 
-    let formatted = format_datetime(millis, &date_style, &time_style, has_explicit_parts, interp, _this);
+    let formatted = format_datetime(
+        millis,
+        &date_style,
+        &time_style,
+        has_explicit_parts,
+        interp,
+        _this,
+    );
     Ok(Value::String(formatted))
 }
 
@@ -168,7 +187,7 @@ fn format_datetime(
     let secs = secs_in_day % 60;
 
     // Days since epoch for date calculation
-    let days = (total_secs / 86400) as i64;
+    let days = total_secs / 86400 ;
     let mut year = 1970;
     let mut remaining_days = days;
     loop {
@@ -197,13 +216,22 @@ fn format_datetime(
     let day = remaining_days + 1;
 
     let month_name = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ][month];
 
     let month_full = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ][month];
 
     let weekday_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -220,7 +248,15 @@ fn format_datetime(
                     match w.as_str() {
                         "short" => parts.push(weekday.to_string()),
                         "long" | "narrow" => {
-                            let full_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                            let full_names = [
+                                "Sunday",
+                                "Monday",
+                                "Tuesday",
+                                "Wednesday",
+                                "Thursday",
+                                "Friday",
+                                "Saturday",
+                            ];
                             parts.push(full_names[day_of_week as usize].to_string());
                         }
                         _ => {}
@@ -252,7 +288,13 @@ fn format_datetime(
                     match h.as_str() {
                         "numeric" | "2-digit" => {
                             let ampm = if hours >= 12 { "PM" } else { "AM" };
-                            let h12 = if hours == 0 { 12 } else if hours > 12 { hours - 12 } else { hours };
+                            let h12 = if hours == 0 {
+                                12
+                            } else if hours > 12 {
+                                hours - 12
+                            } else {
+                                hours
+                            };
                             parts.push(format!("{}:{}", h12, format!("{:02}", minutes)));
                             parts.push(ampm.to_string());
                         }
@@ -268,27 +310,38 @@ fn format_datetime(
     match date_style {
         "full" => {
             let full_month = month_full;
-            let result = format!("{}, {} {} {}, {:02}:{:02}:{:02} UTC",
-                weekday, full_month, day, year, hours, minutes, secs);
+            let result = format!(
+                "{}, {} {} {}, {:02}:{:02}:{:02} UTC",
+                weekday, full_month, day, year, hours, minutes, secs
+            );
             result
         }
         "long" => {
-            format!("{} {} {}, {:02}:{:02}:{:02} UTC",
-                month_full, day, year, hours, minutes, secs)
+            format!(
+                "{} {} {}, {:02}:{:02}:{:02} UTC",
+                month_full, day, year, hours, minutes, secs
+            )
         }
         "medium" | "short" => {
-            format!("{} {}, {} {:02}:{:02} UTC",
-                month_name, day, year, hours, minutes)
+            format!(
+                "{} {}, {} {:02}:{:02} UTC",
+                month_name, day, year, hours, minutes
+            )
         }
-        "none" | "" => {
-            match time_style {
-                "none" | "" => String::new(),
-                _ => format!("{:02}:{:02}", hours, minutes),
-            }
-        }
+        "none" | "" => match time_style {
+            "none" | "" => String::new(),
+            _ => format!("{:02}:{:02}", hours, minutes),
+        },
         _ => {
-            format!("{}/{:02}/{:02} {:02}:{:02}:{:02}",
-                year, month + 1, day, hours, minutes, secs)
+            format!(
+                "{}/{:02}/{:02} {:02}:{:02}:{:02}",
+                year,
+                month + 1,
+                day,
+                hours,
+                minutes,
+                secs
+            )
         }
     }
 }
@@ -310,10 +363,7 @@ pub(super) fn native_datetime_format_format_to_parts(
             .map(|c| {
                 let mut props = std::collections::HashMap::new();
                 props.insert("type".into(), Value::String("literal".into()));
-                props.insert(
-                    "value".into(),
-                    Value::String(c.to_string()),
-                );
+                props.insert("value".into(), Value::String(c.to_string()));
                 let idx = interp.heap.len();
                 interp.heap.push(HeapValue::Object(JsObject {
                     properties: props,
@@ -407,31 +457,49 @@ pub(super) fn native_number_format_format(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    let number = args
-        .first()
-        .map(|v| to_f64(v))
-        .unwrap_or(0.0);
+    let number = args.first().map(to_f64).unwrap_or(0.0);
 
     let (style, currency, min_frac, max_frac) = if let Value::Object(obj_idx) = _this {
         if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             let s = obj
                 .properties
                 .get("style")
-                .and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None })
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_else(|| "decimal".to_string());
-            let c = obj
-                .properties
-                .get("currency")
-                .and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None });
+            let c = obj.properties.get("currency").and_then(|v| {
+                if let Value::String(s) = v {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            });
             let min_f = obj
                 .properties
                 .get("minimumFractionDigits")
-                .and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None })
+                .and_then(|v| {
+                    if let Value::Integer(n) = v {
+                        Some(*n as usize)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0);
             let max_f = obj
                 .properties
                 .get("maximumFractionDigits")
-                .and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None })
+                .and_then(|v| {
+                    if let Value::Integer(n) = v {
+                        Some(*n as usize)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(3);
             (s, c, min_f, max_f)
         } else {
@@ -512,7 +580,7 @@ fn add_thousand_separators(s: &str) -> String {
     let mut result = String::new();
     let chars: Vec<char> = int_part.chars().collect();
     for (i, c) in chars.iter().enumerate() {
-        if i > 0 && (chars.len() - i) % 3 == 0 {
+        if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*c);

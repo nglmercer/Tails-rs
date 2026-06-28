@@ -3,7 +3,8 @@ use tails::TailsRuntime;
 #[test]
 fn test_error_stack_has_function_names() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         function inner() {
             throw new Error("test");
         }
@@ -17,12 +18,25 @@ fn test_error_stack_has_function_names() {
             stack = e.stack;
         }
         stack;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     if let tails::Value::String(stack) = r.unwrap() {
-        assert!(stack.contains("Error: test"), "Stack should contain error message: {}", stack);
-        assert!(stack.contains("inner"), "Stack should contain 'inner': {}", stack);
-        assert!(stack.contains("middle"), "Stack should contain 'middle': {}", stack);
+        assert!(
+            stack.contains("Error: test"),
+            "Stack should contain error message: {}",
+            stack
+        );
+        assert!(
+            stack.contains("inner"),
+            "Stack should contain 'inner': {}",
+            stack
+        );
+        assert!(
+            stack.contains("middle"),
+            "Stack should contain 'middle': {}",
+            stack
+        );
     } else {
         panic!("Expected string for stack trace");
     }
@@ -31,7 +45,8 @@ fn test_error_stack_has_function_names() {
 #[test]
 fn test_type_error_stack() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         function doWork() {
             throw new TypeError("bad type");
         }
@@ -42,7 +57,8 @@ fn test_type_error_stack() {
             result = e.name + ": " + e.message;
         }
         result;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(
         r.unwrap(),
@@ -53,7 +69,8 @@ fn test_type_error_stack() {
 #[test]
 fn test_error_stack_has_at() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         function foo() {
             throw new Error("err");
         }
@@ -64,10 +81,15 @@ fn test_error_stack_has_at() {
             stack = e.stack;
         }
         stack;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     if let tails::Value::String(stack) = r.unwrap() {
-        assert!(stack.contains("at foo"), "Stack should contain 'at foo': {}", stack);
+        assert!(
+            stack.contains("at foo"),
+            "Stack should contain 'at foo': {}",
+            stack
+        );
     } else {
         panic!("Expected string for stack trace");
     }
@@ -76,10 +98,12 @@ fn test_error_stack_has_at() {
 #[test]
 fn test_error_without_message() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let e = new Error();
         e.name;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("Error".to_string()));
 }
@@ -87,10 +111,12 @@ fn test_error_without_message() {
 #[test]
 fn test_error_message_property() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let e = new Error("custom message");
         e.message;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(
         r.unwrap(),

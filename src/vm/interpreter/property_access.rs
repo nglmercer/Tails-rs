@@ -339,15 +339,12 @@ impl Interpreter {
             }
             Value::Buffer(_buf_idx) => {
                 if let Value::String(key_str) = key {
-                    match key_str.as_str() {
-                        "length" => {
-                            if let Value::Buffer(bidx) = this {
-                                if let HeapValue::Buffer(buf) = &self.heap[*bidx] {
-                                    return Ok(Value::Integer(buf.len() as i64));
-                                }
+                    if key_str.as_str() == "length" {
+                        if let Value::Buffer(bidx) = this {
+                            if let HeapValue::Buffer(buf) = &self.heap[*bidx] {
+                                return Ok(Value::Integer(buf.len() as i64));
                             }
                         }
-                        _ => {}
                     }
                 }
                 // Look up method on Buffer prototype

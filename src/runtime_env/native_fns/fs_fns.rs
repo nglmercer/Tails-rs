@@ -14,8 +14,11 @@ pub(super) fn native_fs_read_file_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    let content = std::fs::read_to_string(&path).map_err(|e| {
-        Error::RuntimeError(format!("ENOENT: no such file or directory, open '{}'", path))
+    let content = std::fs::read_to_string(&path).map_err(|_e| {
+        Error::RuntimeError(format!(
+            "ENOENT: no such file or directory, open '{}'",
+            path
+        ))
     })?;
 
     Ok(Value::String(content))
@@ -35,9 +38,8 @@ pub(super) fn native_fs_write_file_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    std::fs::write(&path, content).map_err(|e| {
-        Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path))
-    })?;
+    std::fs::write(&path, content)
+        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
 
     Ok(Value::Undefined)
 }
@@ -81,11 +83,11 @@ pub(super) fn native_fs_mkdir_sync(
         .unwrap_or(false);
 
     if recursive {
-        std::fs::create_dir_all(&path).map_err(|e| {
+        std::fs::create_dir_all(&path).map_err(|_e| {
             Error::RuntimeError(format!("EACCES: permission denied, mkdir '{}'", path))
         })?;
     } else {
-        std::fs::create_dir(&path).map_err(|e| {
+        std::fs::create_dir(&path).map_err(|_e| {
             Error::RuntimeError(format!("EACCES: permission denied, mkdir '{}'", path))
         })?;
     }
@@ -104,8 +106,11 @@ pub(super) fn native_fs_readdir_sync(
         .unwrap_or_default();
 
     let entries: Vec<Value> = std::fs::read_dir(&path)
-        .map_err(|e| {
-            Error::RuntimeError(format!("ENOENT: no such file or directory, scandir '{}'", path))
+        .map_err(|_e| {
+            Error::RuntimeError(format!(
+                "ENOENT: no such file or directory, scandir '{}'",
+                path
+            ))
         })?
         .filter_map(|entry| entry.ok())
         .map(|entry| {
@@ -115,9 +120,11 @@ pub(super) fn native_fs_readdir_sync(
         .collect();
 
     let arr_idx = interp.heap.len();
-    interp.heap.push(HeapValue::Array(
-        crate::vm::interpreter::JsArray { elements: entries },
-    ));
+    interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
+            elements: entries,
+        }));
     Ok(Value::Array(arr_idx))
 }
 
@@ -131,23 +138,17 @@ pub(super) fn native_fs_stat_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    let metadata = std::fs::metadata(&path).map_err(|e| {
-        Error::RuntimeError(format!("ENOENT: no such file or directory, stat '{}'", path))
+    let metadata = std::fs::metadata(&path).map_err(|_e| {
+        Error::RuntimeError(format!(
+            "ENOENT: no such file or directory, stat '{}'",
+            path
+        ))
     })?;
 
     let mut props = std::collections::HashMap::new();
-    props.insert(
-        "size".into(),
-        Value::Integer(metadata.len() as i64),
-    );
-    props.insert(
-        "isFile".into(),
-        Value::Boolean(metadata.is_file()),
-    );
-    props.insert(
-        "isDirectory".into(),
-        Value::Boolean(metadata.is_dir()),
-    );
+    props.insert("size".into(), Value::Integer(metadata.len() as i64));
+    props.insert("isFile".into(), Value::Boolean(metadata.is_file()));
+    props.insert("isDirectory".into(), Value::Boolean(metadata.is_dir()));
     props.insert(
         "isSymbolicLink".into(),
         Value::Boolean(metadata.file_type().is_symlink()),
@@ -157,10 +158,7 @@ pub(super) fn native_fs_stat_sync(
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
-        props.insert(
-            "mode".into(),
-            Value::Integer(metadata.mode() as i64),
-        );
+        props.insert("mode".into(), Value::Integer(metadata.mode() as i64));
     }
 
     // Modified time
@@ -203,8 +201,11 @@ pub(super) fn native_fs_unlink_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    std::fs::remove_file(&path).map_err(|e| {
-        Error::RuntimeError(format!("ENOENT: no such file or directory, unlink '{}'", path))
+    std::fs::remove_file(&path).map_err(|_e| {
+        Error::RuntimeError(format!(
+            "ENOENT: no such file or directory, unlink '{}'",
+            path
+        ))
     })?;
 
     Ok(Value::Undefined)
@@ -236,11 +237,11 @@ pub(super) fn native_fs_rm_sync(
         .unwrap_or(false);
 
     if recursive {
-        std::fs::remove_dir_all(&path).map_err(|e| {
+        std::fs::remove_dir_all(&path).map_err(|_e| {
             Error::RuntimeError(format!("ENOENT: no such file or directory, rm '{}'", path))
         })?;
     } else {
-        std::fs::remove_file(&path).map_err(|e| {
+        std::fs::remove_file(&path).map_err(|_e| {
             Error::RuntimeError(format!("ENOENT: no such file or directory, rm '{}'", path))
         })?;
     }
@@ -262,7 +263,7 @@ pub(super) fn native_fs_copy_file_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    std::fs::copy(&src, &dest).map_err(|e| {
+    std::fs::copy(&src, &dest).map_err(|_e| {
         Error::RuntimeError(format!(
             "EACCES: permission denied, copy '{}' to '{}'",
             src, dest
@@ -286,7 +287,7 @@ pub(super) fn native_fs_rename_sync(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    std::fs::rename(&old_path, &new_path).map_err(|e| {
+    std::fs::rename(&old_path, &new_path).map_err(|_e| {
         Error::RuntimeError(format!(
             "EACCES: permission denied, rename '{}' to '{}'",
             old_path, new_path
@@ -316,13 +317,10 @@ pub(super) fn native_fs_append_file_sync(
         .create(true)
         .append(true)
         .open(&path)
-        .map_err(|e| {
-            Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path))
-        })?;
+        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
 
-    file.write_all(content.as_bytes()).map_err(|e| {
-        Error::RuntimeError(format!("EACCES: permission denied, write '{}'", path))
-    })?;
+    file.write_all(content.as_bytes())
+        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, write '{}'", path)))?;
 
     Ok(Value::Undefined)
 }

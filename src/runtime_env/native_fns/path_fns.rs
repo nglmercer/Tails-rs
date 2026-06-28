@@ -83,7 +83,11 @@ pub(super) fn native_path_dirname(
         .parent()
         .map(|p| {
             let s = p.to_string_lossy().to_string();
-            if s.is_empty() { ".".to_string() } else { s }
+            if s.is_empty() {
+                ".".to_string()
+            } else {
+                s
+            }
         })
         .unwrap_or_else(|| ".".to_string());
 
@@ -125,8 +129,12 @@ pub(super) fn native_path_relative(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    let from_path = std::path::Path::new(&from).canonicalize().unwrap_or_else(|_| std::path::PathBuf::from(&from));
-    let to_path = std::path::Path::new(&to).canonicalize().unwrap_or_else(|_| std::path::PathBuf::from(&to));
+    let from_path = std::path::Path::new(&from)
+        .canonicalize()
+        .unwrap_or_else(|_| std::path::PathBuf::from(&from));
+    let to_path = std::path::Path::new(&to)
+        .canonicalize()
+        .unwrap_or_else(|_| std::path::PathBuf::from(&to));
 
     let from_components: Vec<_> = from_path.components().collect();
     let to_components: Vec<_> = to_path.components().collect();
@@ -156,7 +164,7 @@ pub(super) fn native_path_relative(
     let result = if parts.is_empty() {
         ".".to_string()
     } else {
-        parts.join(&std::path::MAIN_SEPARATOR.to_string())
+        parts.join(std::path::MAIN_SEPARATOR_STR)
     };
 
     Ok(Value::String(result))
@@ -231,5 +239,12 @@ pub(super) fn native_path_sep() -> Value {
 }
 
 pub(super) fn native_path_delimiter() -> Value {
-    Value::String(if cfg!(target_os = "windows") { ";" } else { ":" }.to_string())
+    Value::String(
+        if cfg!(target_os = "windows") {
+            ";"
+        } else {
+            ":"
+        }
+        .to_string(),
+    )
 }

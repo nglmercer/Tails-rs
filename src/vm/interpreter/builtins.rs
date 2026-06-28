@@ -179,10 +179,7 @@ impl Interpreter {
                 .into(),
             ),
         );
-        process_props.insert(
-            "pid".into(),
-            Value::Integer(std::process::id() as i64),
-        );
+        process_props.insert("pid".into(), Value::Integer(std::process::id() as i64));
 
         // process.env
         let mut env_props = HashMap::new();
@@ -200,9 +197,7 @@ impl Interpreter {
         process_props.insert("env".into(), Value::Object(env_obj_idx));
 
         // process.argv
-        let argv: Vec<Value> = std::env::args()
-            .map(|a| Value::String(a))
-            .collect();
+        let argv: Vec<Value> = std::env::args().map(Value::String).collect();
         let argv_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Array(crate::vm::interpreter::JsArray { elements: argv }),
@@ -290,14 +285,8 @@ impl Interpreter {
 
         // Intl
         let mut intl_props = HashMap::new();
-        intl_props.insert(
-            "DateTimeFormat".into(),
-            Value::NativeFunction(260),
-        );
-        intl_props.insert(
-            "NumberFormat".into(),
-            Value::NativeFunction(261),
-        );
+        intl_props.insert("DateTimeFormat".into(), Value::NativeFunction(260));
+        intl_props.insert("NumberFormat".into(), Value::NativeFunction(261));
         let intl_obj_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
@@ -325,7 +314,14 @@ impl Interpreter {
         );
         path_props.insert(
             "delimiter".into(),
-            Value::String(if cfg!(target_os = "windows") { ";" } else { ":" }.to_string()),
+            Value::String(
+                if cfg!(target_os = "windows") {
+                    ";"
+                } else {
+                    ":"
+                }
+                .to_string(),
+            ),
         );
         let path_obj_idx = self.gc.allocate(
             &mut self.heap,
@@ -359,8 +355,7 @@ impl Interpreter {
                 extensible: true,
             }),
         );
-        self.globals
-            .insert("fs".into(), Value::Object(fs_obj_idx));
+        self.globals.insert("fs".into(), Value::Object(fs_obj_idx));
 
         // Date
         let mut date_proto_props = HashMap::new();

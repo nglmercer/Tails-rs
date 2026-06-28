@@ -76,11 +76,11 @@ pub(super) fn native_process_hrtime(
 
     // Return [seconds, nanoseconds] as an array
     let arr_idx = _interp.heap.len();
-    _interp.heap.push(HeapValue::Array(
-        crate::vm::interpreter::JsArray {
+    _interp
+        .heap
+        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
             elements: vec![Value::Integer(secs), Value::Integer(nanos)],
-        },
-    ));
+        }));
     Ok(Value::Array(arr_idx))
 }
 

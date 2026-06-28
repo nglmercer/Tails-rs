@@ -3,10 +3,12 @@ use tails::TailsRuntime;
 #[test]
 fn test_process_platform() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let p = process.platform;
         p;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     let val = r.unwrap();
     if let tails::Value::String(s) = val {
@@ -23,10 +25,12 @@ fn test_process_platform() {
 #[test]
 fn test_process_arch() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let a = process.arch;
         a;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     let val = r.unwrap();
     if let tails::Value::String(s) = val {
@@ -43,10 +47,12 @@ fn test_process_arch() {
 #[test]
 fn test_process_pid() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let p = process.pid;
         p;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     if let tails::Value::Integer(n) = r.unwrap() {
         assert!(n > 0, "PID should be positive");
@@ -58,10 +64,12 @@ fn test_process_pid() {
 #[test]
 fn test_process_cwd() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let d = process.cwd();
         d;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     if let tails::Value::String(s) = r.unwrap() {
         assert!(!s.is_empty(), "cwd should not be empty");
@@ -73,10 +81,12 @@ fn test_process_cwd() {
 #[test]
 fn test_process_argv() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let a = process.argv;
         a.length;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     if let tails::Value::Float(n) = r.unwrap() {
         assert!(n >= 1.0, "argv should have at least one element");
@@ -88,10 +98,12 @@ fn test_process_argv() {
 #[test]
 fn test_process_env() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let home = process.env.HOME;
         typeof home;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("string".to_string()));
 }
@@ -99,10 +111,12 @@ fn test_process_env() {
 #[test]
 fn test_process_stdout_write() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let result = process.stdout.write("test");
         result;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }

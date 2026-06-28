@@ -3,11 +3,13 @@ use tails::TailsRuntime;
 #[test]
 fn test_intl_datetime_format_default() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let dtf = new Intl.DateTimeFormat("en-US");
         let result = dtf.format();
         typeof result;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("string".to_string()));
 }
@@ -15,7 +17,8 @@ fn test_intl_datetime_format_default() {
 #[test]
 fn test_intl_datetime_format_with_options() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let dtf = new Intl.DateTimeFormat("en-US", {
             year: "numeric",
             month: "long",
@@ -23,7 +26,8 @@ fn test_intl_datetime_format_with_options() {
         });
         let result = dtf.format();
         result.length > 0;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }
@@ -31,7 +35,8 @@ fn test_intl_datetime_format_with_options() {
 #[test]
 fn test_intl_datetime_format_to_parts() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let dtf = new Intl.DateTimeFormat("en-US", {
             year: "numeric",
             month: "long",
@@ -39,7 +44,8 @@ fn test_intl_datetime_format_to_parts() {
         });
         let parts = dtf.formatToParts();
         parts.length > 0;
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::Boolean(true));
 }
@@ -47,43 +53,43 @@ fn test_intl_datetime_format_to_parts() {
 #[test]
 fn test_intl_number_format_default() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let nf = new Intl.NumberFormat("en-US");
         nf.format(1234567.89);
-    "#);
-    assert!(r.is_ok());
-    assert_eq!(
-        r.unwrap(),
-        tails::Value::String("1,234,567.89".to_string())
+    "#,
     );
+    assert!(r.is_ok());
+    assert_eq!(r.unwrap(), tails::Value::String("1,234,567.89".to_string()));
 }
 
 #[test]
 fn test_intl_number_format_currency() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let nf = new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: "USD"
         });
         nf.format(1234.56);
-    "#);
-    assert!(r.is_ok());
-    assert_eq!(
-        r.unwrap(),
-        tails::Value::String("$1,234.56".to_string())
+    "#,
     );
+    assert!(r.is_ok());
+    assert_eq!(r.unwrap(), tails::Value::String("$1,234.56".to_string()));
 }
 
 #[test]
 fn test_intl_number_format_percent() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let nf = new Intl.NumberFormat("en-US", {
             style: "percent"
         });
         nf.format(0.856);
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(r.unwrap(), tails::Value::String("85.6%".to_string()));
 }
@@ -91,24 +97,25 @@ fn test_intl_number_format_percent() {
 #[test]
 fn test_intl_number_format_integer() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let nf = new Intl.NumberFormat("en-US");
         nf.format(1234567);
-    "#);
-    assert!(r.is_ok());
-    assert_eq!(
-        r.unwrap(),
-        tails::Value::String("1,234,567".to_string())
+    "#,
     );
+    assert!(r.is_ok());
+    assert_eq!(r.unwrap(), tails::Value::String("1,234,567".to_string()));
 }
 
 #[test]
 fn test_intl_number_format_negative() {
     let mut rt = TailsRuntime::default();
-    let r = rt.eval(r#"
+    let r = rt.eval(
+        r#"
         let nf = new Intl.NumberFormat("en-US");
         nf.format(-1234567.89);
-    "#);
+    "#,
+    );
     assert!(r.is_ok());
     assert_eq!(
         r.unwrap(),
