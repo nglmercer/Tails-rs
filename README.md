@@ -165,6 +165,31 @@ cargo run --bin tails -- examples/all_features.ts
 - `Intl.DateTimeFormat` — Date/time formatting with `format()` and `formatToParts()`
 - `Intl.NumberFormat` — Number formatting with decimal, currency, and percent styles
 
+### Path Module
+- `path.join()` — Join path segments
+- `path.resolve()` — Resolve to absolute path
+- `path.basename()` — Get filename from path
+- `path.dirname()` — Get directory from path
+- `path.extname()` — Get file extension
+- `path.relative()` — Get relative path between two paths
+- `path.isAbsolute()` — Check if path is absolute
+- `path.normalize()` — Normalize path (resolve `.` and `..`)
+- `path.sep` — Path separator (`/` or `\`)
+- `path.delimiter` — Path delimiter (`:` or `;`)
+
+### File System (fs) Module
+- `fs.readFileSync()` — Read file contents synchronously
+- `fs.writeFileSync()` — Write data to file synchronously
+- `fs.existsSync()` — Check if file/directory exists
+- `fs.mkdirSync()` — Create directory (with `recursive` option)
+- `fs.readdirSync()` — List directory contents
+- `fs.statSync()` — Get file metadata (size, isFile, isDirectory, mtimeMs)
+- `fs.unlinkSync()` — Delete a file
+- `fs.rmSync()` — Remove file or directory (with `recursive` option)
+- `fs.copyFileSync()` — Copy a file
+- `fs.renameSync()` — Rename/move a file
+- `fs.appendFileSync()` — Append data to a file
+
 ### Destructuring & Spread
 - Array destructuring with skipping
 - Object destructuring with aliasing
@@ -215,6 +240,8 @@ cargo run --bin tails -- examples/all_features.ts
 - **Buffer** — Node.js-compatible `Buffer` class with `alloc()`, `from()`, `concat()`, `isBuffer()`, `toString()`, `write()`, `slice()`, `copy()`, `fill()`, `compare()`, `equals()`, `indexOf()`
 - **process global** — `process.platform`, `process.arch`, `process.pid`, `process.cwd()`, `process.chdir()`, `process.env`, `process.argv`, `process.exit()`, `process.stdout.write()`, `process.hrtime()`, `process.nextTick()`
 - **Intl APIs** — `Intl.DateTimeFormat` with `format()` and `formatToParts()`, `Intl.NumberFormat` with currency and percent styles
+- **path module** — `path.join()`, `path.resolve()`, `path.basename()`, `path.dirname()`, `path.extname()`, `path.relative()`, `path.isAbsolute()`, `path.normalize()`, `path.sep`, `path.delimiter`
+- **fs module** — `fs.readFileSync()`, `fs.writeFileSync()`, `fs.existsSync()`, `fs.mkdirSync()`, `fs.readdirSync()`, `fs.statSync()`, `fs.unlinkSync()`, `fs.rmSync()`, `fs.copyFileSync()`, `fs.renameSync()`, `fs.appendFileSync()`
 
 ### 🔮 Future / Research
 - **Web APIs & FFI**
@@ -224,7 +251,7 @@ cargo run --bin tails -- examples/all_features.ts
   - JIT compilation tier
   - Optimized GC (generational, concurrent)
 - **Node.js Compatibility**
-  - `process` core modules (fs, path, etc.)
+  - Additional core modules (url, crypto, stream, etc.)
 
 ## Architecture
 

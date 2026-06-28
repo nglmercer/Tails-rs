@@ -5,6 +5,7 @@ mod console;
 mod date_fns;
 mod encoding_fns;
 mod error_fns;
+mod fs_fns;
 mod function_fns;
 mod generator_fns;
 mod global_fns;
@@ -15,6 +16,7 @@ mod json_fns;
 mod math_fns;
 mod number_fns;
 mod object_fns;
+mod path_fns;
 mod process_fns;
 mod promise_fns;
 mod proxy_fns;
@@ -317,4 +319,25 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     intl_fns::native_datetime_format_format,
     intl_fns::native_datetime_format_format_to_parts,
     intl_fns::native_number_format_format,
+    // Path (266-273)
+    path_fns::native_path_join,
+    path_fns::native_path_resolve,
+    path_fns::native_path_basename,
+    path_fns::native_path_dirname,
+    path_fns::native_path_extname,
+    path_fns::native_path_relative,
+    path_fns::native_path_is_absolute,
+    path_fns::native_path_normalize,
+    // Fs (273-284)
+    fs_fns::native_fs_read_file_sync,
+    fs_fns::native_fs_write_file_sync,
+    fs_fns::native_fs_exists_sync,
+    fs_fns::native_fs_mkdir_sync,
+    fs_fns::native_fs_readdir_sync,
+    fs_fns::native_fs_stat_sync,
+    fs_fns::native_fs_unlink_sync,
+    fs_fns::native_fs_rm_sync,
+    fs_fns::native_fs_copy_file_sync,
+    fs_fns::native_fs_rename_sync,
+    fs_fns::native_fs_append_file_sync,
 ];
