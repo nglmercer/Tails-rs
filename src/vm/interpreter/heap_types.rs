@@ -4,7 +4,6 @@ use crate::objects::js_collections::{JsMap, JsSet, JsWeakMap, JsWeakSet};
 use crate::objects::js_date::JsDate;
 use crate::objects::js_promise::JsPromise;
 use crate::objects::Value;
-use crate::vm::interpreter::CallFrame;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -82,8 +81,7 @@ pub struct JsGenerator {
     pub yield_value: Value,
     pub resume_pc: usize,
     pub saved_stack: Vec<Value>,
-    #[allow(dead_code)]
-    pub(crate) saved_call_stack: Vec<CallFrame>,
+    pub saved_block_scope_stack: Vec<usize>,
     pub func_heap_idx: Option<usize>,
 }
 

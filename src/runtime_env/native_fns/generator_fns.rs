@@ -22,16 +22,21 @@ pub(super) fn native_generator_next(
         };
 
     if let crate::vm::interpreter::HeapValue::Generator(gen) = &mut interp.heap[idx] {
-        interp.stack.push(value);
-
-        if !gen.saved_stack.is_empty() {
-            interp.stack.append(&mut gen.saved_stack);
-        }
-
         let module = interp.current_module.clone();
         if let Some(module) = module {
             let return_address = module.instructions.len();
             let base_pointer = interp.stack.len();
+
+            // Push saved locals first so they land at base_pointer + 0, base_pointer + 1, etc.
+            let saved = gen.saved_stack.clone();
+            interp.stack.extend_from_slice(&saved);
+            // Push the value passed to .next() after the locals
+            interp.stack.push(value);
+
+            // Restore the generator's block scope state
+            let saved_block_scope = gen.saved_block_scope_stack.clone();
+            let outer_block_scope = std::mem::replace(&mut interp.block_scope_stack, saved_block_scope);
+
             let closure_count = 0;
             let call_frame_len_before = interp.call_stack.len();
 
@@ -48,6 +53,9 @@ pub(super) fn native_generator_next(
 
             let result = interp.execute_from(&module, resume_pc);
 
+            // Restore the caller's block scope state
+            interp.block_scope_stack = outer_block_scope;
+
             // Pop the call frame we pushed
             if interp.call_stack.len() > call_frame_len_before {
                 interp.call_stack.pop();
@@ -62,14 +70,19 @@ pub(super) fn native_generator_next(
                     } else {
                         gen2.saved_stack = Vec::new();
                     }
+                    gen2.saved_block_scope_stack = interp.block_scope_stack.clone();
                 } else {
                     // Generator completed or errored
                     gen2.saved_stack = Vec::new();
+                    gen2.saved_block_scope_stack = Vec::new();
                     gen2.resume_pc = usize::MAX;
                 }
             }
 
-            return match result {
+            // Clean up: remove generator locals from the caller's stack
+            interp.stack.truncate(base_pointer);
+
+            let final_result = match result {
                 Ok(yield_value) => {
                     // Create {value: yield_value, done: false}
                     let mut result_obj = std::collections::HashMap::new();
@@ -105,6 +118,7 @@ pub(super) fn native_generator_next(
                     Ok(Value::Object(obj_idx))
                 }
             };
+            return final_result;
         }
 
         Ok(gen.yield_value.clone())

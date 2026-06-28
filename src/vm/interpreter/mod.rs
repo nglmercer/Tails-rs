@@ -212,6 +212,7 @@ impl Interpreter {
                                 gen.yield_value = yield_value.clone();
                                 gen.resume_pc = saved_pc;
                                 gen.saved_stack = saved_stack;
+                                gen.saved_block_scope_stack = self.block_scope_stack.clone();
                                 gen.func_heap_idx = frame.func_heap_idx;
                             }
                         }
@@ -256,10 +257,12 @@ impl Interpreter {
                                     yield_value: Value::Undefined,
                                     resume_pc: bytecode_index,
                                     saved_stack: Vec::new(),
-                                    saved_call_stack: Vec::new(),
+                                    saved_block_scope_stack: Vec::new(),
                                     func_heap_idx: Some(*func_idx),
                                 }));
                                 self.stack.push(Value::Generator(gen_idx));
+                                pc += 1;
+                                continue;
                             } else if has_promise_resolve {
                                 if let HeapValue::Function(f) = &self.heap[*func_idx] {
                                     if let Some(Value::Promise(promise_idx)) = f.closure.first() {
@@ -1492,25 +1495,6 @@ impl Interpreter {
     ) -> Result<()> {
         // This is handled inline in execute_from() due to pc control flow
         Ok(())
-    }
-
-    fn create_generator_object(
-        &mut self,
-        yield_value: Value,
-        resume_pc: usize,
-        saved_stack: Vec<Value>,
-        saved_call_stack: Vec<CallFrame>,
-        func_heap_idx: Option<usize>,
-    ) -> Value {
-        let gen_idx = self.heap.len();
-        self.heap.push(HeapValue::Generator(JsGenerator {
-            yield_value,
-            resume_pc,
-            saved_stack,
-            saved_call_stack,
-            func_heap_idx,
-        }));
-        Value::Generator(gen_idx)
     }
 
     pub(crate) fn build_stack_trace(&self, error_name: &str, message: &str) -> String {
