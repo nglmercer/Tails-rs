@@ -600,12 +600,20 @@ impl Interpreter {
                                     let return_address = pc + 1;
                                     let base_pointer = self.stack.len();
                                     let closure_count = f_clone.closure.len();
+                                    let this_for_frame = if f_clone.is_arrow {
+                                        f_clone
+                                            .captured_this
+                                            .clone()
+                                            .unwrap_or_else(|| object.clone())
+                                    } else {
+                                        object.clone()
+                                    };
                                     self.call_stack.push(CallFrame {
                                         return_address,
                                         base_pointer,
                                         closure_var_count: closure_count,
                                         func_heap_idx: Some(func_idx),
-                                        this_value: Some(object),
+                                        this_value: Some(this_for_frame),
                                         is_construct: false,
                                         source_name: self.current_module_path.clone(),
                                         generator_heap_idx: None,
