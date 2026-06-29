@@ -130,12 +130,41 @@ impl<'a> Parser<'a> {
                         {
                             self.advance();
                         }
+                        // Handle indexed signatures [key: string] and mapped types [K in keyof T]
+                        if self.peek().token == Token::LeftBracket {
+                            self.advance();
+                            let mut depth = 1u32;
+                            while depth > 0 && self.peek().token != Token::Eof {
+                                match self.peek().token {
+                                    Token::LeftBracket => { depth += 1; self.advance(); }
+                                    Token::RightBracket => { depth -= 1; if depth > 0 { self.advance(); } else { self.advance(); break; } }
+                                    _ => { self.advance(); }
+                                }
+                            }
+                            // Expect `: Type`
+                            if self.peek().token == Token::Colon {
+                                self.advance();
+                                let _ty = self.parse_type_annotation()?;
+                            }
+                            if self.peek().token == Token::Semicolon {
+                                self.advance();
+                            }
+                            if self.peek().token == Token::Comma {
+                                self.advance();
+                                if self.peek().token == Token::RightBrace {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                            continue;
+                        }
                         let name = match self.advance().token {
                             Token::Identifier(n) => n,
                             t => {
                                 return Err(Error::ParseError(format!(
-                                    "Expected property name, got {:?}",
-                                    t
+                                    "Expected property name in type at {}:{}, got {:?}",
+                                    self.current_span.line, self.current_span.col, t
                                 )))
                             }
                         };

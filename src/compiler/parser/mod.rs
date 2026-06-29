@@ -581,8 +581,8 @@ impl<'a> Parser<'a> {
             Ok(())
         } else {
             Err(Error::ParseError(format!(
-                "Expected {:?}, got {:?}",
-                expected, st.token
+                "Expected {:?} at {}:{}, got {:?}",
+                expected, st.span.line, st.span.col, st.token
             )))
         }
     }
@@ -962,24 +962,21 @@ impl<'a> Parser<'a> {
                     }
                     Token::Greater => {
                         depth -= 1;
-                        if depth > 0 {
-                            self.advance();
-                        } else {
-                            self.advance();
-                            break;
-                        }
+                        self.advance();
                     }
                     Token::ShiftLeft => {
                         depth += 2;
                         self.advance();
                     }
                     Token::ShiftRight => {
-                        depth = depth.saturating_sub(2);
-                        if depth == 0 {
+                        // `>>` is two `>` — each reduces depth by 1
+                        if depth >= 2 {
+                            depth -= 2;
                             self.advance();
-                            break;
                         } else {
-                            self.advance();
+                            // depth == 1: first `>` closes, second `>` remains
+                            depth = 0;
+                            self.peek_token_mut().token = Token::Greater;
                         }
                     }
                     _ => {

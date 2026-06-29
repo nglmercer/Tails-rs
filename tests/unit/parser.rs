@@ -3,8 +3,8 @@ use tails::compiler::parser::{parse, AstNode, BindingPattern, Expression, Statem
 
 #[test]
 fn test_number_literal() {
-    let tokens = tokenize("42").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("42").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -22,8 +22,8 @@ fn test_number_literal() {
 
 #[test]
 fn test_string_literal() {
-    let tokens = tokenize(r#""hello""#).unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize(r#""hello""#).unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -41,8 +41,8 @@ fn test_string_literal() {
 
 #[test]
 fn test_binary_operation() {
-    let tokens = tokenize("2 + 3").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("2 + 3").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -60,8 +60,8 @@ fn test_binary_operation() {
 
 #[test]
 fn test_variable_declaration() {
-    let tokens = tokenize("const x = 42;").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("const x = 42;").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -84,8 +84,8 @@ fn test_variable_declaration() {
 
 #[test]
 fn test_function_declaration() {
-    let tokens = tokenize("function add(a, b) { return a + b; }").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("function add(a, b) { return a + b; }").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -107,8 +107,8 @@ fn test_function_declaration() {
 
 #[test]
 fn test_if_statement() {
-    let tokens = tokenize("if (true) { 1 } else { 2 }").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("if (true) { 1 } else { 2 }").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -131,8 +131,8 @@ fn test_if_statement() {
 
 #[test]
 fn test_while_statement() {
-    let tokens = tokenize("while (true) { 1 }").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("while (true) { 1 }").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -150,8 +150,8 @@ fn test_while_statement() {
 
 #[test]
 fn test_assignment() {
-    let tokens = tokenize("x = 42").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("x = 42").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -169,8 +169,8 @@ fn test_assignment() {
 
 #[test]
 fn test_function_call() {
-    let tokens = tokenize("add(1, 2)").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("add(1, 2)").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -188,8 +188,8 @@ fn test_function_call() {
 
 #[test]
 fn test_member_access() {
-    let tokens = tokenize("obj.prop").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("obj.prop").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -213,8 +213,8 @@ fn test_member_access() {
 
 #[test]
 fn test_computed_member_access() {
-    let tokens = tokenize("obj[\"prop\"]").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("obj[\"prop\"]").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -232,8 +232,8 @@ fn test_computed_member_access() {
 
 #[test]
 fn test_unary_operation() {
-    let tokens = tokenize("-5").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("-5").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -251,8 +251,8 @@ fn test_unary_operation() {
 
 #[test]
 fn test_complex_expression() {
-    let tokens = tokenize("(2 + 3) * 4").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("(2 + 3) * 4").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -270,8 +270,8 @@ fn test_complex_expression() {
 
 #[test]
 fn test_multiple_statements() {
-    let tokens = tokenize("1; 2; 3").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("1; 2; 3").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -283,8 +283,8 @@ fn test_multiple_statements() {
 
 #[test]
 fn test_block_statement() {
-    let tokens = tokenize("{ 1; 2; 3 }").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("{ 1; 2; 3 }").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -302,8 +302,8 @@ fn test_block_statement() {
 
 #[test]
 fn test_return_statement() {
-    let tokens = tokenize("return 42;").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("return 42;").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -321,8 +321,8 @@ fn test_return_statement() {
 
 #[test]
 fn test_return_without_value() {
-    let tokens = tokenize("return;").unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("return;").unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {
@@ -355,8 +355,8 @@ fn test_complex_program() {
         }
     "#;
 
-    let tokens = tokenize(source).unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize(source).unwrap();
+    let ast = parse(&mut tokens).unwrap();
 
     match ast {
         AstNode::Program(stmts) => {

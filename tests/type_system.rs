@@ -3,8 +3,8 @@ use tails::compiler::parser::parse;
 use tails::compiler::{type_checker::TypeChecker, Compiler};
 
 fn type_check(source: &str) -> Result<(), tails::Error> {
-    let tokens = tokenize(source).unwrap();
-    let ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize(source).unwrap();
+    let ast = parse(&mut tokens).unwrap();
     TypeChecker::check(&ast)
 }
 
@@ -389,14 +389,14 @@ fn test_run_tuple_type() {
 
 #[test]
 fn test_parse_grouped_function_type_in_generic() {
-    let tokens = tokenize("let x: Array<(() => void) | null> = null;").unwrap();
-    let _ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("let x: Array<(() => void) | null> = null;").unwrap();
+    let _ast = parse(&mut tokens).unwrap();
 }
 
 #[test]
 fn test_parse_grouped_union_type() {
-    let tokens = tokenize("let x: (number | string) = 42;").unwrap();
-    let _ast = parse(&tokens).unwrap();
+    let mut tokens = tokenize("let x: (number | string) = 42;").unwrap();
+    let _ast = parse(&mut tokens).unwrap();
 }
 
 #[test]
