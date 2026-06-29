@@ -47,6 +47,7 @@ pub struct JsArray {
 pub struct JsFunction {
     pub name: Option<String>,
     pub params: Vec<String>,
+    pub rest_param: Option<String>,
     pub bytecode_index: usize,
     pub closure: Vec<Value>,
     pub prototype: Option<usize>,

@@ -459,6 +459,7 @@ mod tests {
             HeapValue::Function(crate::vm::interpreter::JsFunction {
                 name: Some("test".into()),
                 params: vec![],
+                rest_param: None,
                 bytecode_index: 0,
                 closure: vec![Value::Object(inner_obj_idx)],
                 prototype: None,

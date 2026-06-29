@@ -20,6 +20,7 @@ impl CodeGenerator {
         self.functions.push(CompiledFunction {
             name: name.clone(),
             params: params.to_vec(),
+            rest_param: None,
             bytecode_index: 0,
             param_count: params.len(),
             closure_var_count: num_captures,

@@ -77,6 +77,7 @@ pub(super) fn native_function_bind(
             crate::vm::interpreter::JsFunction {
                 name: Some("bound".into()),
                 params: vec![],
+                rest_param: None,
                 bytecode_index: usize::MAX,
                 closure,
                 prototype: None,

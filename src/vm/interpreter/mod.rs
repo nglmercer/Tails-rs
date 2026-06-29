@@ -497,8 +497,24 @@ impl Interpreter {
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
                                         }
-                                        for arg in args {
-                                            self.stack.push(arg);
+                                        if f.rest_param.is_some() {
+                                            let param_count = f.params.len();
+                                            for arg in args.iter().take(param_count) {
+                                                self.stack.push(arg.clone());
+                                            }
+                                            let rest_args: Vec<Value> =
+                                                args[param_count..].to_vec();
+                                            let rest_arr_idx = self.gc.allocate(
+                                                &mut self.heap,
+                                                HeapValue::Array(JsArray {
+                                                    elements: rest_args,
+                                                }),
+                                            );
+                                            self.stack.push(Value::Array(rest_arr_idx));
+                                        } else {
+                                            for arg in args {
+                                                self.stack.push(arg);
+                                            }
                                         }
                                         pc = f.bytecode_index;
                                         continue;
@@ -592,8 +608,23 @@ impl Interpreter {
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
                                     }
-                                    for arg in args {
-                                        self.stack.push(arg);
+                                    if f_clone.rest_param.is_some() {
+                                        let param_count = f_clone.params.len();
+                                        for arg in args.iter().take(param_count) {
+                                            self.stack.push(arg.clone());
+                                        }
+                                        let rest_args: Vec<Value> = args[param_count..].to_vec();
+                                        let rest_arr_idx = self.gc.allocate(
+                                            &mut self.heap,
+                                            HeapValue::Array(JsArray {
+                                                elements: rest_args,
+                                            }),
+                                        );
+                                        self.stack.push(Value::Array(rest_arr_idx));
+                                    } else {
+                                        for arg in args {
+                                            self.stack.push(arg);
+                                        }
                                     }
                                     pc = f_clone.bytecode_index;
                                     continue;
@@ -1827,6 +1858,7 @@ impl Interpreter {
                 HeapValue::Function(JsFunction {
                     name: Some(class_info.name.clone()),
                     params: func_info.params,
+                    rest_param: func_info.rest_param,
                     bytecode_index: func_info.bytecode_index,
                     closure: Vec::new(),
                     prototype: Some(proto_obj_idx),
@@ -1847,6 +1879,7 @@ impl Interpreter {
                 HeapValue::Function(JsFunction {
                     name: Some(class_info.name.clone()),
                     params: Vec::new(),
+                    rest_param: None,
                     bytecode_index: usize::MAX,
                     closure: Vec::new(),
                     prototype: Some(proto_obj_idx),
@@ -1878,6 +1911,7 @@ impl Interpreter {
                 HeapValue::Function(JsFunction {
                     name: Some(method_info.name.clone()),
                     params: method_func_info.params,
+                    rest_param: method_func_info.rest_param,
                     bytecode_index: method_func_info.bytecode_index,
                     closure: Vec::new(),
                     prototype: Some(method_proto_idx),

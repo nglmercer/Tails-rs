@@ -394,17 +394,22 @@ impl CodeGenerator {
                 return_type: _,
                 is_generator,
                 defaults: _,
-                rest_param: _,
+                rest_param,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
+                let mut all_params = params.clone();
+                if let Some(rp) = rest_param {
+                    all_params.push(rp.clone());
+                }
                 let outer_refs =
-                    super::closures::find_outer_refs(body, params, &parent_locals_snapshot);
+                    super::closures::find_outer_refs(body, &all_params, &parent_locals_snapshot);
                 let num_captures = outer_refs.len();
 
                 self.functions.push(CompiledFunction {
                     name: None,
                     params: params.clone(),
+                    rest_param: rest_param.clone(),
                     bytecode_index: 0,
                     param_count: params.len(),
                     closure_var_count: num_captures,
@@ -428,6 +433,9 @@ impl CodeGenerator {
 
                 for param in params {
                     self.locals.push(param.clone());
+                }
+                if let Some(rp) = rest_param {
+                    self.locals.push(rp.clone());
                 }
 
                 for stmt in body {
@@ -460,7 +468,7 @@ impl CodeGenerator {
                 param_types: _,
                 return_type: _,
                 defaults: _,
-                rest_param: _,
+                rest_param,
             } => {
                 let func_idx = self.functions.len() as u32;
 
@@ -476,13 +484,21 @@ impl CodeGenerator {
                 };
 
                 let parent_locals_snapshot = self.locals.clone();
-                let outer_refs =
-                    super::closures::find_outer_refs(&body_stmts, params, &parent_locals_snapshot);
+                let mut all_params = params.clone();
+                if let Some(rp) = rest_param {
+                    all_params.push(rp.clone());
+                }
+                let outer_refs = super::closures::find_outer_refs(
+                    &body_stmts,
+                    &all_params,
+                    &parent_locals_snapshot,
+                );
                 let num_captures = outer_refs.len();
 
                 self.functions.push(CompiledFunction {
                     name: None,
                     params: params.clone(),
+                    rest_param: rest_param.clone(),
                     bytecode_index: 0,
                     param_count: params.len(),
                     closure_var_count: num_captures,
@@ -506,6 +522,9 @@ impl CodeGenerator {
 
                 for param in params {
                     self.locals.push(param.clone());
+                }
+                if let Some(rp) = rest_param {
+                    self.locals.push(rp.clone());
                 }
 
                 for stmt in &body_stmts {

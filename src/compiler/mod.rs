@@ -85,6 +85,7 @@ pub enum ClassMethodKind {
 pub struct CompiledFunction {
     pub name: Option<String>,
     pub params: Vec<String>,
+    pub rest_param: Option<String>,
     pub bytecode_index: usize,
     pub param_count: usize,
     pub closure_var_count: usize,

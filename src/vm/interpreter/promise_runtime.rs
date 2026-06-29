@@ -19,6 +19,7 @@ impl Interpreter {
             HeapValue::Function(JsFunction {
                 name: Some("resolve".into()),
                 params: vec!["value".into()],
+                rest_param: None,
                 bytecode_index: usize::MAX,
                 closure: vec![Value::Promise(promise_idx)],
                 prototype: Some(proto_idx),
@@ -43,6 +44,7 @@ impl Interpreter {
             HeapValue::Function(JsFunction {
                 name: Some("reject".into()),
                 params: vec!["reason".into()],
+                rest_param: None,
                 bytecode_index: usize::MAX,
                 closure: vec![Value::Promise(promise_idx)],
                 prototype: Some(proto_idx),

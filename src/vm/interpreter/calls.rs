@@ -67,8 +67,23 @@ impl Interpreter {
                     for closure_var in &f_clone.closure {
                         self.stack.push(closure_var.clone());
                     }
-                    for arg in args {
-                        self.stack.push(arg.clone());
+                    if f_clone.rest_param.is_some() {
+                        let param_count = f_clone.params.len();
+                        for arg in args.iter().take(param_count) {
+                            self.stack.push(arg.clone());
+                        }
+                        let rest_args: Vec<Value> = args[param_count..].to_vec();
+                        let rest_arr_idx = self.gc.allocate(
+                            &mut self.heap,
+                            HeapValue::Array(JsArray {
+                                elements: rest_args,
+                            }),
+                        );
+                        self.stack.push(Value::Array(rest_arr_idx));
+                    } else {
+                        for arg in args {
+                            self.stack.push(arg.clone());
+                        }
                     }
 
                     let result = if let Some(module) = func_module {

@@ -865,6 +865,7 @@ impl Interpreter {
                     HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
+                        rest_param: func_info.rest_param,
                         bytecode_index: func_info.bytecode_index,
                         closure: Vec::new(),
                         prototype: Some(proto_obj_idx),
@@ -904,6 +905,7 @@ impl Interpreter {
                     HeapValue::Function(JsFunction {
                         name: func_info.name,
                         params: func_info.params,
+                        rest_param: func_info.rest_param,
                         bytecode_index: func_info.bytecode_index,
                         closure: closure_vars,
                         prototype: Some(proto_obj_idx),
