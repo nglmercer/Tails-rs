@@ -1502,7 +1502,7 @@ impl Interpreter {
             self.gc.allocate(
                 &mut self.heap,
                 HeapValue::Function(JsFunction {
-                    name: func_info.name,
+                    name: Some(class_info.name.clone()),
                     params: func_info.params,
                     bytecode_index: func_info.bytecode_index,
                     closure: Vec::new(),

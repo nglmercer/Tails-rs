@@ -43,6 +43,23 @@ pub(super) fn to_string_value(interp: &Interpreter, v: &Value) -> String {
             }
         }
         Value::String(s) => s.clone(),
+        Value::BigInt(n) => format!("{}n", n),
+        Value::Symbol(id) => format!("Symbol({})", id),
+        Value::Function(idx) => {
+            if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*idx] {
+                let name = f.name.as_deref().unwrap_or("");
+                if f.prototype.is_some() && f.super_class.is_some() {
+                    format!("[class {}]", name)
+                } else if !name.is_empty() {
+                    format!("[Function: {}]", name)
+                } else {
+                    "[Function]".to_string()
+                }
+            } else {
+                "[Function]".to_string()
+            }
+        }
+        Value::NativeFunction(_idx) => "[NativeFunction]".to_string(),
         Value::Array(arr_idx) => {
             if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
                 let parts: Vec<String> = arr
@@ -50,26 +67,158 @@ pub(super) fn to_string_value(interp: &Interpreter, v: &Value) -> String {
                     .iter()
                     .map(|e| to_string_value(interp, e))
                     .collect();
-                parts.join(",")
+                format!("[{}]", parts.join(","))
             } else {
                 "[Array]".to_string()
             }
         }
         Value::Object(obj_idx) => {
-            if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
-                let parts: Vec<String> = obj
-                    .properties
+            if let crate::vm::interpreter::HeapValue::Object(_obj) = &interp.heap[*obj_idx] {
+                let mut all_props: Vec<(String, &Value)> = Vec::new();
+                collect_all_properties(
+                    interp,
+                    *obj_idx,
+                    &mut all_props,
+                    &mut std::collections::HashSet::new(),
+                );
+                all_props.sort_by(|a, b| a.0.cmp(&b.0));
+                let parts: Vec<String> = all_props
                     .iter()
-                    .map(|(k, v)| format!("\"{}\":{}", k, to_json_value(interp, v)))
+                    .map(|(k, v)| format!("{}: {}", k, format_property_value(interp, v)))
                     .collect();
-                format!("{{{}}}", parts.join(","))
+                format!("{{{}}}", parts.join(", "))
             } else {
                 "[Object]".to_string()
             }
         }
+        Value::Map(idx) => {
+            if let crate::vm::interpreter::HeapValue::Map(map) = &interp.heap[*idx] {
+                let entries: Vec<String> = map
+                    .entries
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{} => {}",
+                            to_string_value(interp, k),
+                            to_string_value(interp, v)
+                        )
+                    })
+                    .collect();
+                format!("Map({}) {{{}}}", map.entries.len(), entries.join(", "))
+            } else {
+                "[Map]".to_string()
+            }
+        }
+        Value::Set(idx) => {
+            if let crate::vm::interpreter::HeapValue::Set(set) = &interp.heap[*idx] {
+                let entries: Vec<String> = set
+                    .values
+                    .iter()
+                    .map(|v| to_string_value(interp, v))
+                    .collect();
+                format!("Set({}) {{{}}}", set.values.len(), entries.join(", "))
+            } else {
+                "[Set]".to_string()
+            }
+        }
+        Value::Date(idx) => {
+            if let crate::vm::interpreter::HeapValue::Date(d) = &interp.heap[*idx] {
+                format!("Date({})", d.to_utc_string())
+            } else {
+                "[Date]".to_string()
+            }
+        }
+        Value::RegExp(idx) => {
+            if let crate::vm::interpreter::HeapValue::RegExp(r) = &interp.heap[*idx] {
+                format!("/{}/{}", r.source, r.flags)
+            } else {
+                "[RegExp]".to_string()
+            }
+        }
         Value::Proxy(_) => "[Proxy]".to_string(),
         Value::Buffer(_) => "[Buffer]".to_string(),
-        _ => "[Function]".to_string(),
+        Value::Promise(_) => "[Promise]".to_string(),
+        Value::Generator(_) => "[Generator]".to_string(),
+        Value::TypedArray(_) => "[TypedArray]".to_string(),
+        Value::WeakMap(_) => "[WeakMap]".to_string(),
+        Value::WeakSet(_) => "[WeakSet]".to_string(),
+    }
+}
+
+fn format_property_value(interp: &Interpreter, v: &Value) -> String {
+    match v {
+        Value::Function(idx) => {
+            if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*idx] {
+                let name = f.name.as_deref().unwrap_or("");
+                if f.prototype.is_some() && f.super_class.is_some() {
+                    format!("[class {}]", name)
+                } else if !name.is_empty() {
+                    format!("[Function: {}]", name)
+                } else {
+                    "[Function]".to_string()
+                }
+            } else {
+                "[Function]".to_string()
+            }
+        }
+        Value::NativeFunction(_) => "[NativeFunction]".to_string(),
+        Value::Object(idx) => {
+            if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*idx] {
+                let mut parts: Vec<String> = Vec::new();
+                for (k, val) in &obj.properties {
+                    let formatted = format_property_value(interp, val);
+                    parts.push(format!("{}: {}", k, formatted));
+                }
+                parts.sort();
+                format!("{{{}}}", parts.join(", "))
+            } else {
+                "[Object]".to_string()
+            }
+        }
+        Value::Array(arr_idx) => {
+            if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                let parts: Vec<String> = arr
+                    .elements
+                    .iter()
+                    .map(|e| format_property_value(interp, e))
+                    .collect();
+                format!("[{}]", parts.join(","))
+            } else {
+                "[Array]".to_string()
+            }
+        }
+        Value::String(s) => format!("\"{}\"", s),
+        Value::Map(idx) => {
+            if let crate::vm::interpreter::HeapValue::Map(map) = &interp.heap[*idx] {
+                let entries: Vec<String> = map
+                    .entries
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{} => {}",
+                            to_string_value(interp, k),
+                            to_string_value(interp, v)
+                        )
+                    })
+                    .collect();
+                format!("Map({}) {{{}}}", map.entries.len(), entries.join(", "))
+            } else {
+                "[Map]".to_string()
+            }
+        }
+        Value::Set(idx) => {
+            if let crate::vm::interpreter::HeapValue::Set(set) = &interp.heap[*idx] {
+                let entries: Vec<String> = set
+                    .values
+                    .iter()
+                    .map(|v| to_string_value(interp, v))
+                    .collect();
+                format!("Set({}) {{{}}}", set.values.len(), entries.join(", "))
+            } else {
+                "[Set]".to_string()
+            }
+        }
+        _ => to_string_value(interp, v),
     }
 }
 
@@ -218,5 +367,27 @@ pub(super) fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::BigInt(n) => *n != 0,
         _ => true,
+    }
+}
+
+fn collect_all_properties<'a>(
+    interp: &'a Interpreter,
+    obj_idx: usize,
+    out: &mut Vec<(String, &'a Value)>,
+    visited: &mut std::collections::HashSet<usize>,
+) {
+    if !visited.insert(obj_idx) {
+        return;
+    }
+    if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[obj_idx] {
+        for (k, v) in &obj.properties {
+            if k == "constructor" {
+                continue;
+            }
+            out.push((k.clone(), v));
+        }
+        if let Some(proto_idx) = obj.prototype {
+            collect_all_properties(interp, proto_idx, out, visited);
+        }
     }
 }

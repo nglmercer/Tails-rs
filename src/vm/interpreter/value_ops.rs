@@ -35,8 +35,21 @@ impl Interpreter {
             }
             Value::String(s) => s.clone(),
             Value::BigInt(n) => format!("{}", n),
-            Value::Function(_) => "function () {}".to_string(),
-            Value::NativeFunction(_) => "function () {}".to_string(),
+            Value::Function(idx) => {
+                if let crate::vm::interpreter::HeapValue::Function(f) = &self.heap[*idx] {
+                    let name = f.name.as_deref().unwrap_or("");
+                    if f.prototype.is_some() && f.super_class.is_some() {
+                        format!("class {} {{}}", name)
+                    } else if !name.is_empty() {
+                        format!("function {}() {{ [native code] }}", name)
+                    } else {
+                        "function () {{ [native code] }}".to_string()
+                    }
+                } else {
+                    "function () {{ [native code] }}".to_string()
+                }
+            }
+            Value::NativeFunction(_) => "function () {{ [native code] }}".to_string(),
             Value::Object(_) => "[object Object]".to_string(),
             Value::Array(_) => "[object Array]".to_string(),
             _ => value.to_string(),
@@ -256,8 +269,21 @@ impl Interpreter {
             Value::String(s) => s.clone(),
             Value::BigInt(n) => format!("{}n", n),
             Value::Symbol(id) => format!("Symbol({})", id),
-            Value::Function(_) => "[Function]".to_string(),
-            Value::NativeFunction(_) => "[Native Function]".to_string(),
+            Value::Function(idx) => {
+                if let crate::vm::interpreter::HeapValue::Function(f) = &self.heap[*idx] {
+                    let name = f.name.as_deref().unwrap_or("");
+                    if f.prototype.is_some() && f.super_class.is_some() {
+                        format!("[class {}]", name)
+                    } else if !name.is_empty() {
+                        format!("[Function: {}]", name)
+                    } else {
+                        "[Function]".to_string()
+                    }
+                } else {
+                    "[Function]".to_string()
+                }
+            }
+            Value::NativeFunction(_) => "[NativeFunction]".to_string(),
             Value::Object(_) => "[Object]".to_string(),
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),
@@ -284,8 +310,21 @@ impl Interpreter {
             Value::String(s) => format!("\"{}\"", s),
             Value::BigInt(n) => format!("{}n", n),
             Value::Symbol(id) => format!("Symbol({})", id),
-            Value::Function(_) => "[Function]".to_string(),
-            Value::NativeFunction(_) => "[Native Function]".to_string(),
+            Value::Function(idx) => {
+                if let crate::vm::interpreter::HeapValue::Function(f) = &self.heap[*idx] {
+                    let name = f.name.as_deref().unwrap_or("");
+                    if f.prototype.is_some() && f.super_class.is_some() {
+                        format!("[class {}]", name)
+                    } else if !name.is_empty() {
+                        format!("[Function: {}]", name)
+                    } else {
+                        "[Function]".to_string()
+                    }
+                } else {
+                    "[Function]".to_string()
+                }
+            }
+            Value::NativeFunction(_) => "[NativeFunction]".to_string(),
             Value::Object(_) => "[Object]".to_string(),
             Value::Array(_) => "[Array]".to_string(),
             Value::Promise(_) => "[Promise]".to_string(),

@@ -88,7 +88,7 @@ impl fmt::Display for Value {
             Value::BigInt(i) => write!(f, "{}n", i),
             Value::Symbol(id) => write!(f, "Symbol({})", id),
             Value::Function(_) => write!(f, "[Function]"),
-            Value::NativeFunction(_) => write!(f, "[Native Function]"),
+            Value::NativeFunction(_) => write!(f, "[NativeFunction]"),
             Value::Object(_) => write!(f, "[Object]"),
             Value::Array(_) => write!(f, "[Array]"),
             Value::Promise(_) => write!(f, "[Promise]"),

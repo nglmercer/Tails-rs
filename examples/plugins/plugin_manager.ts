@@ -1,154 +1,94 @@
-import {
+import type {
   IPlugin,
-  PluginClass,
   PluginConst,
-  PluginEntry,
-  PluginHook,
   PluginInput,
-  PluginMetadata,
+  PluginManagerOptions,
 } from "./types.ts";
 import { validatePlugin } from "./validation.ts";
 
-const plugins: PluginEntry[] = [];
-let initialized: boolean = false;
-
-function isClassPlugin(plugin: PluginInput): plugin is PluginClass {
-  return typeof plugin === "function" && plugin.prototype !== undefined;
+interface PluginEntry {
+  plugin: PluginConst;
+  raw: PluginInput;
 }
 
-function isObjectPlugin(plugin: PluginInput): plugin is IPlugin | PluginConst {
-  return typeof plugin === "object" && plugin !== null && "metadata" in plugin;
-}
+export class PluginManager {
+  private plugins = new Map<string, PluginEntry>();
+  private initialized = false;
 
-function getMetadata(plugin: PluginInput): PluginMetadata {
-  if (isClassPlugin(plugin)) {
-    const proto = plugin.prototype;
-    if (proto && typeof proto === "object" && "metadata" in proto) {
-      return proto.metadata as PluginMetadata;
+  constructor(_options?: PluginManagerOptions) {}
+
+  register(plugin: PluginInput): void {
+    validatePlugin(plugin);
+
+    const metadata = this.getMetadata(plugin);
+    if (this.plugins.has(metadata.name)) {
+      throw new Error(`Plugin "${metadata.name}" is already registered`);
     }
-    const instance = new plugin();
-    return instance.metadata;
-  }
-  if (isObjectPlugin(plugin)) {
-    return plugin.metadata;
-  }
-  throw new Error("Invalid plugin input");
-}
 
-function getHookFn(
-  plugin: PluginInput,
-  hook: PluginHook,
-): (() => void | Promise<void>) | null {
-  if (isClassPlugin(plugin)) {
-    const proto = plugin.prototype;
-    if (proto && typeof proto === "object" && hook in proto) {
-      const fn = proto[hook];
-      if (typeof fn === "function") {
-        return fn.bind(proto);
+    const normalized = this.normalize(plugin);
+    this.plugins.set(metadata.name, { plugin: normalized, raw: plugin });
+  }
+
+  getPlugin<T = PluginInput>(name: string): T | undefined {
+    const entry = this.plugins.get(name);
+    return entry ? (entry.raw as T) : undefined;
+  }
+
+  async init(): Promise<void> {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    for (const [, entry] of this.plugins) {
+      const p = entry.plugin;
+      if (typeof p.setup === "function") {
+        await p.setup();
+      }
+      if (typeof p.onLoad === "function") {
+        await p.onLoad();
       }
     }
-    return null;
   }
 
-  if (isObjectPlugin(plugin)) {
-    const obj = plugin as Record<string, unknown>;
-    if (hook in obj && typeof obj[hook] === "function") {
-      return (obj[hook] as () => void | Promise<void>).bind(plugin);
+  async shutdown(): Promise<void> {
+    for (const [, entry] of this.plugins) {
+      const p = entry.plugin;
+      if (typeof p.onDisable === "function") {
+        await p.onDisable();
+      }
+      if (typeof p.onUnload === "function") {
+        await p.onUnload();
+      }
     }
+    this.plugins.clear();
+    this.initialized = false;
   }
 
-  return null;
-}
-
-export function register(plugin: PluginInput): void {
-  validatePlugin(plugin);
-  const metadata = getMetadata(plugin);
-
-  if (has(metadata.name)) {
-    throw new Error(`Plugin "${metadata.name}" is already registered`);
+  getPlugins(): string[] {
+    return [...this.plugins.keys()];
   }
 
-  const entry: PluginEntry = {
-    name: metadata.name,
-    instance: null,
-    hooks: {
-      setup: getHookFn(plugin, "setup"),
-      onLoad: getHookFn(plugin, "onLoad"),
-      onEnable: getHookFn(plugin, "onEnable"),
-      onDisable: getHookFn(plugin, "onDisable"),
-      onUnload: getHookFn(plugin, "onUnload"),
-    },
-  };
-
-  if (isObjectPlugin(plugin)) {
-    entry.instance = plugin as IPlugin;
+  has(name: string): boolean {
+    return this.plugins.has(name);
   }
 
-  plugins.push(entry);
-}
-
-export async function init(): Promise<void> {
-  if (initialized) return;
-  initialized = true;
-
-  for (const plugin of plugins) {
-    if (plugin.hooks.setup) {
-      await plugin.hooks.setup();
+  private getMetadata(plugin: PluginInput): { name: string; version: string } {
+    if (typeof plugin === "function") {
+      const proto = (plugin as { prototype?: Record<string, unknown> })
+        .prototype;
+      if (proto && typeof proto === "object" && "metadata" in proto) {
+        return proto.metadata as { name: string; version: string };
+      }
+      const instance = new (plugin as new () => IPlugin)();
+      return (instance as unknown as PluginConst).metadata;
     }
-    if (plugin.hooks.onLoad) {
-      await plugin.hooks.onLoad();
-    }
-    if (plugin.hooks.onEnable) {
-      await plugin.hooks.onEnable();
-    }
+    return (plugin as IPlugin | PluginConst).metadata;
   }
-}
 
-export async function shutdown(): Promise<void> {
-  for (const plugin of plugins) {
-    if (plugin.hooks.onDisable) {
-      await plugin.hooks.onDisable();
+  private normalize(plugin: PluginInput): PluginConst {
+    if (typeof plugin === "function") {
+      const instance = new (plugin as new () => IPlugin)();
+      return instance as unknown as PluginConst;
     }
-    if (plugin.hooks.onUnload) {
-      await plugin.hooks.onUnload();
-    }
+    return plugin as PluginConst;
   }
-  plugins.length = 0;
-  initialized = false;
-}
-
-export function getPlugins(): string[] {
-  return plugins.map((p) => p.name);
-}
-
-export function has(name: string): boolean {
-  return plugins.some((p) => p.name === name);
-}
-
-export function getEntry(name: string): PluginEntry | undefined {
-  return plugins.find((p) => p.name === name);
-}
-
-export function isInitialized(): boolean {
-  return initialized;
-}
-
-export async function enablePlugin(name: string): Promise<boolean> {
-  const entry = getEntry(name);
-  if (!entry) return false;
-
-  if (entry.hooks.onEnable) {
-    await entry.hooks.onEnable();
-  }
-  return true;
-}
-
-export async function disablePlugin(name: string): Promise<boolean> {
-  const entry = getEntry(name);
-  if (!entry) return false;
-
-  if (entry.hooks.onDisable) {
-    await entry.hooks.onDisable();
-  }
-  return true;
 }

@@ -1,39 +1,27 @@
-import {
-  register,
-  init,
-  shutdown,
-  getPlugins,
-} from "./plugin_manager.ts";
-import { PluginInput } from "./types.ts";
+import { PluginManager } from "./plugin_manager";
+import { loadPluginsFromDir } from "./loader";
+const manager = new PluginManager();
 
-const helloPlugin: PluginInput = {
-  metadata: { name: "hello", version: "1.0.0" },
-  setup(): void {
-    console.log("[hello] setup called");
-  },
-  onLoad(): void {
-    console.log("[hello] loaded");
-  },
-  onEnable(): void {
-    console.log("[hello] enabled");
-  },
-  onDisable(): void {
-    console.log("[hello] disabled");
-  },
-  onUnload(): void {
-    console.log("[hello] unloaded");
-  },
-};
-
-async function main(): Promise<void> {
-  register(helloPlugin);
-  console.log("Registered plugins:", getPlugins());
-
-  await init();
-  console.log("Initialized.");
-
-  await shutdown();
-  console.log("All plugins shut down.");
+// Load all plugins from ./plugins directory
+const plugins = await loadPluginsFromDir("./plugins");
+for (const plugin of plugins) {
+  manager.register(plugin);
 }
 
-main();
+await manager.init();
+
+// Full access to loaded plugins
+const counter = manager.getPlugin("counter") as {
+  increment(): void;
+  getCount(): number;
+};
+counter?.increment();
+counter?.increment();
+console.log(`Counter: ${counter?.getCount()}`);
+
+const time = manager.getPlugin("time") as {
+  now(): string;
+};
+console.log(`Time: ${time?.now()}`);
+
+await manager.shutdown();
