@@ -58,6 +58,9 @@ urlencoding = "2"
 getrandom = "0.2"
 sha2 = "0.10"
 
+# Terminal colors
+colored = "2"
+
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 

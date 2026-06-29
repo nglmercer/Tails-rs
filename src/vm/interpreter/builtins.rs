@@ -37,6 +37,22 @@ impl Interpreter {
         console_props.insert("warn".into(), Value::NativeFunction(1));
         console_props.insert("error".into(), Value::NativeFunction(2));
         console_props.insert("info".into(), Value::NativeFunction(3));
+        console_props.insert("table".into(), Value::NativeFunction(341));
+        console_props.insert("dir".into(), Value::NativeFunction(342));
+        console_props.insert("group".into(), Value::NativeFunction(343));
+        console_props.insert("groupEnd".into(), Value::NativeFunction(344));
+        console_props.insert("groupCollapsed".into(), Value::NativeFunction(345));
+        console_props.insert("time".into(), Value::NativeFunction(346));
+        console_props.insert("timeEnd".into(), Value::NativeFunction(347));
+        console_props.insert("assert".into(), Value::NativeFunction(348));
+        console_props.insert("clear".into(), Value::NativeFunction(349));
+        console_props.insert("trace".into(), Value::NativeFunction(3)); // Use info for now
+        console_props.insert("count".into(), Value::NativeFunction(3)); // Use info for now
+        console_props.insert("countReset".into(), Value::NativeFunction(3)); // Use info for now
+        console_props.insert("debug".into(), Value::NativeFunction(0)); // Use log for now
+        console_props.insert("profile".into(), Value::NativeFunction(3)); // Use info for now
+        console_props.insert("profileEnd".into(), Value::NativeFunction(3)); // Use info for now
+        console_props.insert("timeLog".into(), Value::NativeFunction(347)); // Use timeEnd for now
         let console_obj_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {

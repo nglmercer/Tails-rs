@@ -9,8 +9,11 @@ fn print_usage() {
     eprintln!("Usage: tails [OPTIONS] <script.ts>");
     eprintln!();
     eprintln!("Options:");
-    eprintln!("  --watch     Watch for file changes and re-run automatically");
-    eprintln!("  --help      Show this help message");
+    eprintln!("  --watch         Watch for file changes and re-run automatically");
+    eprintln!("  --color         Enable colored output (default)");
+    eprintln!("  --no-color      Disable colored output");
+    eprintln!("  --timestamps    Show timestamps in console output");
+    eprintln!("  --help          Show this help message");
 }
 
 fn now_timestamp() -> String {
@@ -194,6 +197,13 @@ fn main() -> Result<()> {
     }
 
     let watch_mode = args.iter().any(|a| a == "--watch" || a == "-w");
+    let no_color = args.iter().any(|a| a == "--no-color");
+    let timestamps = args.iter().any(|a| a == "--timestamps");
+
+    // Set color and timestamp preferences
+    tails::runtime_env::native_fns::console::set_colors(!no_color);
+    tails::runtime_env::native_fns::console::set_timestamps(timestamps);
+
     let script_arg = args
         .iter()
         .find(|a| !a.starts_with('-'))

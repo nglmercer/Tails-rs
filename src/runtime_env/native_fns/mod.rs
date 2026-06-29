@@ -1,7 +1,7 @@
 mod array_fns;
 mod buffer_fns;
 mod collection_fns;
-mod console;
+pub mod console;
 mod crypto_fns;
 mod date_fns;
 mod encoding_fns;
@@ -410,4 +410,14 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     fs_fns::native_fs_unlink,
     fs_fns::native_fs_copy_file,
     fs_fns::native_fs_rename,
+    // Console additional methods (350-357)
+    console::native_console_table,
+    console::native_console_dir,
+    console::native_console_group,
+    console::native_console_group_end,
+    console::native_console_group_collapsed,
+    console::native_console_time,
+    console::native_console_time_end,
+    console::native_console_assert,
+    console::native_console_clear,
 ];
