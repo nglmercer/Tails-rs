@@ -230,6 +230,13 @@ pub(super) fn to_display_string(interp: &Interpreter, v: &Value) -> String {
 }
 
 pub(super) fn to_json_value(interp: &Interpreter, v: &Value) -> String {
+    to_json_value_inner(interp, v, &mut std::collections::HashSet::new(), 0)
+}
+
+fn to_json_value_inner(interp: &Interpreter, v: &Value, visited: &mut std::collections::HashSet<usize>, depth: usize) -> String {
+    if depth > 64 {
+        return "null".to_string();
+    }
     match v {
         Value::Null => "null".to_string(),
         Value::Undefined => "undefined".to_string(),
@@ -247,10 +254,13 @@ pub(super) fn to_json_value(interp: &Interpreter, v: &Value) -> String {
         Value::String(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
         Value::Array(arr_idx) => {
             if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                if !visited.insert(*arr_idx) {
+                    return "null".to_string();
+                }
                 let parts: Vec<String> = arr
                     .elements
                     .iter()
-                    .map(|e| to_json_value(interp, e))
+                    .map(|e| to_json_value_inner(interp, e, visited, depth + 1))
                     .collect();
                 format!("[{}]", parts.join(","))
             } else {
@@ -259,10 +269,14 @@ pub(super) fn to_json_value(interp: &Interpreter, v: &Value) -> String {
         }
         Value::Object(obj_idx) => {
             if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
+                if !visited.insert(*obj_idx) {
+                    return "null".to_string();
+                }
                 let parts: Vec<String> = obj
                     .properties
                     .iter()
-                    .map(|(k, v)| format!("\"{}\":{}", k, to_json_value(interp, v)))
+                    .filter(|(k, _)| !k.starts_with("__getter_") && !k.starts_with("__setter_") && !k.starts_with("__method_"))
+                    .map(|(k, v)| format!("\"{}\":{}", k, to_json_value_inner(interp, v, visited, depth + 1)))
                     .collect();
                 format!("{{{}}}", parts.join(","))
             } else {
