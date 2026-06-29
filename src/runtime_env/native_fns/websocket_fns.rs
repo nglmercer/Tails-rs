@@ -18,7 +18,6 @@ pub(super) fn native_websocket_constructor(
         return Err(Error::TypeError("WebSocket requires a URL".into()));
     }
 
-    // Create WebSocket object with properties
     let mut props = std::collections::HashMap::new();
     props.insert("url".into(), Value::String(url));
     props.insert("readyState".into(), Value::Integer(0)); // CONNECTING
@@ -27,11 +26,11 @@ pub(super) fn native_websocket_constructor(
     props.insert("protocol".into(), Value::String(String::new()));
     props.insert("extensions".into(), Value::String(String::new()));
 
-    // Add methods
-    props.insert("send".into(), Value::NativeFunction(384));
-    props.insert("close".into(), Value::NativeFunction(385));
-    props.insert("addEventListener".into(), Value::NativeFunction(386));
-    props.insert("removeEventListener".into(), Value::NativeFunction(387));
+    // Methods
+    props.insert("send".into(), Value::NativeFunction(360));
+    props.insert("close".into(), Value::NativeFunction(361));
+    props.insert("addEventListener".into(), Value::NativeFunction(362));
+    props.insert("removeEventListener".into(), Value::NativeFunction(363));
 
     let ws_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
@@ -49,19 +48,16 @@ pub(super) fn native_websocket_send(
     args: &[Value],
 ) -> Result<Value> {
     if let Value::Object(obj_idx) = _this {
-        // Get message first before borrowing heap
         let message = args
             .first()
             .map(|v| to_string_value(interp, v))
             .unwrap_or_default();
 
         if let HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
-            // Store message for later sending (actual network send would require async runtime)
             let msg_len = message.len();
             obj.properties
                 .insert("__pendingMessage".into(), Value::String(message));
 
-            // Update bufferedAmount
             let buffered = obj
                 .properties
                 .get("bufferedAmount")
@@ -102,7 +98,6 @@ pub(super) fn native_websocket_add_event_listener(
     args: &[Value],
 ) -> Result<Value> {
     if let Value::Object(obj_idx) = _this {
-        // Get arguments first before borrowing heap
         let event_type = args
             .first()
             .map(|v| to_string_value(interp, v))
@@ -110,14 +105,12 @@ pub(super) fn native_websocket_add_event_listener(
         let callback = args.get(1).cloned().unwrap_or(Value::Undefined);
         let listeners_key = format!("__listeners_{}", event_type);
 
-        // Check if listeners array exists
         let has_listeners = if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             obj.properties.contains_key(&listeners_key)
         } else {
             return Ok(Value::Undefined);
         };
 
-        // Create new array if needed
         let arr_idx = if !has_listeners {
             let new_arr_idx = interp.heap.len();
             interp
@@ -138,14 +131,12 @@ pub(super) fn native_websocket_add_event_listener(
             }
         };
 
-        // Add the array reference to the object if it's new
         if !has_listeners {
             if let HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
                 obj.properties.insert(listeners_key, Value::Array(arr_idx));
             }
         }
 
-        // Now add callback to the array
         if let HeapValue::Array(arr) = &mut interp.heap[arr_idx] {
             arr.elements.push(callback);
         }
@@ -159,7 +150,6 @@ pub(super) fn native_websocket_remove_event_listener(
     args: &[Value],
 ) -> Result<Value> {
     if let Value::Object(obj_idx) = _this {
-        // Get arguments first before borrowing heap
         let event_type = args
             .first()
             .map(|v| to_string_value(interp, v))
@@ -167,7 +157,6 @@ pub(super) fn native_websocket_remove_event_listener(
         let callback = args.get(1).cloned().unwrap_or(Value::Undefined);
         let listeners_key = format!("__listeners_{}", event_type);
 
-        // Get array index first
         let arr_idx = if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             if let Some(Value::Array(arr_idx)) = obj.properties.get(&listeners_key) {
                 Some(*arr_idx)
@@ -178,13 +167,10 @@ pub(super) fn native_websocket_remove_event_listener(
             None
         };
 
-        // Now remove callback from the array
         if let Some(arr_idx) = arr_idx {
             if let HeapValue::Array(arr) = &mut interp.heap[arr_idx] {
-                arr.elements.retain(|v| {
-                    // Simple equality check (in real implementation would be reference equality)
-                    format!("{:?}", v) != format!("{:?}", callback)
-                });
+                // Use PartialEq for comparison instead of debug format
+                arr.elements.retain(|v| *v != callback);
             }
         }
     }

@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import fs from "fs";
 import path from "path";
 import { PluginInput } from "./types.ts";
 import { validatePlugin } from "./validation.ts";

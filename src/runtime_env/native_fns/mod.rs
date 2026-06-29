@@ -555,14 +555,13 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     console::native_console_time_end,
     console::native_console_assert,
     console::native_console_clear,
-    // WebSocket (350-353)
+    // WebSocket (359-363)
     websocket_fns::native_websocket_constructor,
     websocket_fns::native_websocket_send,
     websocket_fns::native_websocket_close,
     websocket_fns::native_websocket_add_event_listener,
     websocket_fns::native_websocket_remove_event_listener,
-    // Assert (354-356)
+    // Assert (364-365)
     assert_fns::native_assert,
     assert_fns::native_assert_strict_equal,
-    assert_fns::native_assert_object,
 ];

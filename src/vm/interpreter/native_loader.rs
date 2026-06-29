@@ -55,6 +55,8 @@ pub fn discover_module(name: &str, registry: &mut NativeModuleRegistry) {
     match name {
         #[cfg(feature = "fs")]
         "fs" => registry.register("fs", create_fs_module),
+        #[cfg(feature = "fs")]
+        "fs/promises" => registry.register("fs/promises", create_fs_promises_module),
         #[cfg(feature = "path")]
         "path" => registry.register("path", create_path_module),
         #[cfg(feature = "process")]
@@ -87,7 +89,15 @@ pub fn create_fs_module(
     props.insert("copyFileSync".into(), Value::NativeFunction(294));
     props.insert("renameSync".into(), Value::NativeFunction(295));
     props.insert("appendFileSync".into(), Value::NativeFunction(296));
-    // Async wrappers returning Promises
+    props
+}
+
+#[cfg(feature = "fs")]
+pub fn create_fs_promises_module(
+    _heap: &mut Vec<HeapValue>,
+    _gc: &mut GarbageCollector,
+) -> HashMap<String, Value> {
+    let mut props = HashMap::new();
     props.insert("readdir".into(), Value::NativeFunction(333));
     props.insert("readFile".into(), Value::NativeFunction(334));
     props.insert("writeFile".into(), Value::NativeFunction(335));
@@ -366,12 +376,11 @@ pub fn create_assert_module(
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
 
-    // Create assert object with methods
     let mut assert_props = HashMap::new();
-    assert_props.insert("strictEqual".into(), Value::NativeFunction(390));
-    assert_props.insert("ok".into(), Value::NativeFunction(389));
-    assert_props.insert("equal".into(), Value::NativeFunction(390));
-    assert_props.insert("deepEqual".into(), Value::NativeFunction(390));
+    assert_props.insert("strictEqual".into(), Value::NativeFunction(365));
+    assert_props.insert("ok".into(), Value::NativeFunction(364));
+    assert_props.insert("equal".into(), Value::NativeFunction(365));
+    assert_props.insert("deepEqual".into(), Value::NativeFunction(365));
 
     let assert_obj_idx = gc.allocate(
         heap,
@@ -383,9 +392,9 @@ pub fn create_assert_module(
     );
 
     props.insert("default".into(), Value::Object(assert_obj_idx));
-    props.insert("strictEqual".into(), Value::NativeFunction(390));
-    props.insert("ok".into(), Value::NativeFunction(389));
-    props.insert("equal".into(), Value::NativeFunction(390));
-    props.insert("deepEqual".into(), Value::NativeFunction(390));
+    props.insert("strictEqual".into(), Value::NativeFunction(365));
+    props.insert("ok".into(), Value::NativeFunction(364));
+    props.insert("equal".into(), Value::NativeFunction(365));
+    props.insert("deepEqual".into(), Value::NativeFunction(365));
     props
 }
