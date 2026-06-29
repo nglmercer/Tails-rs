@@ -122,6 +122,17 @@ impl Interpreter {
                 let val = self.stack.last().cloned().unwrap_or(Value::Undefined);
                 self.stack.push(val);
             }
+            Instruction::Rot3Right => {
+                let len = self.stack.len();
+                if len >= 3 {
+                    let a = self.stack[len - 3].clone();
+                    let b = self.stack[len - 2].clone();
+                    let c = self.stack[len - 1].clone();
+                    self.stack[len - 3] = b;
+                    self.stack[len - 2] = c;
+                    self.stack[len - 1] = a;
+                }
+            }
             Instruction::LoadThis => {
                 let this = self
                     .call_stack

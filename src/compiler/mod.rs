@@ -131,6 +131,7 @@ pub enum Instruction {
     Construct(u16),
     LoadThis,
     Dup,
+    Rot3Right,
     Return,
     Pop,
     MakeFunction(u32),

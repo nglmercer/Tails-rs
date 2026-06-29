@@ -17,7 +17,7 @@ export async function loadPluginFromFile(
 export async function loadPluginsFromDir(dir: string): Promise<PluginInput[]> {
   const dirPath: string = path.resolve(dir);
   const entries: string[] = await fs.readdir(dirPath);
-  console.log("dirPath", dirPath, entries);
+  //console.log("dirPath", dirPath, entries);
   const plugins: PluginInput[] = [];
   for (let i = 0; i < entries.length; i++) {
     const name: string = entries[i];

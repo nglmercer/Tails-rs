@@ -459,10 +459,69 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
-        Ok(self.spanned(Expression::NewExpression {
+        let mut expr = self.spanned(Expression::NewExpression {
             callee: Box::new(callee.inner),
             args,
-        }))
+        });
+        // Chain member access and calls: new Date().toISOString(), new Foo().bar(), etc.
+        loop {
+            if self.peek().token == Token::Dot {
+                self.advance();
+                let property = self.token_to_property_name()?;
+                expr = self.spanned(Expression::Member {
+                    object: Box::new(expr.inner),
+                    property: Box::new(property),
+                    computed: false,
+                });
+            } else if self.peek().token == Token::QuestionDot {
+                self.advance();
+                if self.peek().token == Token::LeftParen {
+                    self.advance();
+                    let args = self.parse_args()?;
+                    self.expect(&Token::RightParen)?;
+                    expr = self.spanned(Expression::OptionalCall {
+                        callee: Box::new(expr.inner),
+                        args,
+                    });
+                } else if self.peek().token == Token::LeftBracket {
+                    self.advance();
+                    let property = self.parse_expression()?.inner;
+                    self.expect(&Token::RightBracket)?;
+                    expr = self.spanned(Expression::OptionalMember {
+                        object: Box::new(expr.inner),
+                        property: Box::new(property),
+                        computed: true,
+                    });
+                } else {
+                    let property = self.token_to_property_name()?;
+                    expr = self.spanned(Expression::OptionalMember {
+                        object: Box::new(expr.inner),
+                        property: Box::new(property),
+                        computed: false,
+                    });
+                }
+            } else if self.peek().token == Token::LeftBracket {
+                self.advance();
+                let property = self.parse_expression()?.inner;
+                self.expect(&Token::RightBracket)?;
+                expr = self.spanned(Expression::Member {
+                    object: Box::new(expr.inner),
+                    property: Box::new(property),
+                    computed: true,
+                });
+            } else if self.peek().token == Token::LeftParen {
+                self.advance();
+                let args = self.parse_args()?;
+                self.expect(&Token::RightParen)?;
+                expr = self.spanned(Expression::Call {
+                    callee: Box::new(expr.inner),
+                    args,
+                });
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
     }
 
     fn parse_new_target(&mut self) -> Result<SpannedNode<Expression>> {

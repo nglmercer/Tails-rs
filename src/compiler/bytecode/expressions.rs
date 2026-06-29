@@ -156,6 +156,7 @@ impl CodeGenerator {
                         computed,
                     } = target.as_ref()
                     {
+                        self.emit(Instruction::Dup);
                         self.generate_expression(object)?;
                         if *computed {
                             self.generate_expression(property)?;
@@ -165,6 +166,7 @@ impl CodeGenerator {
                         } else {
                             self.generate_expression(property)?;
                         }
+                        self.emit(Instruction::Rot3Right);
                         self.emit(Instruction::SetProperty);
                         self.emit(Instruction::Pop);
                     } else {
@@ -225,6 +227,34 @@ impl CodeGenerator {
                         self.generate_expression(arg)?;
                     }
                     self.emit(Instruction::CallMethod(args.len() as u16));
+                } else if let Expression::OptionalMember {
+                    object,
+                    property,
+                    computed,
+                } = callee.as_ref()
+                {
+                    self.generate_expression(object)?;
+                    self.emit(Instruction::Dup);
+                    let check_undef = self.instructions.len();
+                    self.emit(Instruction::JumpIfUndefined(0));
+                    if *computed {
+                        self.generate_expression(property)?;
+                    } else if let Expression::Identifier(name) = property.as_ref() {
+                        let idx = self.add_constant(Value::String(name.clone()));
+                        self.emit(Instruction::LoadConst(idx));
+                    } else {
+                        self.generate_expression(property)?;
+                    }
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.emit(Instruction::CallMethod(args.len() as u16));
+                    let skip_end = self.instructions.len();
+                    self.emit(Instruction::Jump(0));
+                    self.patch_jump(check_undef, self.instructions.len());
+                    self.emit(Instruction::Pop);
+                    self.emit(Instruction::LoadUndefined);
+                    self.patch_jump(skip_end, self.instructions.len());
                 } else {
                     for arg in args {
                         self.generate_expression(arg)?;
@@ -279,6 +309,34 @@ impl CodeGenerator {
             }
             Expression::OptionalCall { callee, args } => {
                 if let Expression::Member {
+                    object,
+                    property,
+                    computed,
+                } = callee.as_ref()
+                {
+                    self.generate_expression(object)?;
+                    self.emit(Instruction::Dup);
+                    let check_undef = self.instructions.len();
+                    self.emit(Instruction::JumpIfUndefined(0));
+                    if *computed {
+                        self.generate_expression(property)?;
+                    } else if let Expression::Identifier(name) = property.as_ref() {
+                        let idx = self.add_constant(Value::String(name.clone()));
+                        self.emit(Instruction::LoadConst(idx));
+                    } else {
+                        self.generate_expression(property)?;
+                    }
+                    for arg in args {
+                        self.generate_expression(arg)?;
+                    }
+                    self.emit(Instruction::CallMethod(args.len() as u16));
+                    let skip_end = self.instructions.len();
+                    self.emit(Instruction::Jump(0));
+                    self.patch_jump(check_undef, self.instructions.len());
+                    self.emit(Instruction::Pop);
+                    self.emit(Instruction::LoadUndefined);
+                    self.patch_jump(skip_end, self.instructions.len());
+                } else if let Expression::OptionalMember {
                     object,
                     property,
                     computed,
@@ -531,6 +589,69 @@ impl CodeGenerator {
                         } else {
                             self.emit(Instruction::StoreGlobal(name.clone()));
                         }
+                    }
+                } else if let Expression::Member {
+                    object,
+                    property,
+                    computed,
+                } = operand.as_ref()
+                {
+                    // Read old_value
+                    self.generate_expression(object)?;
+                    if *computed {
+                        self.generate_expression(property)?;
+                    } else if let Expression::Identifier(name) = property.as_ref() {
+                        let idx = self.add_constant(Value::String(name.clone()));
+                        self.emit(Instruction::LoadConst(idx));
+                    } else {
+                        self.generate_expression(property)?;
+                    }
+                    self.emit(Instruction::GetProperty);
+
+                    if *prefix {
+                        // ++this.count: result is new_value
+                        let one = self.add_constant(Value::Float(1.0));
+                        self.emit(Instruction::LoadConst(one));
+                        match op {
+                            UpdateOperator::Increment => self.emit(Instruction::Add),
+                            UpdateOperator::Decrement => self.emit(Instruction::Sub),
+                        }
+                        // Stack: [new_value]
+                        self.emit(Instruction::Dup);
+                        self.generate_expression(object)?;
+                        if *computed {
+                            self.generate_expression(property)?;
+                        } else if let Expression::Identifier(name) = property.as_ref() {
+                            let idx = self.add_constant(Value::String(name.clone()));
+                            self.emit(Instruction::LoadConst(idx));
+                        } else {
+                            self.generate_expression(property)?;
+                        }
+                        self.emit(Instruction::Rot3Right);
+                        self.emit(Instruction::SetProperty);
+                        self.emit(Instruction::Pop);
+                    } else {
+                        // this.count++: result is old_value
+                        self.emit(Instruction::Dup);
+                        let one = self.add_constant(Value::Float(1.0));
+                        self.emit(Instruction::LoadConst(one));
+                        match op {
+                            UpdateOperator::Increment => self.emit(Instruction::Add),
+                            UpdateOperator::Decrement => self.emit(Instruction::Sub),
+                        }
+                        // Stack: [old_value, new_value]
+                        self.generate_expression(object)?;
+                        if *computed {
+                            self.generate_expression(property)?;
+                        } else if let Expression::Identifier(name) = property.as_ref() {
+                            let idx = self.add_constant(Value::String(name.clone()));
+                            self.emit(Instruction::LoadConst(idx));
+                        } else {
+                            self.generate_expression(property)?;
+                        }
+                        self.emit(Instruction::Rot3Right);
+                        self.emit(Instruction::SetProperty);
+                        self.emit(Instruction::Pop);
                     }
                 } else {
                     self.generate_expression(operand)?;

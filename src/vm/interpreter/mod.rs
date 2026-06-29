@@ -118,32 +118,62 @@ impl Interpreter {
 
                 if should_resume {
                     let frame = self.suspended_frames.remove(i).unwrap();
-                    let resolved_value =
-                        if let HeapValue::Promise(p) = &self.heap[frame.promise_idx] {
-                            match &p.state {
-                                PromiseState::Fulfilled(v) => v.clone(),
-                                PromiseState::Rejected(reason) => {
-                                    return Err(self.err_at_location(Error::RuntimeError(
-                                        format!("Unhandled promise rejection: {:?}", reason),
-                                    )));
-                                }
-                                _ => unreachable!(),
-                            }
-                        } else {
-                            Value::Undefined
-                        };
+                    let promise_state = if let HeapValue::Promise(p) = &self.heap[frame.promise_idx]
+                    {
+                        p.state.clone()
+                    } else {
+                        PromiseState::Fulfilled(Value::Undefined)
+                    };
 
                     self.stack = frame.stack_snapshot;
-                    self.stack.push(resolved_value);
                     self.call_stack = frame.call_stack_snapshot;
                     self.current_module = frame.module;
                     self.current_module_path = frame.module_path;
                     self.exception_handlers = frame.exception_handlers_snapshot;
                     self.block_scope_stack = frame.block_scope_stack_snapshot;
 
-                    let module_ref = self.current_module.clone().unwrap();
-                    result = self.execute_from(&module_ref, frame.resume_pc);
-                    any_resumed = true;
+                    match &promise_state {
+                        PromiseState::Fulfilled(v) => {
+                            self.stack.push(v.clone());
+                            let module_ref = self.current_module.clone().unwrap();
+                            result = self.execute_from(&module_ref, frame.resume_pc);
+                            any_resumed = true;
+                        }
+                        PromiseState::Rejected(reason) => {
+                            self.pending_exception = Some(reason.clone());
+                            let mut handled = false;
+                            while let Some(handler) = self.exception_handlers.last().cloned() {
+                                if handler.catch_pc != 0 {
+                                    self.exception_handlers.pop();
+                                    self.stack.truncate(handler.stack_depth);
+                                    let module_ref = self.current_module.clone().unwrap();
+                                    result =
+                                        self.execute_from(&module_ref, handler.catch_pc as usize);
+                                    handled = true;
+                                    break;
+                                } else if handler.finally_pc != 0 {
+                                    self.exception_handlers.pop();
+                                    self.stack.truncate(handler.stack_depth);
+                                    let module_ref = self.current_module.clone().unwrap();
+                                    result =
+                                        self.execute_from(&module_ref, handler.finally_pc as usize);
+                                    handled = true;
+                                    break;
+                                } else {
+                                    self.exception_handlers.pop();
+                                }
+                            }
+                            if !handled {
+                                let exc = self.pending_exception.take().unwrap();
+                                return Err(self.err_at_location(Error::RuntimeError(format!(
+                                    "Unhandled promise rejection: {}",
+                                    self.value_to_string(&exc)
+                                ))));
+                            }
+                            any_resumed = true;
+                        }
+                        _ => unreachable!(),
+                    }
                 } else {
                     i += 1;
                 }
@@ -1049,9 +1079,33 @@ impl Interpreter {
                                     self.stack.push(v.clone());
                                 }
                                 PromiseState::Rejected(reason) => {
-                                    return Err(self.err_at_location(Error::RuntimeError(
-                                        format!("Unhandled promise rejection: {:?}", reason),
-                                    )));
+                                    self.pending_exception = Some(reason.clone());
+                                    while let Some(handler) =
+                                        self.exception_handlers.last().cloned()
+                                    {
+                                        if handler.catch_pc != 0 {
+                                            self.exception_handlers.pop();
+                                            self.stack.truncate(handler.stack_depth);
+                                            pc = handler.catch_pc as usize;
+                                            break;
+                                        } else if handler.finally_pc != 0 {
+                                            self.exception_handlers.pop();
+                                            self.stack.truncate(handler.stack_depth);
+                                            pc = handler.finally_pc as usize;
+                                            break;
+                                        } else {
+                                            self.exception_handlers.pop();
+                                        }
+                                    }
+                                    if self.pending_exception.is_some() {
+                                        let exc = self.pending_exception.take().unwrap();
+                                        return Err(self.err_at_location(Error::RuntimeError(
+                                            format!(
+                                                "Unhandled promise rejection: {}",
+                                                self.value_to_string(&exc)
+                                            ),
+                                        )));
+                                    }
                                 }
                                 PromiseState::Pending => {
                                     let frame = SuspendedFrame {
@@ -1119,12 +1173,32 @@ impl Interpreter {
                             ));
                             self.stack.push(Value::Promise(promise_idx));
                         }
-                        _ => {
+                        Ok(None) => {
                             let reason_idx = self.heap.len();
                             let mut props = HashMap::new();
                             props.insert(
                                 "message".into(),
                                 Value::String(format!("Module '{}' not found", source_str)),
+                            );
+                            self.heap.push(HeapValue::Object(JsObject {
+                                properties: props,
+                                prototype: None,
+                                extensible: true,
+                            }));
+                            let promise_idx = self.heap.len();
+                            self.heap.push(HeapValue::Promise(
+                                crate::objects::js_promise::JsPromise::rejected(Value::Object(
+                                    reason_idx,
+                                )),
+                            ));
+                            self.stack.push(Value::Promise(promise_idx));
+                        }
+                        Err(e) => {
+                            let reason_idx = self.heap.len();
+                            let mut props = HashMap::new();
+                            props.insert(
+                                "message".into(),
+                                Value::String(format!("Module '{}' error: {}", source_str, e)),
                             );
                             self.heap.push(HeapValue::Object(JsObject {
                                 properties: props,
@@ -1196,6 +1270,73 @@ impl Interpreter {
                             props.insert("__index".to_string(), Value::Integer(0));
                             props.insert("__data".to_string(), Value::Array(data_idx));
                             // Iterator helper methods
+                            props.insert("map".to_string(), Value::NativeFunction(230));
+                            props.insert("filter".to_string(), Value::NativeFunction(231));
+                            props.insert("take".to_string(), Value::NativeFunction(232));
+                            props.insert("drop".to_string(), Value::NativeFunction(233));
+                            props.insert("forEach".to_string(), Value::NativeFunction(234));
+                            props.insert("toArray".to_string(), Value::NativeFunction(235));
+                            let iter_idx = self.gc.allocate(
+                                &mut self.heap,
+                                HeapValue::Object(JsObject {
+                                    properties: props,
+                                    prototype: None,
+                                    extensible: true,
+                                }),
+                            );
+                            self.stack.push(Value::Object(iter_idx));
+                        }
+                        Value::Map(map_idx) => {
+                            let entries = if let HeapValue::Map(m) = &self.heap[*map_idx] {
+                                m.entries.clone()
+                            } else {
+                                Vec::new()
+                            };
+                            let mut elements = Vec::new();
+                            for (k, v) in &entries {
+                                let pair_idx = self.heap.len();
+                                self.heap.push(HeapValue::Array(JsArray {
+                                    elements: vec![k.clone(), v.clone()],
+                                }));
+                                elements.push(Value::Array(pair_idx));
+                            }
+                            let data_idx = self
+                                .gc
+                                .allocate(&mut self.heap, HeapValue::Array(JsArray { elements }));
+                            let mut props = HashMap::new();
+                            props.insert("__type".to_string(), Value::String("array".to_string()));
+                            props.insert("__index".to_string(), Value::Integer(0));
+                            props.insert("__data".to_string(), Value::Array(data_idx));
+                            props.insert("map".to_string(), Value::NativeFunction(230));
+                            props.insert("filter".to_string(), Value::NativeFunction(231));
+                            props.insert("take".to_string(), Value::NativeFunction(232));
+                            props.insert("drop".to_string(), Value::NativeFunction(233));
+                            props.insert("forEach".to_string(), Value::NativeFunction(234));
+                            props.insert("toArray".to_string(), Value::NativeFunction(235));
+                            let iter_idx = self.gc.allocate(
+                                &mut self.heap,
+                                HeapValue::Object(JsObject {
+                                    properties: props,
+                                    prototype: None,
+                                    extensible: true,
+                                }),
+                            );
+                            self.stack.push(Value::Object(iter_idx));
+                        }
+                        Value::Set(set_idx) => {
+                            let values = if let HeapValue::Set(s) = &self.heap[*set_idx] {
+                                s.values.clone()
+                            } else {
+                                Vec::new()
+                            };
+                            let data_idx = self.gc.allocate(
+                                &mut self.heap,
+                                HeapValue::Array(JsArray { elements: values }),
+                            );
+                            let mut props = HashMap::new();
+                            props.insert("__type".to_string(), Value::String("array".to_string()));
+                            props.insert("__index".to_string(), Value::Integer(0));
+                            props.insert("__data".to_string(), Value::Array(data_idx));
                             props.insert("map".to_string(), Value::NativeFunction(230));
                             props.insert("filter".to_string(), Value::NativeFunction(231));
                             props.insert("take".to_string(), Value::NativeFunction(232));
