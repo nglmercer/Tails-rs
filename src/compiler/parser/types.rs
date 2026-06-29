@@ -52,12 +52,26 @@ impl<'a> Parser<'a> {
                             let mut args = vec![self.parse_type_annotation()?];
                             while self.peek().token == Token::Comma {
                                 self.advance();
-                                if self.peek().token == Token::Greater {
+                                if matches!(self.peek().token, Token::Greater | Token::ShiftRight) {
                                     break;
                                 }
                                 args.push(self.parse_type_annotation()?);
                             }
-                            self.expect(&Token::Greater)?;
+                            match self.peek().token {
+                                Token::Greater => {
+                                    self.advance();
+                                }
+                                Token::ShiftRight => {
+                                    // `>>` is two `>` - consume one, leave the other
+                                    self.peek_token_mut().token = Token::Greater;
+                                }
+                                _ => {
+                                    return Err(Error::ParseError(format!(
+                                        "Expected '>' to close generic arguments, got {:?}",
+                                        self.peek().token
+                                    )));
+                                }
+                            }
                             Ok(TypeAnnotation::Generic { name, args })
                         } else if let Token::Identifier(ref is_name) = self.peek().token {
                             if is_name == "is" {

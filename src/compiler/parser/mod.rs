@@ -510,20 +510,20 @@ pub type TypedParams = (
     Option<String>,
 );
 
-pub fn parse(tokens: &[SpannedToken]) -> Result<AstNode> {
+pub fn parse(tokens: &mut [SpannedToken]) -> Result<AstNode> {
     let mut parser = Parser::new(tokens);
     parser.parse_program()
 }
 
 pub(crate) struct Parser<'a> {
-    tokens: &'a [SpannedToken],
+    tokens: &'a mut [SpannedToken],
     pos: usize,
     current_span: Span,
     eof_token: SpannedToken,
 }
 
 impl<'a> Parser<'a> {
-    fn new(tokens: &'a [SpannedToken]) -> Self {
+    fn new(tokens: &'a mut [SpannedToken]) -> Self {
         Self {
             tokens,
             pos: 0,
@@ -552,6 +552,14 @@ impl<'a> Parser<'a> {
             &self.tokens[self.pos]
         } else {
             &self.eof_token
+        }
+    }
+
+    pub(crate) fn peek_token_mut(&mut self) -> &mut SpannedToken {
+        if self.pos < self.tokens.len() {
+            &mut self.tokens[self.pos]
+        } else {
+            &mut self.eof_token
         }
     }
 
@@ -936,6 +944,40 @@ impl<'a> Parser<'a> {
                 "Expected property name, got {:?}",
                 t
             ))),
+        }
+    }
+
+    /// Skip optional TypeScript generic type parameters `<T, U extends Foo, ...>`.
+    /// Used after parsing a declaration name to consume type parameters that
+    /// are erased at runtime.
+    pub(crate) fn skip_type_parameters(&mut self) {
+        if self.peek().token == Token::Less {
+            let mut depth = 1u32;
+            self.advance();
+            while depth > 0 && self.peek().token != Token::Eof {
+                match self.peek().token {
+                    Token::Less => {
+                        depth += 1;
+                        self.advance();
+                    }
+                    Token::Greater => {
+                        depth -= 1;
+                        if depth > 0 {
+                            self.advance();
+                        } else {
+                            self.advance();
+                            break;
+                        }
+                    }
+                    Token::ShiftLeft => {
+                        depth += 2;
+                        self.advance();
+                    }
+                    _ => {
+                        self.advance();
+                    }
+                }
+            }
         }
     }
 

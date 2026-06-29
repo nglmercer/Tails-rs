@@ -1,10 +1,13 @@
 mod builtins;
 mod call_frame;
 mod calls;
+mod exception_handling;
+mod function_ops;
 mod heap_types;
 mod instructions;
-pub(crate) mod modules;
+mod modules;
 mod native_loader;
+mod ops;
 mod promise_runtime;
 mod property_access;
 mod value_ops;
@@ -1792,15 +1795,10 @@ impl Interpreter {
                     // Delegate to instruction handler modules
                     #[allow(clippy::if_same_then_else)]
                     if self.exec_load_store(&instruction, module)? {
-                        // handled
                     } else if self.exec_arithmetic(&instruction)? {
-                        // handled
                     } else if self.exec_comparison(&instruction)? {
-                        // handled
                     } else if self.exec_property_ops(&instruction)? {
-                        // handled
                     } else if self.exec_make_function(&instruction, module, pc)? {
-                        // handled
                     } else {
                         let saved_pc = pc;
                         if self.exec_exception(&instruction, &mut pc)? {

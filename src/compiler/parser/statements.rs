@@ -211,17 +211,7 @@ impl<'a> Parser<'a> {
                 )))
             }
         };
-        if self.peek().token == Token::Less {
-            self.advance();
-            while self.peek().token != Token::Greater && self.peek().token != Token::Eof {
-                if self.peek().token == Token::Comma {
-                    self.advance();
-                    continue;
-                }
-                self.advance();
-            }
-            self.expect(&Token::Greater)?;
-        }
+        self.skip_type_parameters();
         self.expect(&Token::LeftParen)?;
         let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
         self.expect(&Token::RightParen)?;
@@ -626,6 +616,7 @@ impl<'a> Parser<'a> {
                 )))
             }
         };
+        self.skip_type_parameters();
         let superclass = if self.peek().token == Token::Extends {
             self.advance();
             Some(self.parse_call()?.inner)
@@ -1230,6 +1221,7 @@ impl<'a> Parser<'a> {
                 )))
             }
         };
+        self.skip_type_parameters();
         let mut extends = Vec::new();
         if self.peek().token == Token::Extends {
             self.advance();
@@ -1271,6 +1263,7 @@ impl<'a> Parser<'a> {
             }
             let name = match self.advance().token {
                 Token::Identifier(n) => n,
+                Token::String(s) => s,
                 t => {
                     return Err(Error::ParseError(format!(
                         "Expected property name, got {:?}",
@@ -1372,6 +1365,7 @@ impl<'a> Parser<'a> {
                 )))
             }
         };
+        self.skip_type_parameters();
         self.expect(&Token::Assign)?;
         let type_annotation = self.parse_type_annotation()?;
         if self.peek().token == Token::Semicolon {
