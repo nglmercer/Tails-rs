@@ -54,7 +54,7 @@ impl Interpreter {
                     self.module_globals = saved_mg;
                     result
                 } else {
-                    Err(Error::TypeError("Not a function".into()))
+                    Err(self.err_at_location(Error::TypeError("Not a function".into())))
                 }
             }
             Value::NativeFunction(native_idx) => self.call_native(*native_idx, this, args),
@@ -74,16 +74,16 @@ impl Interpreter {
                         &[target, this.clone(), Value::Array(arr_idx)],
                     )
                 } else {
-                    Err(Error::TypeError(format!(
+                    Err(self.err_at_location(Error::TypeError(format!(
                         "{} is not a function",
                         self.value_to_string(callee)
-                    )))
+                    ))))
                 }
             }
-            _ => Err(Error::TypeError(format!(
+            _ => Err(self.err_at_location(Error::TypeError(format!(
                 "{} is not a function",
                 self.value_to_string(callee)
-            ))),
+            )))),
         }
     }
 

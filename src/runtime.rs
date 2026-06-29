@@ -46,10 +46,7 @@ impl TailsRuntime {
                 if backtrace.is_empty() {
                     Err(e)
                 } else {
-                    let mut e = e;
-                    let msg = format!("{}{}", e.message(), backtrace);
-                    e.kind = crate::errors::ErrorKind::RuntimeError(msg);
-                    Err(e)
+                    Err(e.with_backtrace(backtrace))
                 }
             }
         }
@@ -64,11 +61,23 @@ impl TailsRuntime {
         let result = self.interpreter.execute_module(&compiled);
         // Register module exports
         let exports = std::mem::take(&mut self.interpreter.module_exports);
-        // If module result is Undefined but there's a default export, return that instead
-        let final_result = if matches!(result, Ok(Value::Undefined)) {
-            exports.get("default").cloned().unwrap_or(Value::Undefined)
-        } else {
-            result?
+        let final_result = match result {
+            Ok(val) => {
+                if matches!(val, Value::Undefined) {
+                    exports.get("default").cloned().unwrap_or(Value::Undefined)
+                } else {
+                    val
+                }
+            }
+            Err(e) => {
+                let backtrace = self.interpreter.call_stack_backtrace();
+                self.interpreter.module_registry.insert(module_key, exports);
+                self.interpreter.current_module_path = prev;
+                if backtrace.is_empty() {
+                    return Err(e);
+                }
+                return Err(e.with_backtrace(backtrace));
+            }
         };
         self.interpreter.module_registry.insert(module_key, exports);
         self.interpreter.current_module_path = prev;

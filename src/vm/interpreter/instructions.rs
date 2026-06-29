@@ -34,7 +34,12 @@ impl Interpreter {
                 });
                 match value {
                     Some(v) => self.stack.push(v),
-                    None => return Err(Error::ReferenceError(format!("{} is not defined", name))),
+                    None => {
+                        return Err(self.err_at_location(Error::ReferenceError(format!(
+                            "{} is not defined",
+                            name
+                        ))))
+                    }
                 }
             }
             Instruction::LoadGlobalOrUndefined(name) => {

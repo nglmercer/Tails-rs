@@ -26,6 +26,7 @@ pub struct Error {
     pub kind: ErrorKind,
     pub span: Option<Span>,
     pub file: Option<String>,
+    pub backtrace: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +47,7 @@ impl Error {
             kind: ErrorKind::ParseError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
     pub fn TypeError(msg: String) -> Self {
@@ -53,6 +55,7 @@ impl Error {
             kind: ErrorKind::TypeError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
     pub fn ReferenceError(msg: String) -> Self {
@@ -60,6 +63,7 @@ impl Error {
             kind: ErrorKind::ReferenceError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
     pub fn SyntaxError(msg: String) -> Self {
@@ -67,6 +71,7 @@ impl Error {
             kind: ErrorKind::SyntaxError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
     pub fn RuntimeError(msg: String) -> Self {
@@ -74,6 +79,7 @@ impl Error {
             kind: ErrorKind::RuntimeError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
     pub fn InternalError(msg: String) -> Self {
@@ -81,6 +87,7 @@ impl Error {
             kind: ErrorKind::InternalError(msg),
             span: None,
             file: None,
+            backtrace: None,
         }
     }
 
@@ -91,6 +98,11 @@ impl Error {
 
     pub fn with_file(mut self, file: impl Into<String>) -> Self {
         self.file = Some(file.into());
+        self
+    }
+
+    pub fn with_backtrace(mut self, backtrace: String) -> Self {
+        self.backtrace = Some(backtrace);
         self
     }
 
@@ -145,13 +157,22 @@ impl Error {
             }
         }
 
+        if let Some(backtrace) = &self.backtrace {
+            out.push_str(backtrace);
+            out.push('\n');
+        }
+
         out
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.kind_name(), self.message())
+        write!(f, "{}: {}", self.kind_name(), self.message())?;
+        if let Some(bt) = &self.backtrace {
+            write!(f, "{}", bt)?;
+        }
+        Ok(())
     }
 }
 

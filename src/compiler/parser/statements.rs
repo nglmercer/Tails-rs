@@ -458,7 +458,9 @@ impl<'a> Parser<'a> {
                     is_async: is_for_await,
                 }));
             }
-            return Err(Error::ParseError("Expected 'in' or 'of' after destructuring pattern in for-loop".into()));
+            return Err(Error::ParseError(
+                "Expected 'in' or 'of' after destructuring pattern in for-loop".into(),
+            ));
         }
 
         let init_expr = self.parse_expression()?.inner;

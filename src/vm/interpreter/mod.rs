@@ -46,6 +46,7 @@ pub struct Interpreter {
     pub(crate) buffer_proto_idx: Option<usize>,
     pub(crate) generator_proto_idx: Option<usize>,
     pub(crate) native_loader: native_loader::NativeModuleRegistry,
+    pub(crate) current_pc: usize,
 }
 
 impl Interpreter {
@@ -74,6 +75,7 @@ impl Interpreter {
             buffer_proto_idx: None,
             generator_proto_idx: None,
             native_loader: native_loader::NativeModuleRegistry::new(),
+            current_pc: 0,
         };
         interp.init_builtins();
         interp.init_builtins();
@@ -109,6 +111,20 @@ impl Interpreter {
             .and_then(|m| m.source_lines.get(pc).copied().flatten())
     }
 
+    pub(crate) fn err_at_location(&self, mut err: crate::errors::Error) -> crate::errors::Error {
+        if err.span.is_some() {
+            return err;
+        }
+        if let Some(line) = self.current_source_line(self.current_pc) {
+            let file = self.current_module_path.clone();
+            err.span = Some(crate::errors::Span::new(line, 1, 0));
+            if err.file.is_none() {
+                err.file = file;
+            }
+        }
+        err
+    }
+
     pub(crate) fn execute_from(
         &mut self,
         module: &CompiledModule,
@@ -120,6 +136,8 @@ impl Interpreter {
             if pc >= module.instructions.len() {
                 break;
             }
+
+            self.current_pc = pc;
 
             if self.gc.should_collect() {
                 self.collect_garbage();
@@ -387,17 +405,17 @@ impl Interpreter {
                                     Err(e) => return Err(e),
                                 }
                             } else {
-                                return Err(Error::TypeError(format!(
+                                return Err(self.err_at_location(Error::TypeError(format!(
                                     "{} is not a function",
                                     self.value_to_string(&callee)
-                                )));
+                                ))));
                             }
                         }
                         _ => {
-                            return Err(Error::TypeError(format!(
+                            return Err(self.err_at_location(Error::TypeError(format!(
                                 "{} is not a function",
                                 self.value_to_string(&callee)
-                            )));
+                            ))));
                         }
                     }
                 }
@@ -463,10 +481,10 @@ impl Interpreter {
                             self.stack.push(result);
                         }
                         _ => {
-                            return Err(Error::TypeError(format!(
+                            return Err(self.err_at_location(Error::TypeError(format!(
                                 "{} is not a function",
                                 self.value_to_string(&method)
-                            )));
+                            ))));
                         }
                     }
                 }
@@ -656,17 +674,17 @@ impl Interpreter {
                                     Err(e) => return Err(e),
                                 }
                             } else {
-                                return Err(Error::TypeError(format!(
+                                return Err(self.err_at_location(Error::TypeError(format!(
                                     "{} is not a constructor",
                                     self.value_to_string(&constructor)
-                                )));
+                                ))));
                             }
                         }
                         _ => {
-                            return Err(Error::TypeError(format!(
+                            return Err(self.err_at_location(Error::TypeError(format!(
                                 "{} is not a constructor",
                                 self.value_to_string(&constructor)
-                            )));
+                            ))));
                         }
                     }
                 }
@@ -751,7 +769,9 @@ impl Interpreter {
                             self.stack.push(result);
                         }
                         _ => {
-                            return Err(Error::TypeError("Superclass is not a constructor".into()));
+                            return Err(self.err_at_location(Error::TypeError(
+                                "Superclass is not a constructor".into(),
+                            )));
                         }
                     }
                 }
