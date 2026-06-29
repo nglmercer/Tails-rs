@@ -86,6 +86,8 @@ pub enum Statement {
         name: String,
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
+        defaults: Vec<Option<Expression>>,
+        rest_param: Option<String>,
         return_type: Option<TypeAnnotation>,
         body: Vec<SpannedNode<Statement>>,
         is_async: bool,
@@ -354,6 +356,8 @@ pub enum Expression {
         name: Option<String>,
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
+        defaults: Vec<Option<Expression>>,
+        rest_param: Option<String>,
         return_type: Option<TypeAnnotation>,
         body: Vec<SpannedNode<Statement>>,
         is_async: bool,
@@ -362,6 +366,8 @@ pub enum Expression {
     ArrowFunction {
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
+        defaults: Vec<Option<Expression>>,
+        rest_param: Option<String>,
         return_type: Option<TypeAnnotation>,
         body: Box<ArrowFunctionBody>,
         is_async: bool,
@@ -478,6 +484,7 @@ pub enum BinaryOperator {
     Instanceof,
     In,
     NullishCoalescing,
+    Comma,
 }
 
 #[derive(Debug, Clone)]
@@ -488,6 +495,7 @@ pub enum UnaryOperator {
     Void,
     Delete,
     BitNot,
+    UnaryPlus,
 }
 
 pub fn parse(tokens: &[SpannedToken]) -> Result<AstNode> {
@@ -634,7 +642,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_expression_statement(&mut self) -> Result<SpannedNode<Statement>> {
-        let expr = self.parse_expression()?;
+        let expr = self.parse_expression_with_comma()?;
         if self.peek().token == Token::Semicolon {
             self.advance();
         }
@@ -643,11 +651,32 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_typed_params(
         &mut self,
-    ) -> Result<(Vec<String>, Vec<Option<TypeAnnotation>>)> {
+    ) -> Result<(
+        Vec<String>,
+        Vec<Option<TypeAnnotation>>,
+        Vec<Option<Expression>>,
+        Option<String>,
+    )> {
         let mut params = Vec::new();
         let mut param_types = Vec::new();
+        let mut defaults = Vec::new();
+        let mut rest_param = None;
         if self.peek().token != Token::RightParen {
             loop {
+                if self.peek().token == Token::Ellipsis {
+                    self.advance();
+                    let param = match self.advance().token {
+                        Token::Identifier(name) => name,
+                        token => {
+                            return Err(Error::ParseError(format!(
+                                "Expected parameter name after '...', got {:?}",
+                                token
+                            )))
+                        }
+                    };
+                    rest_param = Some(param);
+                    break;
+                }
                 let param = match self.advance().token {
                     Token::Identifier(name) => name,
                     token => {
@@ -661,7 +690,6 @@ impl<'a> Parser<'a> {
                     self.advance();
                     Some(self.parse_type_annotation()?)
                 } else if self.peek().token == Token::Question {
-                    // Optional parameter: skip '?', type is optional
                     self.advance();
                     if self.peek().token == Token::Colon {
                         self.advance();
@@ -672,8 +700,15 @@ impl<'a> Parser<'a> {
                 } else {
                     None
                 };
+                let default = if self.peek().token == Token::Assign {
+                    self.advance();
+                    Some(self.parse_assignment()?.inner)
+                } else {
+                    None
+                };
                 params.push(param);
                 param_types.push(ty);
+                defaults.push(default);
                 if self.peek().token == Token::Comma {
                     self.advance();
                     if self.peek().token == Token::RightParen {
@@ -684,7 +719,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok((params, param_types))
+        Ok((params, param_types, defaults, rest_param))
     }
 
     pub(crate) fn parse_constructor_params(&mut self) -> Result<Vec<ConstructorParam>> {

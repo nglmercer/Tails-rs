@@ -6,7 +6,21 @@ impl<'a> Parser<'a> {
         self.parse_assignment()
     }
 
-    fn parse_assignment(&mut self) -> Result<SpannedNode<Expression>> {
+    pub(crate) fn parse_expression_with_comma(&mut self) -> Result<SpannedNode<Expression>> {
+        let mut left = self.parse_assignment()?;
+        while self.peek().token == Token::Comma {
+            self.advance();
+            let right = self.parse_assignment()?;
+            left = self.spanned(Expression::BinaryOp {
+                op: BinaryOperator::Comma,
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
+        }
+        Ok(left)
+    }
+
+    pub(crate) fn parse_assignment(&mut self) -> Result<SpannedNode<Expression>> {
         let left = self.parse_ternary()?;
         match self.peek().token.clone() {
             Token::Assign => {
@@ -145,7 +159,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_equality(&mut self) -> Result<SpannedNode<Expression>> {
-        let mut left = self.parse_instanceof()?;
+        let mut left = self.parse_bitwise_or()?;
         loop {
             let op = match self.peek().token {
                 Token::Equal => Some(BinaryOperator::Eq),
@@ -156,7 +170,7 @@ impl<'a> Parser<'a> {
             };
             if let Some(op) = op {
                 self.advance();
-                let right = self.parse_instanceof()?;
+                let right = self.parse_bitwise_or()?;
                 left = self.spanned(Expression::BinaryOp {
                     op,
                     left: Box::new(left.inner),
@@ -165,6 +179,48 @@ impl<'a> Parser<'a> {
             } else {
                 break;
             }
+        }
+        Ok(left)
+    }
+
+    fn parse_bitwise_or(&mut self) -> Result<SpannedNode<Expression>> {
+        let mut left = self.parse_bitwise_xor()?;
+        while self.peek().token == Token::BitOr {
+            self.advance();
+            let right = self.parse_bitwise_xor()?;
+            left = self.spanned(Expression::BinaryOp {
+                op: BinaryOperator::BitOr,
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
+        }
+        Ok(left)
+    }
+
+    fn parse_bitwise_xor(&mut self) -> Result<SpannedNode<Expression>> {
+        let mut left = self.parse_bitwise_and()?;
+        while self.peek().token == Token::BitXor {
+            self.advance();
+            let right = self.parse_bitwise_and()?;
+            left = self.spanned(Expression::BinaryOp {
+                op: BinaryOperator::BitXor,
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
+        }
+        Ok(left)
+    }
+
+    fn parse_bitwise_and(&mut self) -> Result<SpannedNode<Expression>> {
+        let mut left = self.parse_instanceof()?;
+        while self.peek().token == Token::BitAnd {
+            self.advance();
+            let right = self.parse_instanceof()?;
+            left = self.spanned(Expression::BinaryOp {
+                op: BinaryOperator::BitAnd,
+                left: Box::new(left.inner),
+                right: Box::new(right.inner),
+            });
         }
         Ok(left)
     }
@@ -314,6 +370,14 @@ impl<'a> Parser<'a> {
                 let operand = self.parse_unary()?;
                 Ok(self.spanned(Expression::UnaryOp {
                     op: UnaryOperator::Negate,
+                    operand: Box::new(operand.inner),
+                }))
+            }
+            Token::Plus => {
+                self.advance();
+                let operand = self.parse_unary()?;
+                Ok(self.spanned(Expression::UnaryOp {
+                    op: UnaryOperator::UnaryPlus,
                     operand: Box::new(operand.inner),
                 }))
             }
@@ -693,7 +757,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         if self.peek().token == Token::Arrow {
                             self.advance();
-                            self.parse_arrow_body(vec![name], None, None, false)
+                            self.parse_arrow_body(vec![name], None, vec![], None, None, false)
                         } else {
                             Ok(self.spanned(Expression::Identifier(name)))
                         }
@@ -706,13 +770,13 @@ impl<'a> Parser<'a> {
                     self.advance();
                     if self.peek().token == Token::Arrow {
                         self.advance();
-                        return self.parse_arrow_body(vec![], None, None, false);
+                        return self.parse_arrow_body(vec![], None, vec![], None, None, false);
                     }
                     return Err(Error::ParseError("Unexpected )".into()));
                 }
                 if let Token::Identifier(_) = self.peek().token.clone() {
                     let saved = self.pos;
-                    let (params, param_types) = self.parse_typed_params()?;
+                    let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
                     if self.peek().token == Token::RightParen {
                         self.advance();
                         let return_type = if self.peek().token == Token::Colon {
@@ -726,6 +790,8 @@ impl<'a> Parser<'a> {
                             return self.parse_arrow_body(
                                 params,
                                 Some(param_types),
+                                defaults,
+                                rest_param,
                                 return_type,
                                 false,
                             );
@@ -745,7 +811,7 @@ impl<'a> Parser<'a> {
                         }
                     };
                     self.advance();
-                    return self.parse_arrow_body(params, None, None, false);
+                    return self.parse_arrow_body(params, None, vec![], None, None, false);
                 }
                 Ok(expr)
             }
@@ -764,7 +830,7 @@ impl<'a> Parser<'a> {
                     None
                 };
                 self.expect(&Token::LeftParen)?;
-                let (params, param_types) = self.parse_typed_params()?;
+                let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
                 self.expect(&Token::RightParen)?;
                 let return_type = if self.peek().token == Token::Colon {
                     self.advance();
@@ -779,6 +845,8 @@ impl<'a> Parser<'a> {
                     name,
                     params,
                     param_types: Some(param_types),
+                    defaults,
+                    rest_param,
                     return_type,
                     body,
                     is_async: false,
@@ -802,7 +870,7 @@ impl<'a> Parser<'a> {
                         None
                     };
                     self.expect(&Token::LeftParen)?;
-                    let (params, param_types) = self.parse_typed_params()?;
+                    let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
                     let return_type = if self.peek().token == Token::Colon {
                         self.advance();
@@ -817,6 +885,8 @@ impl<'a> Parser<'a> {
                         name,
                         params,
                         param_types: Some(param_types),
+                        defaults,
+                        rest_param,
                         return_type,
                         body,
                         is_async: true,
@@ -824,7 +894,7 @@ impl<'a> Parser<'a> {
                     }))
                 } else {
                     self.expect(&Token::LeftParen)?;
-                    let (params, param_types) = self.parse_typed_params()?;
+                    let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
                     let return_type = if self.peek().token == Token::Colon {
                         self.advance();
@@ -834,7 +904,14 @@ impl<'a> Parser<'a> {
                     };
                     if self.peek().token == Token::Arrow {
                         self.advance();
-                        self.parse_arrow_body(params, Some(param_types), return_type, true)
+                        self.parse_arrow_body(
+                            params,
+                            Some(param_types),
+                            defaults,
+                            rest_param,
+                            return_type,
+                            true,
+                        )
                     } else {
                         Err(Error::ParseError(
                             "Expected '=>' after async parameters".into(),
@@ -964,7 +1041,8 @@ impl<'a> Parser<'a> {
                             if self.peek().token == Token::LeftParen {
                                 // Method syntax: key() { ... }
                                 self.advance();
-                                let (params, param_types) = self.parse_typed_params()?;
+                                let (params, param_types, defaults, rest_param) =
+                                    self.parse_typed_params()?;
                                 self.expect(&Token::RightParen)?;
                                 let return_type = if self.peek().token == Token::Colon {
                                     self.advance();
@@ -983,6 +1061,8 @@ impl<'a> Parser<'a> {
                                         name: Some(key.clone()),
                                         params,
                                         param_types: Some(param_types),
+                                        defaults,
+                                        rest_param,
                                         return_type,
                                         body: full_body,
                                         is_async: false,
@@ -1058,6 +1138,8 @@ impl<'a> Parser<'a> {
         &mut self,
         params: Vec<String>,
         param_types: Option<Vec<Option<TypeAnnotation>>>,
+        defaults: Vec<Option<Expression>>,
+        rest_param: Option<String>,
         return_type: Option<TypeAnnotation>,
         is_async: bool,
     ) -> Result<SpannedNode<Expression>> {
@@ -1068,6 +1150,8 @@ impl<'a> Parser<'a> {
             Ok(self.spanned(Expression::ArrowFunction {
                 params,
                 param_types,
+                defaults,
+                rest_param,
                 return_type,
                 body: Box::new(ArrowFunctionBody::Block(body)),
                 is_async,
@@ -1077,6 +1161,8 @@ impl<'a> Parser<'a> {
             Ok(self.spanned(Expression::ArrowFunction {
                 params,
                 param_types,
+                defaults,
+                rest_param,
                 return_type,
                 body: Box::new(ArrowFunctionBody::Expression(expr.inner)),
                 is_async,

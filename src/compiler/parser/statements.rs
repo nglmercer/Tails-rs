@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
             self.expect(&Token::Greater)?;
         }
         self.expect(&Token::LeftParen)?;
-        let (params, param_types) = self.parse_typed_params()?;
+        let (params, param_types, defaults, rest_param) = self.parse_typed_params()?;
         self.expect(&Token::RightParen)?;
         let return_type = if self.peek().token == Token::Colon {
             self.advance();
@@ -224,6 +224,8 @@ impl<'a> Parser<'a> {
             name,
             params,
             param_types: Some(param_types),
+            defaults,
+            rest_param,
             return_type,
             body,
             is_async,
@@ -766,7 +768,8 @@ impl<'a> Parser<'a> {
                 }
                 if self.peek().token == Token::LeftParen {
                     self.advance();
-                    let (params, param_types) = self.parse_typed_params()?;
+                    let (params, param_types, _defaults, _rest_param) =
+                        self.parse_typed_params()?;
                     self.expect(&Token::RightParen)?;
                     let return_type = if self.peek().token == Token::Colon {
                         self.advance();

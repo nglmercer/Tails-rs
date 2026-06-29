@@ -2,9 +2,7 @@ use futures_util::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
-    connect_async,
-    tungstenite::protocol::WebSocketConfig,
-    MaybeTlsStream, WebSocketStream,
+    connect_async, tungstenite::protocol::WebSocketConfig, MaybeTlsStream, WebSocketStream,
 };
 
 pub struct WebSocket {
@@ -28,18 +26,26 @@ impl WebSocket {
         let (ws_stream, _) = connect_async(&self.url)
             .await
             .map_err(|e| format!("WebSocket connection failed: {}", e))?;
-        
-        let mut inner = self.inner.lock().map_err(|e| format!("Lock error: {}", e))?;
+
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
         *inner = Some(ws_stream);
         Ok(())
     }
 
     pub async fn send(&self, message: &str) -> Result<(), String> {
-        let mut inner = self.inner.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
         if let Some(ws) = inner.as_mut() {
-            ws.send(tokio_tungstenite::tungstenite::Message::Text(message.to_string()))
-                .await
-                .map_err(|e| format!("Send failed: {}", e))?;
+            ws.send(tokio_tungstenite::tungstenite::Message::Text(
+                message.to_string(),
+            ))
+            .await
+            .map_err(|e| format!("Send failed: {}", e))?;
             Ok(())
         } else {
             Err("WebSocket not connected".to_string())
@@ -47,7 +53,10 @@ impl WebSocket {
     }
 
     pub async fn receive(&self) -> Result<String, String> {
-        let mut inner = self.inner.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
         if let Some(ws) = inner.as_mut() {
             match ws.next().await {
                 Some(Ok(tokio_tungstenite::tungstenite::Message::Text(text))) => Ok(text),
@@ -64,7 +73,10 @@ impl WebSocket {
     }
 
     pub async fn close(&self) -> Result<(), String> {
-        let mut inner = self.inner.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
         if let Some(mut ws) = inner.take() {
             ws.close(None)
                 .await

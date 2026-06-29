@@ -125,7 +125,8 @@ impl CodeGenerator {
                             UnaryOperator::Typeof => self.emit(Instruction::TypeOf),
                             UnaryOperator::Void => self.emit(Instruction::Void),
                             UnaryOperator::BitNot => self.emit(Instruction::BitNot),
-                            _ => {}
+                            UnaryOperator::Delete => {}
+                            UnaryOperator::UnaryPlus => {}
                         }
                     }
                 }
@@ -390,6 +391,8 @@ impl CodeGenerator {
                 param_types: _,
                 return_type: _,
                 is_generator,
+                defaults: _,
+                rest_param: _,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();
@@ -454,6 +457,8 @@ impl CodeGenerator {
                 is_async: _,
                 param_types: _,
                 return_type: _,
+                defaults: _,
+                rest_param: _,
             } => {
                 let func_idx = self.functions.len() as u32;
 
@@ -922,10 +927,17 @@ impl CodeGenerator {
             BinaryOperator::GreaterEqual => self.emit(Instruction::GreaterEqual),
             BinaryOperator::And => self.emit(Instruction::And),
             BinaryOperator::Or => self.emit(Instruction::Or),
+            BinaryOperator::BitAnd => self.emit(Instruction::BitAnd),
+            BinaryOperator::BitOr => self.emit(Instruction::BitOr),
+            BinaryOperator::BitXor => self.emit(Instruction::BitXor),
+            BinaryOperator::ShiftLeft => self.emit(Instruction::ShiftLeft),
+            BinaryOperator::ShiftRight => self.emit(Instruction::ShiftRight),
             BinaryOperator::Instanceof => self.emit(Instruction::InstanceOf),
             BinaryOperator::In => self.emit(Instruction::In),
             BinaryOperator::NullishCoalescing => self.emit(Instruction::NullishCoalescing),
-            _ => {}
+            BinaryOperator::Comma => {
+                self.emit(Instruction::Pop);
+            }
         }
         Ok(())
     }

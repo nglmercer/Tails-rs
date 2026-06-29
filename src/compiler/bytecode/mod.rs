@@ -955,6 +955,8 @@ impl CodeGenerator {
                 param_types: _,
                 return_type: _,
                 is_generator,
+                defaults: _,
+                rest_param: _,
             } => {
                 let func_idx = self.functions.len() as u32;
                 let parent_locals_snapshot = self.locals.clone();

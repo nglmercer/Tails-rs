@@ -69,6 +69,7 @@ impl TypeChecker {
             | BinaryOperator::ShiftLeft
             | BinaryOperator::ShiftRight => Ok(Type::Number),
             BinaryOperator::NullishCoalescing => Ok(Type::Any),
+            BinaryOperator::Comma => Ok(Type::Any),
         }
     }
 
@@ -93,6 +94,7 @@ impl TypeChecker {
             crate::compiler::parser::UnaryOperator::Void => Ok(Type::Undefined),
             crate::compiler::parser::UnaryOperator::Delete => Ok(Type::Boolean),
             crate::compiler::parser::UnaryOperator::BitNot => Ok(Type::Number),
+            crate::compiler::parser::UnaryOperator::UnaryPlus => Ok(Type::Number),
         }
     }
 }

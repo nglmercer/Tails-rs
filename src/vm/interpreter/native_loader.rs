@@ -365,14 +365,14 @@ pub fn create_assert_module(
     gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    
+
     // Create assert object with methods
     let mut assert_props = HashMap::new();
-    assert_props.insert("strictEqual".into(), Value::NativeFunction(355));
-    assert_props.insert("ok".into(), Value::NativeFunction(354));
-    assert_props.insert("equal".into(), Value::NativeFunction(355));
-    assert_props.insert("deepEqual".into(), Value::NativeFunction(355));
-    
+    assert_props.insert("strictEqual".into(), Value::NativeFunction(390));
+    assert_props.insert("ok".into(), Value::NativeFunction(389));
+    assert_props.insert("equal".into(), Value::NativeFunction(390));
+    assert_props.insert("deepEqual".into(), Value::NativeFunction(390));
+
     let assert_obj_idx = gc.allocate(
         heap,
         HeapValue::Object(JsObject {
@@ -381,11 +381,11 @@ pub fn create_assert_module(
             extensible: true,
         }),
     );
-    
+
     props.insert("default".into(), Value::Object(assert_obj_idx));
-    props.insert("strictEqual".into(), Value::NativeFunction(355));
-    props.insert("ok".into(), Value::NativeFunction(354));
-    props.insert("equal".into(), Value::NativeFunction(355));
-    props.insert("deepEqual".into(), Value::NativeFunction(355));
+    props.insert("strictEqual".into(), Value::NativeFunction(390));
+    props.insert("ok".into(), Value::NativeFunction(389));
+    props.insert("equal".into(), Value::NativeFunction(390));
+    props.insert("deepEqual".into(), Value::NativeFunction(390));
     props
 }

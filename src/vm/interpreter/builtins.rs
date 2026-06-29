@@ -658,7 +658,7 @@ impl Interpreter {
 
         // WebSocket constructor
         self.globals
-            .insert("WebSocket".into(), Value::NativeFunction(350));
+            .insert("WebSocket".into(), Value::NativeFunction(383));
     }
 }
 

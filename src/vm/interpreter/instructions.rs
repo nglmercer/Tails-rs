@@ -264,6 +264,83 @@ impl Interpreter {
                 let num = self.to_number(&value)?;
                 self.stack.push(Value::Integer(!(num as i64)));
             }
+            Instruction::UnaryPlus => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let num = self.to_number(&value)?;
+                if num.fract() == 0.0 && num.abs() < i64::MAX as f64 {
+                    self.stack.push(Value::Integer(num as i64));
+                } else {
+                    self.stack.push(Value::Float(num));
+                }
+            }
+            Instruction::BitAnd => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let l = self.to_number(&left)? as i64;
+                let r = self.to_number(&right)? as i64;
+                self.stack.push(Value::Integer(l & r));
+            }
+            Instruction::BitOr => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let l = self.to_number(&left)? as i64;
+                let r = self.to_number(&right)? as i64;
+                self.stack.push(Value::Integer(l | r));
+            }
+            Instruction::BitXor => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let l = self.to_number(&left)? as i64;
+                let r = self.to_number(&right)? as i64;
+                self.stack.push(Value::Integer(l ^ r));
+            }
+            Instruction::ShiftLeft => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let l = self.to_number(&left)? as i64;
+                let r = self.to_number(&right)? as u32;
+                self.stack.push(Value::Integer(l << r));
+            }
+            Instruction::ShiftRight => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Error::RuntimeError("Stack underflow".into()))?;
+                let l = self.to_number(&left)? as i64;
+                let r = self.to_number(&right)? as u32;
+                self.stack.push(Value::Integer(l >> r));
+            }
             Instruction::Void => {
                 self.stack
                     .pop()

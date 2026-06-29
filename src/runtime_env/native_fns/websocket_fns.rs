@@ -28,10 +28,10 @@ pub(super) fn native_websocket_constructor(
     props.insert("extensions".into(), Value::String(String::new()));
 
     // Add methods
-    props.insert("send".into(), Value::NativeFunction(350));
-    props.insert("close".into(), Value::NativeFunction(351));
-    props.insert("addEventListener".into(), Value::NativeFunction(352));
-    props.insert("removeEventListener".into(), Value::NativeFunction(353));
+    props.insert("send".into(), Value::NativeFunction(384));
+    props.insert("close".into(), Value::NativeFunction(385));
+    props.insert("addEventListener".into(), Value::NativeFunction(386));
+    props.insert("removeEventListener".into(), Value::NativeFunction(387));
 
     let ws_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
@@ -54,18 +54,24 @@ pub(super) fn native_websocket_send(
             .first()
             .map(|v| to_string_value(interp, v))
             .unwrap_or_default();
-        
+
         if let HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
             // Store message for later sending (actual network send would require async runtime)
             let msg_len = message.len();
             obj.properties
                 .insert("__pendingMessage".into(), Value::String(message));
-            
+
             // Update bufferedAmount
             let buffered = obj
                 .properties
                 .get("bufferedAmount")
-                .and_then(|v| if let Value::Integer(i) = v { Some(*i) } else { None })
+                .and_then(|v| {
+                    if let Value::Integer(i) = v {
+                        Some(*i)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(0);
             obj.properties.insert(
                 "bufferedAmount".into(),
@@ -103,22 +109,22 @@ pub(super) fn native_websocket_add_event_listener(
             .unwrap_or_default();
         let callback = args.get(1).cloned().unwrap_or(Value::Undefined);
         let listeners_key = format!("__listeners_{}", event_type);
-        
+
         // Check if listeners array exists
         let has_listeners = if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             obj.properties.contains_key(&listeners_key)
         } else {
             return Ok(Value::Undefined);
         };
-        
+
         // Create new array if needed
         let arr_idx = if !has_listeners {
             let new_arr_idx = interp.heap.len();
-            interp.heap.push(HeapValue::Array(
-                crate::vm::interpreter::JsArray {
+            interp
+                .heap
+                .push(HeapValue::Array(crate::vm::interpreter::JsArray {
                     elements: Vec::new(),
-                },
-            ));
+                }));
             new_arr_idx
         } else {
             if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
@@ -131,15 +137,14 @@ pub(super) fn native_websocket_add_event_listener(
                 return Ok(Value::Undefined);
             }
         };
-        
+
         // Add the array reference to the object if it's new
         if !has_listeners {
             if let HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
-                obj.properties
-                    .insert(listeners_key, Value::Array(arr_idx));
+                obj.properties.insert(listeners_key, Value::Array(arr_idx));
             }
         }
-        
+
         // Now add callback to the array
         if let HeapValue::Array(arr) = &mut interp.heap[arr_idx] {
             arr.elements.push(callback);
@@ -161,7 +166,7 @@ pub(super) fn native_websocket_remove_event_listener(
             .unwrap_or_default();
         let callback = args.get(1).cloned().unwrap_or(Value::Undefined);
         let listeners_key = format!("__listeners_{}", event_type);
-        
+
         // Get array index first
         let arr_idx = if let HeapValue::Object(obj) = &interp.heap[*obj_idx] {
             if let Some(Value::Array(arr_idx)) = obj.properties.get(&listeners_key) {
@@ -172,7 +177,7 @@ pub(super) fn native_websocket_remove_event_listener(
         } else {
             None
         };
-        
+
         // Now remove callback from the array
         if let Some(arr_idx) = arr_idx {
             if let HeapValue::Array(arr) = &mut interp.heap[arr_idx] {
