@@ -272,6 +272,7 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                     // Parse regex literal
                     let mut pattern = String::new();
                     let mut escaped = false;
+                    let mut bracket_depth = 0;
                     loop {
                         match chars.next() {
                             Some((_, '\\')) if !escaped => {
@@ -279,7 +280,19 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                                 escaped = true;
                                 col += 1;
                             }
-                            Some((_, '/')) if !escaped => {
+                            Some((_, '[')) if !escaped => {
+                                pattern.push('[');
+                                bracket_depth += 1;
+                                col += 1;
+                                escaped = false;
+                            }
+                            Some((_, ']')) if !escaped && bracket_depth > 0 => {
+                                pattern.push(']');
+                                bracket_depth -= 1;
+                                col += 1;
+                                escaped = false;
+                            }
+                            Some((_, '/')) if !escaped && bracket_depth == 0 => {
                                 col += 1;
                                 break;
                             }
@@ -425,7 +438,7 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                     "public" => Token::Public,
                     "private" => Token::Private,
                     "protected" => Token::Protected,
-                    "readonly" => Token::Readonly,
+                    "readonly" => Token::Identifier("readonly".to_string()),
                     "constructor" => Token::Constructor,
                     "get" => Token::Get,
                     "set" => Token::Set,

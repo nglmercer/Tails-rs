@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
                             self.advance();
                             access_modifiers.push(AccessModifier::Protected);
                         }
-                        Token::Readonly => {
+                        Token::Identifier(ref s) if s == "readonly" => {
                             self.advance();
                             access_modifiers.push(AccessModifier::Readonly);
                         }

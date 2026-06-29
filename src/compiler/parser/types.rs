@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
                 if self.peek().token != Token::RightBrace {
                     loop {
                         // Skip optional modifiers like 'readonly'
-                        while matches!(self.peek().token, Token::Readonly) {
+                        while matches!(&self.peek().token, Token::Identifier(s) if s == "readonly") {
                             self.advance();
                         }
                         let name = match self.advance().token {

@@ -655,11 +655,16 @@ impl<'a> Parser<'a> {
             } else {
                 false
             };
-            while matches!(
-                self.peek().token,
-                Token::Public | Token::Private | Token::Protected | Token::Readonly
-            ) {
-                self.advance();
+            loop {
+                match &self.peek().token {
+                    Token::Public | Token::Private | Token::Protected => {
+                        self.advance();
+                    }
+                    Token::Identifier(s) if s == "readonly" => {
+                        self.advance();
+                    }
+                    _ => break,
+                }
             }
 
             if self.peek().token == Token::Constructor {
@@ -676,6 +681,41 @@ impl<'a> Parser<'a> {
                 self.expect(&Token::RightBrace)?;
                 members.push(ClassMember::Constructor { params, body });
             } else if self.peek().token == Token::Get && !is_async {
+                // Lookahead: if next token after 'get' is '(', it's a method named "get"
+                let is_method = self.pos + 1 < self.tokens.len()
+                    && self.tokens[self.pos + 1].token == Token::LeftParen;
+                if is_method {
+                    // Fall through to generic method parsing below
+                    // We need to not consume 'get' here, so we use a saved key
+                    let name = "get".to_string();
+                    self.advance(); // consume 'get'
+                    self.advance(); // consume '('
+                    let (params, param_types, defaults, rest_param) =
+                        self.parse_typed_params()?;
+                    self.expect(&Token::RightParen)?;
+                    let return_type = if self.peek().token == Token::Colon {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    };
+                    if self.peek().token == Token::Semicolon {
+                        self.advance();
+                    } else {
+                        self.expect(&Token::LeftBrace)?;
+                        let body = self.parse_block_body()?;
+                        self.expect(&Token::RightBrace)?;
+                        members.push(ClassMember::Method {
+                            name,
+                            params,
+                            param_types: Some(param_types),
+                            return_type,
+                            body,
+                            is_static,
+                            is_async,
+                        });
+                    }
+                } else {
                 self.advance();
                 let name = match self.advance().token {
                     Token::Identifier(name) => name,
@@ -751,6 +791,8 @@ impl<'a> Parser<'a> {
             } else {
                 let name = match self.advance().token {
                     Token::Identifier(name) => name,
+                    Token::String(name) => name,
+                    Token::Number(n) => n.to_string(),
                     t => {
                         return Err(Error::ParseError(format!(
                             "Expected method name, got {:?}",
@@ -1170,11 +1212,16 @@ impl<'a> Parser<'a> {
                 continue;
             }
             // Skip optional modifiers like 'readonly', 'public', 'private', 'protected', 'static'
-            while matches!(
-                self.peek().token,
-                Token::Readonly | Token::Public | Token::Private | Token::Protected | Token::Static
-            ) {
-                self.advance();
+            loop {
+                match &self.peek().token {
+                    Token::Public | Token::Private | Token::Protected | Token::Static => {
+                        self.advance();
+                    }
+                    Token::Identifier(s) if s == "readonly" => {
+                        self.advance();
+                    }
+                    _ => break,
+                }
             }
             let name = match self.advance().token {
                 Token::Identifier(n) => n,
