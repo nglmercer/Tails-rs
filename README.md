@@ -15,7 +15,7 @@ Tails-rs is a JavaScript/TypeScript runtime built from scratch in Rust. It compi
 - **Promises** — Native implementation with `.then()`, `.catch()`, `.finally()`, and `Promise.all`
 - **Timers** — `setTimeout`, `setInterval`, and `clearInterval`
 - **ES Modules** — Import/export with named, default, and namespace imports
-- **Native Modules** — Import-only modules via `.native` extension (fs, path, events, etc.)
+- **Modular Native Modules** — Feature-gated crates under `modules/`, importable by bare name
 - **Error Handling** — Try/catch/finally with thrown exceptions
 - **Proxy Objects** — JavaScript Proxy API with traps
 - **Rich Standard Library** — Object, Array, String, Math, JSON, Number, and global functions
@@ -24,6 +24,24 @@ Tails-rs is a JavaScript/TypeScript runtime built from scratch in Rust. It compi
 
 ```bash
 cargo build --release
+```
+
+### Build with Feature Flags
+
+Native modules (`fs`, `path`, `process`, `os`) are compiled as optional Cargo features, all enabled by default.
+
+```bash
+# All modules (default)
+cargo build --release
+
+# Without fs and path (smaller binary)
+cargo build --release --no-default-features
+
+# Only fs and path
+cargo build --release --no-default-features -F fs -F path
+
+# Everything except os
+cargo build --release -F --no-default-features -F fs -F path -F process
 ```
 
 ## Usage
@@ -62,31 +80,47 @@ cargo run --bin tails -- examples/all_features.ts
 
 ## Native Modules
 
-Native modules are imported using the `.native` extension. They are **not** available as globals — you must always import them explicitly.
+Native modules are imported by bare name. They are **not** available as globals — you must always import them explicitly.
+
+```typescript
+import fs from "fs";
+import path from "path";
+import process from "process";
+import os from "os";
+import Buffer from "./buffer.native";
+import Intl from "./intl.native";
+import events from "./events.native";
+import crypto from "./crypto.native";
+```
+
+The `.native` extension still works for all modules:
 
 ```typescript
 import fs from "./fs.native";
 import path from "./path.native";
-import process from "./process.native";
-import Buffer from "./buffer.native";
-import Intl from "./intl.native";
-import events from "./events.native";
-import os from "./os.native";
-import crypto from "./crypto.native";
 ```
 
 ### Available Native Modules
 
-| Module | Description |
-|--------|-------------|
-| `fs` | File system operations (read, write, stat, mkdir, etc.) |
-| `path` | Path manipulation (join, resolve, basename, etc.) |
-| `process` | Process info and control (env, argv, exit, etc.) |
-| `buffer` | Node.js-compatible binary data handling |
-| `intl` | Internationalization (DateTimeFormat, NumberFormat) |
-| `events` | EventEmitter class with on/emit/off |
-| `os` | OS information (platform, arch, cpus, memory, etc.) |
-| `crypto` | Cryptographic functions (randomBytes, randomUUID, createHash) |
+| Module | Feature | Crate | Description |
+|--------|---------|-------|-------------|
+| `fs` | `fs` | `modules/fs` | File system operations (read, write, stat, mkdir, etc.) |
+| `path` | `path` | `modules/path` | Path manipulation (join, resolve, basename, etc.) |
+| `process` | `process` | `modules/process` | Process info and control (env, argv, exit, etc.) |
+| `os` | `os` | `modules/os` | OS information (platform, arch, cpus, memory, etc.) |
+| `buffer` | *(always)* | *(built-in)* | Node.js-compatible binary data handling |
+| `intl` | *(always)* | *(built-in)* | Internationalization (DateTimeFormat, NumberFormat) |
+| `events` | *(always)* | *(built-in)* | EventEmitter class with on/emit/off |
+| `crypto` | *(always)* | *(built-in)* | Cryptographic functions (randomBytes, randomUUID, createHash) |
+
+### Module Architecture
+
+Each feature-gated module is split into two layers:
+
+- **`modules/<name>/`** — Pure Rust implementation with no dependency on the runtime. Contains the actual business logic (fs operations, path manipulation, etc.)
+- **`src/runtime_env/native_fns/<name>_fns.rs`** — Thin adapter that converts between runtime `Value` types and the pure module functions
+
+This separation keeps the core runtime lightweight and the module logic testable independently.
 
 ## Supported Features
 
@@ -227,6 +261,8 @@ import crypto from "./crypto.native";
 > Based on current implementation status. Contributions welcome!
 
 ### Recently Completed
+- **Modular Native Modules** — `fs`, `path`, `process`, `os` extracted to standalone crates under `modules/` with Cargo feature flags for selective inclusion
+- **Bare-name Imports** — `import fs from "fs"` works alongside the legacy `import fs from "./fs.native"` syntax
 - **Light Runtime** — Moved process, Buffer, Intl from globals to import-only native modules
 - **Native Module System** — Import-only modules via `.native` extension, registry-based loader
 - **events module** — EventEmitter class with `on()`, `emit()`, `off()`, `listenerCount()`
@@ -278,21 +314,30 @@ src/
 │   └── interpreter/
 │       ├── native_loader.rs  # Registry-based native module loader
 │       └── ...
-├── runtime_env/   # Native functions and async runtime
+├── runtime_env/   # Native function adapters and async runtime
 ├── objects/       # JS value types (objects, arrays, functions, promises, proxies)
 ├── ffi/           # Foreign function interface
 └── main.rs        # CLI entry point
 
 modules/
 ├── abi/           # Shared ABI types for future dlopen support
-├── fs/            # File system native module (placeholder)
-└── path/          # Path native module (placeholder)
+├── fs/            # Pure Rust fs operations (feature-gated)
+├── path/          # Pure Rust path operations (feature-gated)
+├── process/       # Pure Rust process operations (feature-gated)
+└── os/            # Pure Rust os operations (feature-gated)
 ```
 
 ## Testing
 
 ```bash
+# Run all tests (default features)
 cargo test
+
+# Run without optional modules
+cargo test --no-default-features
+
+# Run with specific features only
+cargo test --no-default-features -F fs -F path
 ```
 
 ## License
