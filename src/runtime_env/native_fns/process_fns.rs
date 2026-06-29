@@ -1,6 +1,6 @@
 use crate::errors::Result;
 use crate::objects::Value;
-use crate::vm::interpreter::{HeapValue, Interpreter};
+use crate::vm::interpreter::Interpreter;
 
 use super::helpers::to_string_value;
 
@@ -22,8 +22,8 @@ pub(super) fn native_process_cwd(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    match std::env::current_dir() {
-        Ok(path) => Ok(Value::String(path.to_string_lossy().to_string())),
+    match tails_process::cwd() {
+        Ok(path) => Ok(Value::String(path)),
         Err(e) => Err(crate::errors::Error::RuntimeError(format!(
             "cwd failed: {}",
             e
@@ -32,15 +32,15 @@ pub(super) fn native_process_cwd(
 }
 
 pub(super) fn native_process_chdir(
-    _interp: &mut Interpreter,
+    interp: &mut Interpreter,
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
     let dir = args
         .first()
-        .map(|v| to_string_value(_interp, v))
+        .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-    match std::env::set_current_dir(&dir) {
+    match tails_process::chdir(&dir) {
         Ok(()) => Ok(Value::Undefined),
         Err(e) => Err(crate::errors::Error::RuntimeError(format!(
             "chdir failed: {}",
@@ -58,29 +58,22 @@ pub(super) fn native_process_stdout_write(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-    use std::io::Write;
-    let _ = std::io::stdout().write_all(data.as_bytes());
+    let _ = tails_process::stdout_write(&data);
     Ok(Value::Boolean(true))
 }
 
 pub(super) fn native_process_hrtime(
-    _interp: &mut Interpreter,
+    interp: &mut Interpreter,
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let dur = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = dur.as_secs() as i64;
-    let nanos = dur.subsec_nanos() as i64;
-
-    // Return [seconds, nanoseconds] as an array
-    let arr_idx = _interp.heap.len();
-    _interp
-        .heap
-        .push(HeapValue::Array(crate::vm::interpreter::JsArray {
-            elements: vec![Value::Integer(secs), Value::Integer(nanos)],
-        }));
+    let (secs, nanos) = tails_process::hrtime();
+    let arr_idx = interp.heap.len();
+    interp.heap.push(crate::vm::interpreter::HeapValue::Array(
+        crate::vm::interpreter::JsArray {
+            elements: vec![Value::Integer(secs as i64), Value::Integer(nanos as i64)],
+        },
+    ));
     Ok(Value::Array(arr_idx))
 }
 
@@ -89,11 +82,7 @@ pub(super) fn native_process_hrtime_bigint(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let dur = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let nanos = dur.as_nanos() as i128;
-    Ok(Value::BigInt(nanos))
+    Ok(Value::BigInt(tails_process::hrtime_bigint() as i128))
 }
 
 pub(super) fn native_process_next_tick(
@@ -101,7 +90,6 @@ pub(super) fn native_process_next_tick(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    // Simplified: just execute the callback immediately
     if let Some(callback) = args.first() {
         let _ = interp.call_value(callback, &Value::Undefined, &[]);
     }

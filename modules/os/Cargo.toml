@@ -1,0 +1,10 @@
+[package]
+name = "tails-os"
+version = "0.1.0"
+edition = "2021"
+description = "Tails native os module"
+
+[dependencies]
+libc = "0.2"
+
+[lib]

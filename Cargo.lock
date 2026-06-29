@@ -1634,7 +1634,18 @@ name = "tails-fs"
 version = "0.1.0"
 
 [[package]]
+name = "tails-os"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "tails-path"
+version = "0.1.0"
+
+[[package]]
+name = "tails-process"
 version = "0.1.0"
 
 [[package]]
@@ -1658,6 +1669,10 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tails-fs",
+ "tails-os",
+ "tails-path",
+ "tails-process",
  "thiserror 1.0.69",
  "tokio",
  "url",

@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "modules/abi", "modules/fs", "modules/path"]
+members = [".", "modules/abi", "modules/fs", "modules/path", "modules/process", "modules/os"]
 
 [package]
 name = "tails-rs"
@@ -7,6 +7,13 @@ version = "0.1.0"
 edition = "2021"
 description = "A TypeScript-first runtime in Rust"
 license = "MIT"
+
+[features]
+default = ["fs", "path", "process", "os"]
+fs = ["dep:tails-fs"]
+path = ["dep:tails-path"]
+process = ["dep:tails-process"]
+os = ["dep:tails-os"]
 
 [lib]
 name = "tails"
@@ -17,6 +24,11 @@ name = "tails"
 path = "src/main.rs"
 
 [dependencies]
+tails-fs = { path = "modules/fs", optional = true }
+tails-path = { path = "modules/path", optional = true }
+tails-process = { path = "modules/process", optional = true }
+tails-os = { path = "modules/os", optional = true }
+
 # Async Runtime
 tokio = { version = "1", features = ["full"] }
 

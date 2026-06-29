@@ -7,16 +7,7 @@ pub(super) fn native_os_platform(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let platform = if cfg!(target_os = "linux") {
-        "linux"
-    } else if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "windows") {
-        "win32"
-    } else {
-        "unknown"
-    };
-    Ok(Value::String(platform.to_string()))
+    Ok(Value::String(tails_os::platform().to_string()))
 }
 
 pub(super) fn native_os_arch(
@@ -24,16 +15,7 @@ pub(super) fn native_os_arch(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let arch = if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "x86") {
-        "x86"
-    } else {
-        "unknown"
-    };
-    Ok(Value::String(arch.to_string()))
+    Ok(Value::String(tails_os::arch().to_string()))
 }
 
 pub(super) fn native_os_cpus(
@@ -41,38 +23,37 @@ pub(super) fn native_os_cpus(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let count = std::thread::available_parallelism()
-        .map(|n| n.get() as i64)
-        .unwrap_or(1);
-
-    let mut cpus = Vec::new();
-    for _i in 0..count {
-        let mut props = std::collections::HashMap::new();
-        props.insert("model".into(), Value::String("CPU".into()));
-        props.insert("speed".into(), Value::Float(0.0));
-        let mut times_props = std::collections::HashMap::new();
-        times_props.insert("user".into(), Value::Integer(0));
-        times_props.insert("nice".into(), Value::Integer(0));
-        times_props.insert("sys".into(), Value::Integer(0));
-        times_props.insert("idle".into(), Value::Integer(0));
-        times_props.insert("irq".into(), Value::Integer(0));
-        let times_idx = interp.gc.allocate(
-            &mut interp.heap,
-            HeapValue::Object(JsObject {
-                properties: times_props,
+    let cpus_info = tails_os::cpus();
+    let cpus: Vec<Value> = cpus_info
+        .iter()
+        .map(|cpu| {
+            let mut times_props = std::collections::HashMap::new();
+            times_props.insert("user".into(), Value::Integer(cpu.times.user));
+            times_props.insert("nice".into(), Value::Integer(cpu.times.nice));
+            times_props.insert("sys".into(), Value::Integer(cpu.times.sys));
+            times_props.insert("idle".into(), Value::Integer(cpu.times.idle));
+            times_props.insert("irq".into(), Value::Integer(cpu.times.irq));
+            let times_idx = interp.gc.allocate(
+                &mut interp.heap,
+                HeapValue::Object(JsObject {
+                    properties: times_props,
+                    prototype: None,
+                    extensible: true,
+                }),
+            );
+            let mut props = std::collections::HashMap::new();
+            props.insert("model".into(), Value::String(cpu.model.clone()));
+            props.insert("speed".into(), Value::Float(cpu.speed));
+            props.insert("times".into(), Value::Object(times_idx));
+            let cpu_idx = interp.heap.len();
+            interp.heap.push(HeapValue::Object(JsObject {
+                properties: props,
                 prototype: None,
                 extensible: true,
-            }),
-        );
-        props.insert("times".into(), Value::Object(times_idx));
-        let cpu_idx = interp.heap.len();
-        interp.heap.push(HeapValue::Object(JsObject {
-            properties: props,
-            prototype: None,
-            extensible: true,
-        }));
-        cpus.push(Value::Object(cpu_idx));
-    }
+            }));
+            Value::Object(cpu_idx)
+        })
+        .collect();
 
     let arr_idx = interp.heap.len();
     interp
@@ -88,22 +69,7 @@ pub(super) fn native_os_totalmem(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    // Read from /proc/meminfo on Linux
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
-            for line in content.lines() {
-                if let Some(rest) = line.strip_prefix("MemTotal:") {
-                    if let Some(kb_str) = rest.split_whitespace().next() {
-                        if let Ok(kb) = kb_str.parse::<f64>() {
-                            return Ok(Value::Float(kb * 1024.0));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok(Value::Float(16.0 * 1024.0 * 1024.0 * 1024.0))
+    Ok(Value::Float(tails_os::totalmem()))
 }
 
 pub(super) fn native_os_freemem(
@@ -111,21 +77,7 @@ pub(super) fn native_os_freemem(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
-            for line in content.lines() {
-                if let Some(rest) = line.strip_prefix("MemAvailable:") {
-                    if let Some(kb_str) = rest.split_whitespace().next() {
-                        if let Ok(kb) = kb_str.parse::<f64>() {
-                            return Ok(Value::Float(kb * 1024.0));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok(Value::Float(8.0 * 1024.0 * 1024.0 * 1024.0))
+    Ok(Value::Float(tails_os::freemem()))
 }
 
 pub(super) fn native_os_uptime(
@@ -133,11 +85,7 @@ pub(super) fn native_os_uptime(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let uptime = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs_f64();
-    Ok(Value::Float(uptime))
+    Ok(Value::Float(tails_os::uptime()))
 }
 
 pub(super) fn native_os_hostname(
@@ -145,24 +93,10 @@ pub(super) fn native_os_hostname(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    if let Ok(hostname) = std::env::var("HOSTNAME") {
-        if !hostname.is_empty() {
-            return Ok(Value::String(hostname));
-        }
+    match tails_os::hostname() {
+        Ok(h) => Ok(Value::String(h)),
+        Err(_) => Ok(Value::String("localhost".to_string())),
     }
-    #[cfg(unix)]
-    {
-        let mut buf = [0u8; 256];
-        if unsafe { libc::gethostname(buf.as_mut_ptr() as *mut libc::c_char, buf.len()) } == 0 {
-            if let Ok(s) = std::ffi::CStr::from_bytes_until_nul(&buf) {
-                let hostname = s.to_string_lossy().to_string();
-                if !hostname.is_empty() {
-                    return Ok(Value::String(hostname));
-                }
-            }
-        }
-    }
-    Ok(Value::String("localhost".to_string()))
 }
 
 pub(super) fn native_os_type(
@@ -170,16 +104,7 @@ pub(super) fn native_os_type(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let os_type = if cfg!(target_os = "linux") {
-        "Linux"
-    } else if cfg!(target_os = "macos") {
-        "Darwin"
-    } else if cfg!(target_os = "windows") {
-        "Windows_NT"
-    } else {
-        "Unknown"
-    };
-    Ok(Value::String(os_type.to_string()))
+    Ok(Value::String(tails_os::os_type().to_string()))
 }
 
 pub(super) fn native_os_release(
@@ -187,13 +112,7 @@ pub(super) fn native_os_release(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(content) = std::fs::read_to_string("/proc/version") {
-            return Ok(Value::String(content.trim().to_string()));
-        }
-    }
-    Ok(Value::String("unknown".to_string()))
+    Ok(Value::String(tails_os::release()))
 }
 
 pub(super) fn native_os_homedir(
@@ -201,20 +120,7 @@ pub(super) fn native_os_homedir(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    if let Ok(home) = std::env::var("HOME") {
-        if !home.is_empty() {
-            return Ok(Value::String(home));
-        }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(home) = std::env::var("USERPROFILE") {
-            if !home.is_empty() {
-                return Ok(Value::String(home));
-            }
-        }
-    }
-    Ok(Value::String("/".to_string()))
+    Ok(Value::String(tails_os::homedir()))
 }
 
 pub(super) fn native_os_tmpdir(
@@ -222,6 +128,5 @@ pub(super) fn native_os_tmpdir(
     _this: &Value,
     _args: &[Value],
 ) -> Result<Value> {
-    let tmp = std::env::temp_dir().to_string_lossy().to_string();
-    Ok(Value::String(tmp))
+    Ok(Value::String(tails_os::tmpdir()))
 }

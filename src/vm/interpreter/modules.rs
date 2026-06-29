@@ -114,7 +114,32 @@ impl Interpreter {
 
         let module_path = match self.resolve_module_path(source) {
             Ok(p) => p,
-            Err(_) => return Ok(None),
+            Err(_) => {
+                // Bare native module name (e.g., "fs", "path", "process")
+                let module_name = source;
+                if !self.native_loader.has_module(module_name) {
+                    super::native_loader::discover_module(module_name, &mut self.native_loader);
+                }
+                if self.native_loader.has_module(module_name) {
+                    let exports = self.native_loader.load_module(
+                        module_name,
+                        &mut self.heap,
+                        &mut self.gc,
+                    )?;
+                    if module_name == "buffer" {
+                        if let Some(Value::Object(proto_idx)) = exports.get("prototype") {
+                            self.buffer_proto_idx = Some(*proto_idx);
+                        }
+                    }
+                    let mut props = HashMap::new();
+                    for (name, val) in &exports {
+                        props.insert(name.clone(), val.clone());
+                    }
+                    self.module_registry.insert(module_name.to_string(), props);
+                    return Ok(Some(module_name.to_string()));
+                }
+                return Ok(None);
+            }
         };
         if self.module_registry.contains_key(&module_path) {
             return Ok(Some(module_path));

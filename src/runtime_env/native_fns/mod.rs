@@ -8,7 +8,48 @@ mod encoding_fns;
 mod error_fns;
 mod events_fns;
 mod fetch_fns;
+#[cfg(feature = "fs")]
 mod fs_fns;
+#[cfg(not(feature = "fs"))]
+mod fs_fns {
+    use crate::errors::{Error, Result};
+    use crate::objects::Value;
+    use crate::vm::interpreter::Interpreter;
+
+    macro_rules! fs_stub {
+        ($name:ident) => {
+            pub(super) fn $name(
+                _interp: &mut Interpreter,
+                _this: &Value,
+                _args: &[Value],
+            ) -> Result<Value> {
+                Err(Error::RuntimeError(
+                    "fs module is not enabled. Rebuild with --features fs".into(),
+                ))
+            }
+        };
+    }
+
+    fs_stub!(native_fs_read_file_sync);
+    fs_stub!(native_fs_write_file_sync);
+    fs_stub!(native_fs_exists_sync);
+    fs_stub!(native_fs_mkdir_sync);
+    fs_stub!(native_fs_readdir_sync);
+    fs_stub!(native_fs_stat_sync);
+    fs_stub!(native_fs_unlink_sync);
+    fs_stub!(native_fs_rm_sync);
+    fs_stub!(native_fs_copy_file_sync);
+    fs_stub!(native_fs_rename_sync);
+    fs_stub!(native_fs_append_file_sync);
+    fs_stub!(native_fs_readdir);
+    fs_stub!(native_fs_read_file);
+    fs_stub!(native_fs_write_file);
+    fs_stub!(native_fs_stat);
+    fs_stub!(native_fs_mkdir);
+    fs_stub!(native_fs_unlink);
+    fs_stub!(native_fs_copy_file);
+    fs_stub!(native_fs_rename);
+}
 mod function_fns;
 mod generator_fns;
 mod global_fns;
@@ -19,9 +60,101 @@ mod json_fns;
 mod math_fns;
 mod number_fns;
 mod object_fns;
+#[cfg(feature = "os")]
 mod os_fns;
+#[cfg(not(feature = "os"))]
+mod os_fns {
+    use crate::errors::{Error, Result};
+    use crate::objects::Value;
+    use crate::vm::interpreter::Interpreter;
+
+    macro_rules! os_stub {
+        ($name:ident) => {
+            pub(super) fn $name(
+                _interp: &mut Interpreter,
+                _this: &Value,
+                _args: &[Value],
+            ) -> Result<Value> {
+                Err(Error::RuntimeError(
+                    "os module is not enabled. Rebuild with --features os".into(),
+                ))
+            }
+        };
+    }
+
+    os_stub!(native_os_platform);
+    os_stub!(native_os_arch);
+    os_stub!(native_os_cpus);
+    os_stub!(native_os_totalmem);
+    os_stub!(native_os_freemem);
+    os_stub!(native_os_uptime);
+    os_stub!(native_os_hostname);
+    os_stub!(native_os_type);
+    os_stub!(native_os_release);
+    os_stub!(native_os_homedir);
+    os_stub!(native_os_tmpdir);
+}
+#[cfg(feature = "path")]
 mod path_fns;
+#[cfg(not(feature = "path"))]
+mod path_fns {
+    use crate::errors::{Error, Result};
+    use crate::objects::Value;
+    use crate::vm::interpreter::Interpreter;
+
+    macro_rules! path_stub {
+        ($name:ident) => {
+            pub(super) fn $name(
+                _interp: &mut Interpreter,
+                _this: &Value,
+                _args: &[Value],
+            ) -> Result<Value> {
+                Err(Error::RuntimeError(
+                    "path module is not enabled. Rebuild with --features path".into(),
+                ))
+            }
+        };
+    }
+
+    path_stub!(native_path_join);
+    path_stub!(native_path_resolve);
+    path_stub!(native_path_basename);
+    path_stub!(native_path_dirname);
+    path_stub!(native_path_extname);
+    path_stub!(native_path_relative);
+    path_stub!(native_path_is_absolute);
+    path_stub!(native_path_normalize);
+}
+#[cfg(feature = "process")]
 mod process_fns;
+#[cfg(not(feature = "process"))]
+mod process_fns {
+    use crate::errors::{Error, Result};
+    use crate::objects::Value;
+    use crate::vm::interpreter::Interpreter;
+
+    macro_rules! process_stub {
+        ($name:ident) => {
+            pub(super) fn $name(
+                _interp: &mut Interpreter,
+                _this: &Value,
+                _args: &[Value],
+            ) -> Result<Value> {
+                Err(Error::RuntimeError(
+                    "process module is not enabled. Rebuild with --features process".into(),
+                ))
+            }
+        };
+    }
+
+    process_stub!(native_process_exit);
+    process_stub!(native_process_cwd);
+    process_stub!(native_process_chdir);
+    process_stub!(native_process_stdout_write);
+    process_stub!(native_process_hrtime);
+    process_stub!(native_process_hrtime_bigint);
+    process_stub!(native_process_next_tick);
+}
 mod promise_fns;
 mod proxy_fns;
 mod reflect_fns;

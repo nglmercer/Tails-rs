@@ -1,3 +1,5 @@
+#![cfg(feature = "fs")]
+
 use std::path::Path;
 use tails::TailsRuntime;
 

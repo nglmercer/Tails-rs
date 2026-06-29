@@ -792,6 +792,7 @@ fn test_buffer() {
 
 // ---- process (native module) ----
 #[test]
+#[cfg(feature = "process")]
 fn test_process_globals() {
     let mut rt = TailsRuntime::default();
     let r = rt.eval_module(
@@ -811,6 +812,7 @@ fn test_process_globals() {
 
 // ---- path (native module) ----
 #[test]
+#[cfg(feature = "path")]
 fn test_path_module() {
     let mut rt = TailsRuntime::default();
     let r = rt.eval(
@@ -834,6 +836,7 @@ fn test_path_module() {
 
 // ---- fs (native module) ----
 #[test]
+#[cfg(feature = "fs")]
 fn test_fs_module() {
     let mut rt = TailsRuntime::default();
     let r = rt.eval(

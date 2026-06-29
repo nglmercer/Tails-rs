@@ -13,14 +13,12 @@ pub(super) fn native_fs_read_file_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    let content = std::fs::read_to_string(&path).map_err(|_e| {
+    let content = tails_fs::read_file(&path).map_err(|_| {
         Error::RuntimeError(format!(
             "ENOENT: no such file or directory, open '{}'",
             path
         ))
     })?;
-
     Ok(Value::String(content))
 }
 
@@ -37,10 +35,8 @@ pub(super) fn native_fs_write_file_sync(
         .get(1)
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    std::fs::write(&path, content)
-        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
-
+    tails_fs::write_file(&path, &content)
+        .map_err(|_| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
     Ok(Value::Undefined)
 }
 
@@ -53,8 +49,7 @@ pub(super) fn native_fs_exists_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    Ok(Value::Boolean(std::path::Path::new(&path).exists()))
+    Ok(Value::Boolean(tails_fs::exists(&path)))
 }
 
 pub(super) fn native_fs_mkdir_sync(
@@ -66,7 +61,6 @@ pub(super) fn native_fs_mkdir_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
     let recursive = args
         .get(1)
         .and_then(|v| {
@@ -81,17 +75,8 @@ pub(super) fn native_fs_mkdir_sync(
             Some(false)
         })
         .unwrap_or(false);
-
-    if recursive {
-        std::fs::create_dir_all(&path).map_err(|_e| {
-            Error::RuntimeError(format!("EACCES: permission denied, mkdir '{}'", path))
-        })?;
-    } else {
-        std::fs::create_dir(&path).map_err(|_e| {
-            Error::RuntimeError(format!("EACCES: permission denied, mkdir '{}'", path))
-        })?;
-    }
-
+    tails_fs::mkdir(&path, recursive)
+        .map_err(|_| Error::RuntimeError(format!("EACCES: permission denied, mkdir '{}'", path)))?;
     Ok(Value::Undefined)
 }
 
@@ -104,21 +89,16 @@ pub(super) fn native_fs_readdir_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    let entries: Vec<Value> = std::fs::read_dir(&path)
-        .map_err(|_e| {
+    let entries: Vec<Value> = tails_fs::readdir(&path)
+        .map_err(|_| {
             Error::RuntimeError(format!(
                 "ENOENT: no such file or directory, scandir '{}'",
                 path
             ))
         })?
-        .filter_map(|entry| entry.ok())
-        .map(|entry| {
-            let name = entry.file_name().to_string_lossy().to_string();
-            Value::String(name)
-        })
+        .into_iter()
+        .map(Value::String)
         .collect();
-
     let arr_idx = interp.heap.len();
     interp
         .heap
@@ -137,51 +117,29 @@ pub(super) fn native_fs_stat_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    let metadata = std::fs::metadata(&path).map_err(|_e| {
+    let stat = tails_fs::stat(&path).map_err(|_| {
         Error::RuntimeError(format!(
             "ENOENT: no such file or directory, stat '{}'",
             path
         ))
     })?;
-
     let mut props = std::collections::HashMap::new();
-    props.insert("size".into(), Value::Integer(metadata.len() as i64));
-    props.insert("isFile".into(), Value::Boolean(metadata.is_file()));
-    props.insert("isDirectory".into(), Value::Boolean(metadata.is_dir()));
+    props.insert("size".into(), Value::Integer(stat.size as i64));
+    props.insert("isFile".into(), Value::Boolean(stat.is_file));
+    props.insert("isDirectory".into(), Value::Boolean(stat.is_directory));
     props.insert(
         "isSymbolicLink".into(),
-        Value::Boolean(metadata.file_type().is_symlink()),
+        Value::Boolean(stat.is_symbolic_link),
     );
-
-    // Mode (Unix only)
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        props.insert("mode".into(), Value::Integer(metadata.mode() as i64));
+    if let Some(mode) = stat.mode {
+        props.insert("mode".into(), Value::Integer(mode as i64));
     }
-
-    // Modified time
-    if let Ok(modified) = metadata.modified() {
-        if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
-            props.insert(
-                "mtimeMs".into(),
-                Value::Float(duration.as_secs_f64() * 1000.0),
-            );
-        }
+    if let Some(mtime) = stat.mtime_ms {
+        props.insert("mtimeMs".into(), Value::Float(mtime));
     }
-
-    // Created time (platform specific)
-    #[cfg(unix)]
-    if let Ok(created) = metadata.created() {
-        if let Ok(duration) = created.duration_since(std::time::UNIX_EPOCH) {
-            props.insert(
-                "birthtimeMs".into(),
-                Value::Float(duration.as_secs_f64() * 1000.0),
-            );
-        }
+    if let Some(birthtime) = stat.birthtime_ms {
+        props.insert("birthtimeMs".into(), Value::Float(birthtime));
     }
-
     let stat_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
         properties: props,
@@ -200,14 +158,12 @@ pub(super) fn native_fs_unlink_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    std::fs::remove_file(&path).map_err(|_e| {
+    tails_fs::unlink(&path).map_err(|_| {
         Error::RuntimeError(format!(
             "ENOENT: no such file or directory, unlink '{}'",
             path
         ))
     })?;
-
     Ok(Value::Undefined)
 }
 
@@ -220,7 +176,6 @@ pub(super) fn native_fs_rm_sync(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
     let recursive = args
         .get(1)
         .and_then(|v| {
@@ -235,17 +190,9 @@ pub(super) fn native_fs_rm_sync(
             Some(false)
         })
         .unwrap_or(false);
-
-    if recursive {
-        std::fs::remove_dir_all(&path).map_err(|_e| {
-            Error::RuntimeError(format!("ENOENT: no such file or directory, rm '{}'", path))
-        })?;
-    } else {
-        std::fs::remove_file(&path).map_err(|_e| {
-            Error::RuntimeError(format!("ENOENT: no such file or directory, rm '{}'", path))
-        })?;
-    }
-
+    tails_fs::rm(&path, recursive).map_err(|_| {
+        Error::RuntimeError(format!("ENOENT: no such file or directory, rm '{}'", path))
+    })?;
     Ok(Value::Undefined)
 }
 
@@ -262,14 +209,12 @@ pub(super) fn native_fs_copy_file_sync(
         .get(1)
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    std::fs::copy(&src, &dest).map_err(|_e| {
+    tails_fs::copy_file(&src, &dest).map_err(|_| {
         Error::RuntimeError(format!(
             "EACCES: permission denied, copy '{}' to '{}'",
             src, dest
         ))
     })?;
-
     Ok(Value::Undefined)
 }
 
@@ -286,14 +231,12 @@ pub(super) fn native_fs_rename_sync(
         .get(1)
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    std::fs::rename(&old_path, &new_path).map_err(|_e| {
+    tails_fs::rename(&old_path, &new_path).map_err(|_| {
         Error::RuntimeError(format!(
             "EACCES: permission denied, rename '{}' to '{}'",
             old_path, new_path
         ))
     })?;
-
     Ok(Value::Undefined)
 }
 
@@ -302,8 +245,6 @@ pub(super) fn native_fs_append_file_sync(
     _this: &Value,
     args: &[Value],
 ) -> Result<Value> {
-    use std::io::Write;
-
     let path = args
         .first()
         .map(|v| to_string_value(interp, v))
@@ -312,17 +253,8 @@ pub(super) fn native_fs_append_file_sync(
         .get(1)
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
-        .map_err(|_e| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
-
-    file.write_all(content.as_bytes()).map_err(|_e| {
-        Error::RuntimeError(format!("EACCES: permission denied, write '{}'", path))
-    })?;
-
+    tails_fs::append_file(&path, &content)
+        .map_err(|_| Error::RuntimeError(format!("EACCES: permission denied, open '{}'", path)))?;
     Ok(Value::Undefined)
 }
 
@@ -336,16 +268,9 @@ pub(super) fn native_fs_readdir(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::read_dir(&path) {
-        Ok(entries) => {
-            let entries: Vec<Value> = entries
-                .filter_map(|entry| entry.ok())
-                .map(|entry| {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    Value::String(name)
-                })
-                .collect();
-
+    match tails_fs::readdir(&path) {
+        Ok(names) => {
+            let entries: Vec<Value> = names.into_iter().map(Value::String).collect();
             let arr_idx = interp.heap.len();
             interp
                 .heap
@@ -394,7 +319,7 @@ pub(super) fn native_fs_read_file(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::read_to_string(&path) {
+    match tails_fs::read_file(&path) {
         Ok(content) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
@@ -442,7 +367,7 @@ pub(super) fn native_fs_write_file(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::write(&path, content) {
+    match tails_fs::write_file(&path, &content) {
         Ok(()) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
@@ -483,28 +408,21 @@ pub(super) fn native_fs_stat(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::metadata(&path) {
-        Ok(metadata) => {
+    match tails_fs::stat(&path) {
+        Ok(stat) => {
             let mut props = std::collections::HashMap::new();
-            props.insert("size".into(), Value::Integer(metadata.len() as i64));
-            props.insert("isFile".into(), Value::Boolean(metadata.is_file()));
-            props.insert("isDirectory".into(), Value::Boolean(metadata.is_dir()));
+            props.insert("size".into(), Value::Integer(stat.size as i64));
+            props.insert("isFile".into(), Value::Boolean(stat.is_file));
+            props.insert("isDirectory".into(), Value::Boolean(stat.is_directory));
             props.insert(
                 "isSymbolicLink".into(),
-                Value::Boolean(metadata.file_type().is_symlink()),
+                Value::Boolean(stat.is_symbolic_link),
             );
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::MetadataExt;
-                props.insert("mode".into(), Value::Integer(metadata.mode() as i64));
+            if let Some(mode) = stat.mode {
+                props.insert("mode".into(), Value::Integer(mode as i64));
             }
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
-                    props.insert(
-                        "mtimeMs".into(),
-                        Value::Float(duration.as_secs_f64() * 1000.0),
-                    );
-                }
+            if let Some(mtime) = stat.mtime_ms {
+                props.insert("mtimeMs".into(), Value::Float(mtime));
             }
             let stat_idx = interp.heap.len();
             interp
@@ -555,7 +473,6 @@ pub(super) fn native_fs_mkdir(
         .first()
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
-
     let recursive = args
         .get(1)
         .and_then(|v| {
@@ -571,13 +488,7 @@ pub(super) fn native_fs_mkdir(
         })
         .unwrap_or(false);
 
-    let result = if recursive {
-        std::fs::create_dir_all(&path)
-    } else {
-        std::fs::create_dir(&path)
-    };
-
-    match result {
+    match tails_fs::mkdir(&path, recursive) {
         Ok(()) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
@@ -621,7 +532,7 @@ pub(super) fn native_fs_unlink(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::remove_file(&path) {
+    match tails_fs::unlink(&path) {
         Ok(()) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
@@ -669,7 +580,7 @@ pub(super) fn native_fs_copy_file(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::copy(&src, &dest) {
+    match tails_fs::copy_file(&src, &dest) {
         Ok(_) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(
@@ -717,7 +628,7 @@ pub(super) fn native_fs_rename(
         .map(|v| to_string_value(interp, v))
         .unwrap_or_default();
 
-    match std::fs::rename(&old_path, &new_path) {
+    match tails_fs::rename(&old_path, &new_path) {
         Ok(()) => {
             let promise_idx = interp.heap.len();
             interp.heap.push(HeapValue::Promise(

@@ -53,18 +53,23 @@ pub fn extract_module_name(source: &str) -> &str {
 
 pub fn discover_module(name: &str, registry: &mut NativeModuleRegistry) {
     match name {
+        #[cfg(feature = "fs")]
         "fs" => registry.register("fs", create_fs_module),
+        #[cfg(feature = "path")]
         "path" => registry.register("path", create_path_module),
+        #[cfg(feature = "process")]
         "process" => registry.register("process", create_process_module),
         "buffer" => registry.register("buffer", create_buffer_module),
         "intl" => registry.register("intl", create_intl_module),
         "events" => registry.register("events", create_events_module),
+        #[cfg(feature = "os")]
         "os" => registry.register("os", create_os_module),
         "crypto" => registry.register("crypto", create_crypto_module),
         _ => {}
     }
 }
 
+#[cfg(feature = "fs")]
 pub fn create_fs_module(
     _heap: &mut Vec<HeapValue>,
     _gc: &mut GarbageCollector,
@@ -93,6 +98,7 @@ pub fn create_fs_module(
     props
 }
 
+#[cfg(feature = "path")]
 pub fn create_path_module(
     _heap: &mut Vec<HeapValue>,
     _gc: &mut GarbageCollector,
@@ -124,6 +130,7 @@ pub fn create_path_module(
     props
 }
 
+#[cfg(feature = "process")]
 pub fn create_process_module(
     heap: &mut Vec<HeapValue>,
     gc: &mut GarbageCollector,
@@ -321,6 +328,7 @@ pub fn create_events_module(
     props
 }
 
+#[cfg(feature = "os")]
 pub fn create_os_module(
     _heap: &mut Vec<HeapValue>,
     _gc: &mut GarbageCollector,

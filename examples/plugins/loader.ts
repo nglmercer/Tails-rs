@@ -1,7 +1,5 @@
-//@ts-ignore
-import fs from "./fs.native";
-//@ts-ignore
-import path from "./path.native";
+import fs from "fs";
+import path from "path";
 import { PluginInput } from "./types.ts";
 import { validatePlugin } from "./validation.ts";
 

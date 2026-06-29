@@ -1,4 +1,4 @@
-use tails::compiler::lexer::{tokenize, SpannedToken, TemplatePart, Token};
+use tails::compiler::lexer::{tokenize, TemplatePart, Token};
 
 #[test]
 fn test_numbers() {
@@ -201,11 +201,11 @@ fn test_complex_program() {
     let source = r#"
         const x = 42;
         const y = "hello";
-        
+
         function add(a, b) {
             return a + b;
         }
-        
+
         add(x, y.length)
     "#;
 

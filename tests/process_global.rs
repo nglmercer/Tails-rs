@@ -1,3 +1,5 @@
+#![cfg(feature = "process")]
+
 use std::path::Path;
 use tails::TailsRuntime;
 
