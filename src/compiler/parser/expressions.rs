@@ -1066,6 +1066,8 @@ impl<'a> Parser<'a> {
                                 shorthand: false,
                                 computed: false,
                                 computed_key: None,
+                                is_getter: false,
+                                is_setter: false,
                             });
                         } else if self.peek().token == Token::LeftBracket {
                             self.advance();
@@ -1079,6 +1081,8 @@ impl<'a> Parser<'a> {
                                 shorthand: false,
                                 computed: true,
                                 computed_key: Some(key_expr),
+                                is_getter: false,
+                                is_setter: false,
                             });
                         } else {
                             let saved = self.pos;
@@ -1125,6 +1129,8 @@ impl<'a> Parser<'a> {
                                         shorthand: false,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter: false,
+                                        is_setter: false,
                                     });
                                 } else if (key == "get" || key == "set")
                                     && matches!(
@@ -1140,10 +1146,10 @@ impl<'a> Parser<'a> {
                                     };
                                     self.expect(&Token::LeftParen)?;
                                     let is_getter = key == "get";
-                                    if !is_getter {
+                                    let setter_param = if !is_getter {
                                         // Setter has a parameter
                                         match self.advance().token {
-                                            Token::Identifier(_) => {}
+                                            Token::Identifier(name) => Some(name),
                                             t => {
                                                 return Err(Error::ParseError(format!(
                                                     "Expected setter parameter, got {:?}",
@@ -1151,7 +1157,9 @@ impl<'a> Parser<'a> {
                                                 )))
                                             }
                                         }
-                                    }
+                                    } else {
+                                        None
+                                    };
                                     self.expect(&Token::RightParen)?;
                                     let return_type = if self.peek().token == Token::Colon {
                                         self.advance();
@@ -1177,7 +1185,7 @@ impl<'a> Parser<'a> {
                                     } else {
                                         Expression::FunctionExpression {
                                             name: Some(prop_name.clone()),
-                                            params: vec!["__set_val".to_string()],
+                                            params: vec![setter_param.unwrap_or_else(|| "__set_val".to_string())],
                                             param_types: Some(vec![None]),
                                             defaults: vec![],
                                             rest_param: None,
@@ -1193,6 +1201,8 @@ impl<'a> Parser<'a> {
                                         shorthand: false,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter,
+                                        is_setter: !is_getter,
                                     });
                                 } else if self.peek().token == Token::Colon {
                                     self.expect(&Token::Colon)?;
@@ -1203,6 +1213,8 @@ impl<'a> Parser<'a> {
                                         shorthand: false,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter: false,
+                                        is_setter: false,
                                     });
                                 } else {
                                     properties.push(ObjectProperty {
@@ -1211,6 +1223,8 @@ impl<'a> Parser<'a> {
                                         shorthand: true,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter: false,
+                                        is_setter: false,
                                     });
                                 }
                             } else {
@@ -1225,6 +1239,8 @@ impl<'a> Parser<'a> {
                                         shorthand: false,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter: false,
+                                        is_setter: false,
                                     });
                                 } else {
                                     properties.push(ObjectProperty {
@@ -1233,6 +1249,8 @@ impl<'a> Parser<'a> {
                                         shorthand: true,
                                         computed: false,
                                         computed_key: None,
+                                        is_getter: false,
+                                        is_setter: false,
                                     });
                                 }
                             }

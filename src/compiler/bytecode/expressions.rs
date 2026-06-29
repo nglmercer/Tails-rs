@@ -890,7 +890,14 @@ impl CodeGenerator {
                                     self.generate_expression(key_expr)?;
                                 }
                             } else {
-                                let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                                let actual_key = if prop.is_getter {
+                                    format!("__getter_{}", prop.key)
+                                } else if prop.is_setter {
+                                    format!("__setter_{}", prop.key)
+                                } else {
+                                    prop.key.clone()
+                                };
+                                let key_idx = self.add_constant(Value::String(actual_key));
                                 self.emit(Instruction::LoadConst(key_idx));
                             }
                             self.generate_expression(&prop.value)?;
@@ -906,7 +913,14 @@ impl CodeGenerator {
                                 self.emit(Instruction::ToString);
                             }
                         } else {
-                            let key_idx = self.add_constant(Value::String(prop.key.clone()));
+                            let actual_key = if prop.is_getter {
+                                format!("__getter_{}", prop.key)
+                            } else if prop.is_setter {
+                                format!("__setter_{}", prop.key)
+                            } else {
+                                prop.key.clone()
+                            };
+                            let key_idx = self.add_constant(Value::String(actual_key));
                             self.emit(Instruction::LoadConst(key_idx));
                         }
                         self.generate_expression(&prop.value)?;

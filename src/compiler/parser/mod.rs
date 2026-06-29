@@ -433,6 +433,8 @@ pub struct ObjectProperty {
     pub shorthand: bool,
     pub computed: bool,
     pub computed_key: Option<Expression>,
+    pub is_getter: bool,
+    pub is_setter: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -676,6 +678,11 @@ impl<'a> Parser<'a> {
                             )))
                         }
                     };
+                    // Consume optional type annotation for rest param
+                    if self.peek().token == Token::Colon {
+                        self.advance();
+                        let _ = self.parse_type_annotation()?;
+                    }
                     rest_param = Some(param);
                     break;
                 }

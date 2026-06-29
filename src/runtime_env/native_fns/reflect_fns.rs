@@ -188,6 +188,9 @@ pub(super) fn native_reflect_own_keys(
         Value::Object(obj_idx) => {
             if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
                 for k in obj.properties.keys() {
+                    if k.starts_with("__getter_") || k.starts_with("__setter_") || k.starts_with("__method_") {
+                        continue;
+                    }
                     keys.push(Value::String(k.clone()));
                 }
             }
@@ -203,6 +206,9 @@ pub(super) fn native_reflect_own_keys(
         Value::Function(func_idx) => {
             if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*func_idx] {
                 for k in f.properties.keys() {
+                    if k.starts_with("__getter_") || k.starts_with("__setter_") || k.starts_with("__method_") {
+                        continue;
+                    }
                     keys.push(Value::String(k.clone()));
                 }
             }

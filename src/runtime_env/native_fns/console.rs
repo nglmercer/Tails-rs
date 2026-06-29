@@ -381,6 +381,9 @@ pub(super) fn native_console_table(
                             &interp.heap[*obj_idx]
                         {
                             for key in obj.properties.keys() {
+                                if key.starts_with("__getter_") || key.starts_with("__setter_") || key.starts_with("__method_") {
+                                    continue;
+                                }
                                 if !all_keys.contains(key) {
                                     all_keys.push(key.clone());
                                 }
@@ -461,7 +464,9 @@ pub(super) fn native_console_table(
         }
         Value::Object(obj_idx) => {
             if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
-                let mut props: Vec<(&String, &Value)> = obj.properties.iter().collect();
+                let mut props: Vec<(&String, &Value)> = obj.properties.iter()
+                    .filter(|(k, _)| !k.starts_with("__getter_") && !k.starts_with("__setter_") && !k.starts_with("__method_"))
+                    .collect();
                 props.sort_by(|a, b| a.0.cmp(b.0));
 
                 if props.is_empty() {

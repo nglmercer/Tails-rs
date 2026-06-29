@@ -776,6 +776,7 @@ impl Interpreter {
                         if let HeapValue::Object(o) = &self.heap[*idx] {
                             o.properties
                                 .keys()
+                                .filter(|k| !k.starts_with("__getter_") && !k.starts_with("__setter_") && !k.starts_with("__method_"))
                                 .map(|k| Value::String(k.clone()))
                                 .collect()
                         } else {

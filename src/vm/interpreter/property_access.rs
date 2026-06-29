@@ -667,6 +667,12 @@ impl Interpreter {
                         if obj.properties.contains_key(key_str) {
                             return Ok(Value::Boolean(true));
                         }
+                        // Check for getter/setter accessors
+                        let getter_key = format!("__getter_{}", key_str);
+                        let setter_key = format!("__setter_{}", key_str);
+                        if obj.properties.contains_key(&getter_key) || obj.properties.contains_key(&setter_key) {
+                            return Ok(Value::Boolean(true));
+                        }
                         if let Some(proto_idx) = obj.prototype {
                             let proto_val = Value::Object(proto_idx);
                             return self.in_check_mut(key, &proto_val);
