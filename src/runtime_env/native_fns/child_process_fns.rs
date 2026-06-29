@@ -23,13 +23,7 @@ pub(super) fn native_child_process_exec_sync(
         if let HeapValue::Object(obj) = &interp.heap[*opts_idx] {
             if let Some(v) = obj.properties.get("encoding") {
                 encoding = match v {
-                    Value::String(s) => {
-                        if s == "buffer" {
-                            "buffer"
-                        } else {
-                            "utf8"
-                        }
-                    }
+                    Value::String(s) if s == "buffer" => "buffer",
                     _ => "utf8",
                 };
             }
