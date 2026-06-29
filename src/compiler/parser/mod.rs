@@ -640,7 +640,20 @@ impl<'a> Parser<'a> {
             Token::Export => self.parse_export_declaration(),
             Token::Interface => self.parse_interface_declaration(),
             Token::Enum => self.parse_enum_declaration(),
-            Token::Identifier(ref s) if s == "type" => self.parse_type_alias_declaration(),
+            Token::Identifier(ref s) if s == "type" => {
+                // Look ahead: `type Foo = ...` is a type alias,
+                // but `type = ...` or `type;` uses `type` as a variable name.
+                let next_is_ident = self
+                    .tokens
+                    .get(self.pos + 1)
+                    .map(|t| matches!(t.token, Token::Identifier(_)))
+                    .unwrap_or(false);
+                if next_is_ident {
+                    self.parse_type_alias_declaration()
+                } else {
+                    self.parse_expression_statement()
+                }
+            }
             _ => self.parse_expression_statement(),
         }
     }

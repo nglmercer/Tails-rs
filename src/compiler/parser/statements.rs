@@ -1071,11 +1071,20 @@ impl<'a> Parser<'a> {
         self.expect(&Token::Export)?;
 
         // Handle 'export type': parse as type alias export
+        // But only if `type` is followed by an identifier (type alias name),
+        // not if `type` is used as a variable name (e.g., `export type = ...`).
         if self.peek().token == Token::Identifier("type".to_string()) {
-            let type_alias = self.parse_type_alias_declaration()?;
-            return Ok(self.spanned(Statement::ExportDeclaration {
-                kind: ExportDeclarationKind::Local(Box::new(type_alias)),
-            }));
+            let next_is_ident = self
+                .tokens
+                .get(self.pos + 1)
+                .map(|t| matches!(t.token, Token::Identifier(_)))
+                .unwrap_or(false);
+            if next_is_ident {
+                let type_alias = self.parse_type_alias_declaration()?;
+                return Ok(self.spanned(Statement::ExportDeclaration {
+                    kind: ExportDeclarationKind::Local(Box::new(type_alias)),
+                }));
+            }
         }
 
         if self.peek().token == Token::Default {
