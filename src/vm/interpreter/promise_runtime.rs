@@ -30,6 +30,8 @@ impl Interpreter {
                 is_generator: false,
                 source_file: None,
                 source_line: None,
+                is_arrow: false,
+                captured_this: None,
             }),
         );
         Value::Function(heap_idx)
@@ -55,6 +57,8 @@ impl Interpreter {
                 is_generator: false,
                 source_file: None,
                 source_line: None,
+                is_arrow: false,
+                captured_this: None,
             }),
         );
         Value::Function(heap_idx)

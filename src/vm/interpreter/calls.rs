@@ -48,12 +48,20 @@ impl Interpreter {
                         self.current_module_path = f_clone.source_file.clone();
                     }
 
+                    let this_for_frame = if f_clone.is_arrow {
+                        f_clone
+                            .captured_this
+                            .clone()
+                            .unwrap_or_else(|| this.clone())
+                    } else {
+                        this.clone()
+                    };
                     self.call_stack.push(CallFrame {
                         return_address,
                         base_pointer,
                         closure_var_count: closure_count,
                         func_heap_idx: Some(*func_idx),
-                        this_value: Some(this.clone()),
+                        this_value: Some(this_for_frame),
                         is_construct: false,
                         source_name: f_clone
                             .source_file

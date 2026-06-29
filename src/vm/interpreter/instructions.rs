@@ -881,6 +881,14 @@ impl Interpreter {
                         is_generator: func_info.is_generator,
                         source_file: src_file,
                         source_line: src_line,
+                        is_arrow: func_info.is_arrow,
+                        captured_this: if func_info.is_arrow {
+                            self.call_stack
+                                .last()
+                                .and_then(|f| f.this_value.clone())
+                        } else {
+                            None
+                        },
                     }),
                 );
                 self.stack.push(Value::Function(heap_idx));
@@ -921,6 +929,14 @@ impl Interpreter {
                         is_generator: func_info.is_generator,
                         source_file: src_file,
                         source_line: src_line,
+                        is_arrow: func_info.is_arrow,
+                        captured_this: if func_info.is_arrow {
+                            self.call_stack
+                                .last()
+                                .and_then(|f| f.this_value.clone())
+                        } else {
+                            None
+                        },
                     }),
                 );
                 self.stack.push(Value::Function(heap_idx));

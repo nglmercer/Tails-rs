@@ -166,6 +166,14 @@ impl GarbageCollector {
                                 }
                             }
                         }
+                        if let Some(ref ct) = f.captured_this {
+                            if let Some(child_idx) = heap_value_to_index(ct) {
+                                if !self.is_marked(child_idx, heap.len()) {
+                                    self.mark(child_idx, heap.len());
+                                    worklist.push(child_idx);
+                                }
+                            }
+                        }
                         if let Some(proto) = f.prototype {
                             if !self.is_marked(proto, heap.len()) {
                                 self.mark(proto, heap.len());
@@ -470,6 +478,8 @@ mod tests {
                 is_generator: false,
                 source_file: None,
                 source_line: None,
+                is_arrow: false,
+                captured_this: None,
             }),
         );
 

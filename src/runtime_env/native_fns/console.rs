@@ -66,6 +66,14 @@ fn collect_object_properties<'a>(
             if k == "constructor" {
                 continue;
             }
+            if k.starts_with("__getter_") {
+                let prop_name = &k["__getter_".len()..];
+                all_props.push((prop_name.to_string(), v));
+                continue;
+            }
+            if k.starts_with("__setter_") || k.starts_with("__method_") {
+                continue;
+            }
             all_props.push((k.clone(), v));
         }
         if let Some(proto_idx) = obj.prototype {
@@ -107,7 +115,27 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
 
             let mut lines: Vec<String> = Vec::new();
             for (key, val) in &props {
-                let val_str = pretty_format(interp, val, depth + 1, use_colors);
+                let getter_key = format!("__getter_{}", key);
+                let setter_key = format!("__setter_{}", key);
+                let is_getter = if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
+                    obj.properties.contains_key(&getter_key) && !obj.properties.contains_key(&setter_key)
+                } else {
+                    false
+                };
+                let is_setter = if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
+                    !obj.properties.contains_key(&getter_key) && obj.properties.contains_key(&setter_key)
+                } else {
+                    false
+                };
+                let val_str = if is_getter || is_setter {
+                    if use_colors {
+                        "[Getter]".dimmed().to_string()
+                    } else {
+                        "[Getter]".to_string()
+                    }
+                } else {
+                    pretty_format(interp, val, depth + 1, use_colors)
+                };
                 if use_colors {
                     lines.push(format!("{}{}: {}", pad, key.bold(), val_str));
                 } else {

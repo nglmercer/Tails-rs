@@ -482,12 +482,19 @@ impl Interpreter {
                                         let return_address = pc + 1;
                                         let base_pointer = self.stack.len();
                                         let closure_count = f.closure.len();
+                                        let this_for_frame = if f.is_arrow {
+                                            f.captured_this
+                                                .clone()
+                                                .unwrap_or(Value::Undefined)
+                                        } else {
+                                            Value::Undefined
+                                        };
                                         self.call_stack.push(CallFrame {
                                             return_address,
                                             base_pointer,
                                             closure_var_count: closure_count,
                                             func_heap_idx: Some(*func_idx),
-                                            this_value: None,
+                                            this_value: Some(this_for_frame),
                                             is_construct: false,
                                             source_name: self.current_module_path.clone(),
                                             generator_heap_idx: None,
@@ -1869,6 +1876,8 @@ impl Interpreter {
                     is_generator: false,
                     source_file: src_file,
                     source_line: src_line,
+                    is_arrow: false,
+                    captured_this: None,
                 }),
             )
         } else {
@@ -1890,6 +1899,8 @@ impl Interpreter {
                     is_generator: false,
                     source_file: src_file,
                     source_line: src_line,
+                    is_arrow: false,
+                    captured_this: None,
                 }),
             )
         };
@@ -1922,6 +1933,8 @@ impl Interpreter {
                     is_generator: false,
                     source_file: src_file,
                     source_line: src_line,
+                    is_arrow: false,
+                    captured_this: None,
                 }),
             );
             let method_val = Value::Function(method_heap_idx);

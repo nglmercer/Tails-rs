@@ -58,6 +58,8 @@ pub struct JsFunction {
     pub is_generator: bool,
     pub source_file: Option<String>,
     pub source_line: Option<usize>,
+    pub is_arrow: bool,
+    pub captured_this: Option<Value>,
 }
 
 #[derive(Debug, Clone)]

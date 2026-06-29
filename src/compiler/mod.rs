@@ -91,6 +91,7 @@ pub struct CompiledFunction {
     pub closure_var_count: usize,
     pub is_generator: bool,
     pub source_line: Option<usize>,
+    pub is_arrow: bool,
 }
 
 #[derive(Debug, Clone)]

@@ -988,6 +988,7 @@ impl CodeGenerator {
                     closure_var_count: num_captures,
                     is_generator: *is_generator,
                     source_line: self.current_source_line,
+                    is_arrow: false,
                 });
 
                 let jump_over = self.instructions.len();
