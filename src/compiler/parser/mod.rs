@@ -181,7 +181,8 @@ pub enum ForInit {
 #[derive(Debug, Clone)]
 pub enum ForInLeft {
     Identifier(String),
-    VariableDeclaration { kind: VarKind, id: String },
+    Pattern(BindingPattern),
+    VariableDeclaration { kind: VarKind, id: BindingPattern },
 }
 
 #[derive(Debug, Clone)]

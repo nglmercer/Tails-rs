@@ -278,11 +278,37 @@ impl CodeGenerator {
 
                 let var_name = match left {
                     ForInLeft::Identifier(id) => id.clone(),
-                    ForInLeft::VariableDeclaration { id, .. } => id.clone(),
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Identifier(name),
+                        ..
+                    } => name.clone(),
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Array(_),
+                        ..
+                    }
+                    | ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Object(_),
+                        ..
+                    }
+                    | ForInLeft::Pattern(_) => String::new(),
                 };
 
-                self.locals.push(var_name.clone());
-                let var_slot = (self.locals.len() - 1) as u16;
+                let is_destructuring = matches!(
+                    left,
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Array(_) | BindingPattern::Object(_),
+                        ..
+                    } | ForInLeft::Pattern(_)
+                );
+
+                if !is_destructuring && !var_name.is_empty() {
+                    self.locals.push(var_name.clone());
+                }
+                let var_slot = if !var_name.is_empty() {
+                    (self.locals.len() - 1) as u16
+                } else {
+                    0
+                };
 
                 // Evaluate the object and get its keys
                 self.generate_expression(right)?;
@@ -320,7 +346,15 @@ impl CodeGenerator {
                 self.emit(Instruction::LoadLocal(keys_slot));
                 self.emit(Instruction::LoadLocal(idx_slot));
                 self.emit(Instruction::GetProperty);
-                self.emit(Instruction::StoreLocal(var_slot));
+                if is_destructuring {
+                    let pattern = match left {
+                        ForInLeft::VariableDeclaration { id, .. } | ForInLeft::Pattern(id) => id,
+                        _ => unreachable!(),
+                    };
+                    self.generate_destructuring_pattern(pattern)?;
+                } else {
+                    self.emit(Instruction::StoreLocal(var_slot));
+                }
 
                 self.record_line_from_span(&body.span);
                 self.generate_statement(&body.inner, false)?;
@@ -359,12 +393,38 @@ impl CodeGenerator {
 
                 let var_name = match left {
                     ForInLeft::Identifier(id) => id.clone(),
-                    ForInLeft::VariableDeclaration { id, .. } => id.clone(),
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Identifier(name),
+                        ..
+                    } => name.clone(),
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Array(_),
+                        ..
+                    }
+                    | ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Object(_),
+                        ..
+                    }
+                    | ForInLeft::Pattern(_) => String::new(),
                 };
 
-                self.emit(Instruction::LoadUndefined);
-                self.locals.push(var_name.clone());
-                let var_slot = (self.locals.len() - 1) as u16;
+                let is_destructuring = matches!(
+                    left,
+                    ForInLeft::VariableDeclaration {
+                        id: BindingPattern::Array(_) | BindingPattern::Object(_),
+                        ..
+                    } | ForInLeft::Pattern(_)
+                );
+
+                if !is_destructuring && !var_name.is_empty() {
+                    self.emit(Instruction::LoadUndefined);
+                    self.locals.push(var_name.clone());
+                }
+                let var_slot = if !var_name.is_empty() {
+                    (self.locals.len() - 1) as u16
+                } else {
+                    0
+                };
 
                 // Evaluate the iterable and get an iterator
                 self.generate_expression(right)?;
@@ -392,7 +452,15 @@ impl CodeGenerator {
                 }
 
                 // Store the yielded value into the loop variable
-                self.emit(Instruction::StoreLocal(var_slot));
+                if is_destructuring {
+                    let pattern = match left {
+                        ForInLeft::VariableDeclaration { id, .. } | ForInLeft::Pattern(id) => id,
+                        _ => unreachable!(),
+                    };
+                    self.generate_destructuring_pattern(pattern)?;
+                } else {
+                    self.emit(Instruction::StoreLocal(var_slot));
+                }
 
                 // Execute loop body
                 self.record_line_from_span(&body.span);

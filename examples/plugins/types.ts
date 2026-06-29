@@ -21,6 +21,8 @@ export type PluginConst = {
   onUnload?: () => void | Promise<void>;
 };
 
-export type PluginInput = IPlugin | PluginConst | (new () => IPlugin);
+export type PluginClass = new () => IPlugin;
+
+export type PluginInput = IPlugin | PluginConst | PluginClass;
 
 export type PluginManagerOptions = Record<string, unknown>;
