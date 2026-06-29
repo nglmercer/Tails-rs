@@ -67,9 +67,52 @@ impl CodeGenerator {
                 Ok(())
             }
             Expression::BinaryOp { op, left, right } => {
-                self.generate_expression(left)?;
-                self.generate_expression(right)?;
-                self.generate_binary_op(op)?;
+                match op {
+                    BinaryOperator::And => {
+                        // Short-circuit &&: if left is falsy, return left without evaluating right
+                        self.generate_expression(left)?;
+                        self.emit(Instruction::Dup);
+                        let skip_right = self.instructions.len();
+                        self.emit(Instruction::JumpIfNot(0));
+                        self.emit(Instruction::Pop);
+                        self.generate_expression(right)?;
+                        let done = self.instructions.len();
+                        self.emit(Instruction::Jump(0));
+                        self.patch_jump(skip_right, self.instructions.len());
+                        self.patch_jump(done, self.instructions.len());
+                    }
+                    BinaryOperator::Or => {
+                        // Short-circuit ||: if left is truthy, return left without evaluating right
+                        self.generate_expression(left)?;
+                        self.emit(Instruction::Dup);
+                        let skip_right = self.instructions.len();
+                        self.emit(Instruction::JumpIf(0));
+                        self.emit(Instruction::Pop);
+                        self.generate_expression(right)?;
+                        let done = self.instructions.len();
+                        self.emit(Instruction::Jump(0));
+                        self.patch_jump(skip_right, self.instructions.len());
+                        self.patch_jump(done, self.instructions.len());
+                    }
+                    BinaryOperator::NullishCoalescing => {
+                        // Short-circuit ??: if left is not null/undefined, return left without evaluating right
+                        // JumpIfNotUndefined peeks (doesn't pop), so no dup needed
+                        self.generate_expression(left)?;
+                        let skip_right = self.instructions.len();
+                        self.emit(Instruction::JumpIfNotUndefined(0));
+                        self.emit(Instruction::Pop);
+                        self.generate_expression(right)?;
+                        let done = self.instructions.len();
+                        self.emit(Instruction::Jump(0));
+                        self.patch_jump(skip_right, self.instructions.len());
+                        self.patch_jump(done, self.instructions.len());
+                    }
+                    _ => {
+                        self.generate_expression(left)?;
+                        self.generate_expression(right)?;
+                        self.generate_binary_op(op)?;
+                    }
+                }
                 Ok(())
             }
             Expression::UnaryOp { op, operand } => {

@@ -640,6 +640,7 @@ impl<'a> Parser<'a> {
             Token::Export => self.parse_export_declaration(),
             Token::Interface => self.parse_interface_declaration(),
             Token::Enum => self.parse_enum_declaration(),
+            Token::Identifier(ref s) if s == "type" => self.parse_type_alias_declaration(),
             _ => self.parse_expression_statement(),
         }
     }

@@ -149,10 +149,7 @@ fn test_rest_params_with_normal() {
     "#,
         )
         .unwrap();
-    assert_eq!(
-        result,
-        Value::String("info:a,b,c".to_string())
-    );
+    assert_eq!(result, Value::String("info:a,b,c".to_string()));
 }
 
 #[test]
@@ -186,7 +183,11 @@ fn test_rest_params_typed() {
         sum(1, 2, 3);
     "#,
     );
-    assert!(result.is_ok(), "typed rest params should parse: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "typed rest params should parse: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap(), Value::Integer(6));
 }
 
@@ -233,10 +234,7 @@ fn test_forin_object_literal() {
     "#,
         )
         .unwrap();
-    assert_eq!(
-        result,
-        Value::String("a,b,c".to_string())
-    );
+    assert_eq!(result, Value::String("a,b,c".to_string()));
 }
 
 // ============================================
@@ -258,10 +256,7 @@ fn test_object_method_shorthand() {
     "#,
         )
         .unwrap();
-    assert_eq!(
-        result,
-        Value::String("Hello, World".to_string())
-    );
+    assert_eq!(result, Value::String("Hello, World".to_string()));
 }
 
 #[test]

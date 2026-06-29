@@ -1185,7 +1185,8 @@ impl<'a> Parser<'a> {
                                     } else {
                                         Expression::FunctionExpression {
                                             name: Some(prop_name.clone()),
-                                            params: vec![setter_param.unwrap_or_else(|| "__set_val".to_string())],
+                                            params: vec![setter_param
+                                                .unwrap_or_else(|| "__set_val".to_string())],
                                             param_types: Some(vec![None]),
                                             defaults: vec![],
                                             rest_param: None,
