@@ -655,6 +655,10 @@ impl Interpreter {
         );
         self.globals
             .insert("Generator".into(), Value::Object(generator_ctor_idx));
+
+        // WebSocket constructor
+        self.globals
+            .insert("WebSocket".into(), Value::NativeFunction(350));
     }
 }
 

@@ -1,0 +1,13 @@
+[package]
+name = "tails-websocket"
+version = "0.1.0"
+edition = "2021"
+description = "Tails native websocket module"
+
+[lib]
+
+[dependencies]
+tokio-tungstenite = "0.24"
+tungstenite = "0.24"
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"

@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "modules/abi", "modules/fs", "modules/path", "modules/process", "modules/os"]
+members = [".", "modules/abi", "modules/fs", "modules/path", "modules/process", "modules/os", "modules/websocket"]
 
 [package]
 name = "tails-rs"
@@ -9,11 +9,12 @@ description = "A TypeScript-first runtime in Rust"
 license = "MIT"
 
 [features]
-default = ["fs", "path", "process", "os"]
+default = ["fs", "path", "process", "os", "websocket"]
 fs = ["dep:tails-fs"]
 path = ["dep:tails-path"]
 process = ["dep:tails-process"]
 os = ["dep:tails-os"]
+websocket = ["dep:tails-websocket"]
 
 [lib]
 name = "tails"
@@ -28,6 +29,7 @@ tails-fs = { path = "modules/fs", optional = true }
 tails-path = { path = "modules/path", optional = true }
 tails-process = { path = "modules/process", optional = true }
 tails-os = { path = "modules/os", optional = true }
+tails-websocket = { path = "modules/websocket", optional = true }
 
 # Async Runtime
 tokio = { version = "1", features = ["full"] }
@@ -91,3 +93,7 @@ path = "tests/unit/lexer.rs"
 [[test]]
 name = "unit_vm"
 path = "tests/unit/vm.rs"
+
+[[test]]
+name = "unit_minified"
+path = "tests/unit/minified.rs"

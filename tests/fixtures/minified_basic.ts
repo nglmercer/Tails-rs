@@ -1,0 +1,1 @@
+const x=42;const y="hello";function add(a,b){return a+b}if(x>10){add(x,1)}else{0}

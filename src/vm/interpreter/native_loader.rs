@@ -65,6 +65,7 @@ pub fn discover_module(name: &str, registry: &mut NativeModuleRegistry) {
         #[cfg(feature = "os")]
         "os" => registry.register("os", create_os_module),
         "crypto" => registry.register("crypto", create_crypto_module),
+        "assert" => registry.register("assert", create_assert_module),
         _ => {}
     }
 }
@@ -356,5 +357,35 @@ pub fn create_crypto_module(
     props.insert("randomBytes".into(), Value::NativeFunction(330));
     props.insert("randomUUID".into(), Value::NativeFunction(331));
     props.insert("createHash".into(), Value::NativeFunction(332));
+    props
+}
+
+pub fn create_assert_module(
+    heap: &mut Vec<HeapValue>,
+    gc: &mut GarbageCollector,
+) -> HashMap<String, Value> {
+    let mut props = HashMap::new();
+    
+    // Create assert object with methods
+    let mut assert_props = HashMap::new();
+    assert_props.insert("strictEqual".into(), Value::NativeFunction(355));
+    assert_props.insert("ok".into(), Value::NativeFunction(354));
+    assert_props.insert("equal".into(), Value::NativeFunction(355));
+    assert_props.insert("deepEqual".into(), Value::NativeFunction(355));
+    
+    let assert_obj_idx = gc.allocate(
+        heap,
+        HeapValue::Object(JsObject {
+            properties: assert_props,
+            prototype: None,
+            extensible: true,
+        }),
+    );
+    
+    props.insert("default".into(), Value::Object(assert_obj_idx));
+    props.insert("strictEqual".into(), Value::NativeFunction(355));
+    props.insert("ok".into(), Value::NativeFunction(354));
+    props.insert("equal".into(), Value::NativeFunction(355));
+    props.insert("deepEqual".into(), Value::NativeFunction(355));
     props
 }

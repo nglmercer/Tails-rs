@@ -1,0 +1,1 @@
+const arr=[1,2,3,4,5];const obj={a:1,b:"two",c:true};const doubled=arr.map(x=>x*2);const filtered=arr.filter(x=>x>2);const sum=arr.reduce((a,b)=>a+b,0);class Greeter{constructor(n){this.name=n}greet(){return`Hello,${this.name}!`}}const g=new Greeter("World");g.greet()
