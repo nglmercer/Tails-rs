@@ -7,6 +7,9 @@ use colored::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+const MAX_DEPTH: usize = 4;
+const INDENT: &str = "  ";
+
 thread_local! {
     static USE_COLORS: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
     static USE_TIMESTAMPS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -47,34 +50,240 @@ fn get_timestamp() -> String {
     })
 }
 
-fn colorize_value(interp: &Interpreter, v: &Value) -> String {
-    let use_colors = get_use_colors();
-    let raw = to_display_string(interp, v);
+fn collect_object_properties<'a>(
+    interp: &'a Interpreter,
+    obj_idx: usize,
+    visited: &mut std::collections::HashSet<usize>,
+) -> Vec<(String, &'a Value)> {
+    if !visited.insert(obj_idx) {
+        return Vec::new();
+    }
 
-    if !use_colors {
-        return raw;
+    let mut all_props: Vec<(String, &'a Value)> = Vec::new();
+
+    if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[obj_idx] {
+        for (k, v) in &obj.properties {
+            if k == "constructor" {
+                continue;
+            }
+            all_props.push((k.clone(), v));
+        }
+        if let Some(proto_idx) = obj.prototype {
+            let proto_props = collect_object_properties(interp, proto_idx, visited);
+            for (k, v) in proto_props {
+                if !all_props.iter().any(|(existing_k, _)| existing_k == &k) {
+                    all_props.push((k, v));
+                }
+            }
+        }
+    }
+
+    all_props
+}
+
+fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool) -> String {
+    if depth >= MAX_DEPTH {
+        return match v {
+            Value::Object(_) => "[Object]".to_string(),
+            Value::Array(_) => "[Array]".to_string(),
+            _ => to_display_string(interp, v),
+        };
     }
 
     match v {
-        Value::String(_) => raw.green().to_string(),
-        Value::Integer(_) | Value::Float(_) => raw.magenta().to_string(),
-        Value::Boolean(_) => raw.yellow().to_string(),
-        Value::Null => raw.red().bold().to_string(),
-        Value::Undefined => raw.dimmed().to_string(),
-        Value::Function(_) => raw.cyan().to_string(),
-        Value::NativeFunction(_) => raw.cyan().to_string(),
-        Value::Object(_) => {
-            if raw.starts_with('{') {
-                raw.white().to_string()
+        Value::Object(obj_idx) => {
+            let mut visited = std::collections::HashSet::new();
+            let all_props = collect_object_properties(interp, *obj_idx, &mut visited);
+
+            if all_props.is_empty() {
+                return "{}".to_string();
+            }
+
+            let mut props = all_props;
+            props.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let pad = INDENT.repeat(depth + 1);
+            let closing_pad = INDENT.repeat(depth);
+
+            let mut lines: Vec<String> = Vec::new();
+            for (key, val) in &props {
+                let val_str = pretty_format(interp, val, depth + 1, use_colors);
+                if use_colors {
+                    lines.push(format!("{}{}: {}", pad, key.bold(), val_str));
+                } else {
+                    lines.push(format!("{}{}: {}", pad, key, val_str));
+                }
+            }
+
+            format!("{{\n{}\n{}}}", lines.join(",\n"), closing_pad)
+        }
+        Value::Array(arr_idx) => {
+            if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
+                if arr.elements.is_empty() {
+                    return "[]".to_string();
+                }
+
+                let pad = INDENT.repeat(depth + 1);
+                let closing_pad = INDENT.repeat(depth);
+
+                let mut lines: Vec<String> = Vec::new();
+                for elem in &arr.elements {
+                    let val_str = pretty_format(interp, elem, depth + 1, use_colors);
+                    lines.push(format!("{}{}", pad, val_str));
+                }
+
+                format!("[\n{}\n{}]", lines.join(",\n"), closing_pad)
             } else {
-                raw
+                "[Array]".to_string()
             }
         }
-        Value::Array(_) => raw.yellow().to_string(),
-        Value::Date(_) => raw.blue().to_string(),
-        Value::RegExp(_) => raw.red().to_string(),
-        _ => raw,
+        Value::Function(idx) => {
+            if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*idx] {
+                let name = f.name.as_deref().unwrap_or("anonymous");
+                if f.prototype.is_some() && f.super_class.is_some() {
+                    if use_colors {
+                        format!("[class {}]", name.cyan())
+                    } else {
+                        format!("[class {}]", name)
+                    }
+                } else if use_colors {
+                    format!("[Function: {}]", name.cyan())
+                } else {
+                    format!("[Function: {}]", name)
+                }
+            } else {
+                "[Function]".to_string()
+            }
+        }
+        Value::NativeFunction(_) => {
+            if use_colors {
+                "[NativeFunction]".cyan().to_string()
+            } else {
+                "[NativeFunction]".to_string()
+            }
+        }
+        Value::String(s) => {
+            if use_colors {
+                format!("\"{}\"", s.green())
+            } else {
+                format!("\"{}\"", s)
+            }
+        }
+        Value::Integer(n) => {
+            if use_colors {
+                n.to_string().magenta().to_string()
+            } else {
+                n.to_string()
+            }
+        }
+        Value::Float(n) => {
+            let val = if *n == (*n as i64) as f64 {
+                (*n as i64).to_string()
+            } else {
+                n.to_string()
+            };
+            if use_colors {
+                val.magenta().to_string()
+            } else {
+                val
+            }
+        }
+        Value::Boolean(b) => {
+            let val = b.to_string();
+            if use_colors {
+                val.yellow().to_string()
+            } else {
+                val
+            }
+        }
+        Value::Null => {
+            if use_colors {
+                "null".red().bold().to_string()
+            } else {
+                "null".to_string()
+            }
+        }
+        Value::Undefined => {
+            if use_colors {
+                "undefined".dimmed().to_string()
+            } else {
+                "undefined".to_string()
+            }
+        }
+        Value::Map(idx) => {
+            if let crate::vm::interpreter::HeapValue::Map(map) = &interp.heap[*idx] {
+                if map.entries.is_empty() {
+                    return "Map(0) {}".to_string();
+                }
+                let pad = INDENT.repeat(depth + 1);
+                let closing_pad = INDENT.repeat(depth);
+                let mut lines: Vec<String> = Vec::new();
+                for (k, val) in &map.entries {
+                    let k_str = pretty_format(interp, k, depth + 1, use_colors);
+                    let v_str = pretty_format(interp, val, depth + 1, use_colors);
+                    lines.push(format!("{}{} => {}", pad, k_str, v_str));
+                }
+                format!(
+                    "Map({}) {{\n{}\n{}}}",
+                    map.entries.len(),
+                    lines.join(",\n"),
+                    closing_pad
+                )
+            } else {
+                "Map".to_string()
+            }
+        }
+        Value::Set(idx) => {
+            if let crate::vm::interpreter::HeapValue::Set(set) = &interp.heap[*idx] {
+                if set.values.is_empty() {
+                    return "Set(0) {}".to_string();
+                }
+                let pad = INDENT.repeat(depth + 1);
+                let closing_pad = INDENT.repeat(depth);
+                let mut lines: Vec<String> = Vec::new();
+                for val in &set.values {
+                    let val_str = pretty_format(interp, val, depth + 1, use_colors);
+                    lines.push(format!("{}{}", pad, val_str));
+                }
+                format!(
+                    "Set({}) {{\n{}\n{}}}",
+                    set.values.len(),
+                    lines.join(",\n"),
+                    closing_pad
+                )
+            } else {
+                "Set".to_string()
+            }
+        }
+        Value::Date(idx) => {
+            if let crate::vm::interpreter::HeapValue::Date(d) = &interp.heap[*idx] {
+                if use_colors {
+                    format!("Date({})", d.to_utc_string().blue())
+                } else {
+                    format!("Date({})", d.to_utc_string())
+                }
+            } else {
+                "Date".to_string()
+            }
+        }
+        Value::RegExp(idx) => {
+            if let crate::vm::interpreter::HeapValue::RegExp(r) = &interp.heap[*idx] {
+                if use_colors {
+                    format!("/{}/{}", r.source.red(), r.flags)
+                } else {
+                    format!("/{}/{}", r.source, r.flags)
+                }
+            } else {
+                "RegExp".to_string()
+            }
+        }
+        _ => to_display_string(interp, v),
     }
+}
+
+fn colorize_value(interp: &Interpreter, v: &Value) -> String {
+    let use_colors = get_use_colors();
+    pretty_format(interp, v, 0, use_colors)
 }
 
 pub(super) fn native_console_log(
@@ -323,209 +532,7 @@ pub(super) fn native_console_dir(
     let indent = get_indent();
     let timestamp = get_timestamp();
     let use_colors = get_use_colors();
-    let max_depth = args.get(1).and_then(|d| {
-        if let Value::Integer(n) = d {
-            Some(*n as usize)
-        } else {
-            None
-        }
-    });
-
-    fn format_deep(
-        interp: &Interpreter,
-        v: &Value,
-        current_depth: usize,
-        max_depth: usize,
-        indent_level: usize,
-        use_colors: bool,
-    ) -> String {
-        let pad = "  ".repeat(indent_level);
-
-        match v {
-            Value::Object(obj_idx) => {
-                if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
-                    if obj.properties.is_empty() {
-                        return "{}".to_string();
-                    }
-                    if current_depth >= max_depth {
-                        return "[Object]".to_string();
-                    }
-
-                    let mut props: Vec<(&String, &Value)> = obj.properties.iter().collect();
-                    props.sort_by(|a, b| a.0.cmp(b.0));
-
-                    let mut result = "{\n".to_string();
-                    for (i, (key, val)) in props.iter().enumerate() {
-                        let val_str = format_deep(
-                            interp,
-                            val,
-                            current_depth + 1,
-                            max_depth,
-                            indent_level + 1,
-                            use_colors,
-                        );
-                        let comma = if i < props.len() - 1 { "," } else { "" };
-                        if use_colors {
-                            result.push_str(&format!(
-                                "{}  {}: {}{}\n",
-                                pad,
-                                key.bold(),
-                                val_str,
-                                comma
-                            ));
-                        } else {
-                            result.push_str(&format!("{}  {}: {}{}\n", pad, key, val_str, comma));
-                        }
-                    }
-                    result.push_str(&format!("{} }}", pad));
-                    result
-                } else {
-                    "[Object]".to_string()
-                }
-            }
-            Value::Array(arr_idx) => {
-                if let crate::vm::interpreter::HeapValue::Array(arr) = &interp.heap[*arr_idx] {
-                    if arr.elements.is_empty() {
-                        return "[]".to_string();
-                    }
-                    if current_depth >= max_depth {
-                        return "[Array]".to_string();
-                    }
-
-                    let mut result = "[\n".to_string();
-                    for (i, elem) in arr.elements.iter().enumerate() {
-                        let val_str = format_deep(
-                            interp,
-                            elem,
-                            current_depth + 1,
-                            max_depth,
-                            indent_level + 1,
-                            use_colors,
-                        );
-                        let comma = if i < arr.elements.len() - 1 { "," } else { "" };
-                        result.push_str(&format!("{}  {}{}\n", pad, val_str, comma));
-                    }
-                    result.push_str(&format!("{} ]", pad));
-                    result
-                } else {
-                    "[Array]".to_string()
-                }
-            }
-            Value::Function(idx) => {
-                if let crate::vm::interpreter::HeapValue::Function(f) = &interp.heap[*idx] {
-                    let name = f.name.as_deref().unwrap_or("anonymous");
-                    if f.prototype.is_some() && f.super_class.is_some() {
-                        if use_colors {
-                            format!("[class {}]", name.cyan())
-                        } else {
-                            format!("[class {}]", name)
-                        }
-                    } else if use_colors {
-                        format!("[Function: {}]", name.cyan())
-                    } else {
-                        format!("[Function: {}]", name)
-                    }
-                } else {
-                    "[Function]".to_string()
-                }
-            }
-            Value::NativeFunction(_) => {
-                if use_colors {
-                    "[NativeFunction]".cyan().to_string()
-                } else {
-                    "[NativeFunction]".to_string()
-                }
-            }
-            Value::String(s) => {
-                if use_colors {
-                    format!("\"{}\"", s.green())
-                } else {
-                    format!("\"{}\"", s)
-                }
-            }
-            Value::Integer(n) => {
-                if use_colors {
-                    n.to_string().magenta().to_string()
-                } else {
-                    n.to_string()
-                }
-            }
-            Value::Float(n) => {
-                let val = if *n == (*n as i64) as f64 {
-                    (*n as i64).to_string()
-                } else {
-                    n.to_string()
-                };
-                if use_colors {
-                    val.magenta().to_string()
-                } else {
-                    val
-                }
-            }
-            Value::Boolean(b) => {
-                let val = b.to_string();
-                if use_colors {
-                    val.yellow().to_string()
-                } else {
-                    val
-                }
-            }
-            Value::Null => {
-                if use_colors {
-                    "null".red().bold().to_string()
-                } else {
-                    "null".to_string()
-                }
-            }
-            Value::Undefined => {
-                if use_colors {
-                    "undefined".dimmed().to_string()
-                } else {
-                    "undefined".to_string()
-                }
-            }
-            Value::Map(idx) => {
-                if let crate::vm::interpreter::HeapValue::Map(map) = &interp.heap[*idx] {
-                    format!("Map({})", map.entries.len())
-                } else {
-                    "Map".to_string()
-                }
-            }
-            Value::Set(idx) => {
-                if let crate::vm::interpreter::HeapValue::Set(set) = &interp.heap[*idx] {
-                    format!("Set({})", set.values.len())
-                } else {
-                    "Set".to_string()
-                }
-            }
-            Value::Date(idx) => {
-                if let crate::vm::interpreter::HeapValue::Date(d) = &interp.heap[*idx] {
-                    if use_colors {
-                        format!("Date({})", d.to_utc_string().blue())
-                    } else {
-                        format!("Date({})", d.to_utc_string())
-                    }
-                } else {
-                    "Date".to_string()
-                }
-            }
-            Value::RegExp(idx) => {
-                if let crate::vm::interpreter::HeapValue::RegExp(r) = &interp.heap[*idx] {
-                    if use_colors {
-                        format!("/{}/{}", r.source.red(), r.flags)
-                    } else {
-                        format!("/{}/{}", r.source, r.flags)
-                    }
-                } else {
-                    "RegExp".to_string()
-                }
-            }
-            _ => to_display_string(interp, v),
-        }
-    }
-
-    let max_depth = max_depth.unwrap_or(2);
-    let formatted = format_deep(interp, &args[0], 0, max_depth, 0, use_colors);
+    let formatted = pretty_format(interp, &args[0], 0, use_colors);
     println!("{}{}{}", timestamp, indent, formatted);
 
     Ok(Value::Undefined)
