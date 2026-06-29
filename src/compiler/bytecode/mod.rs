@@ -322,7 +322,7 @@ impl CodeGenerator {
                     self.locals.push(var_name.clone());
                 }
                 let var_slot = if !var_name.is_empty() {
-                    (self.locals.len() - 1) as u16
+                    self.last_local_slot()
                 } else {
                     0
                 };
@@ -330,19 +330,19 @@ impl CodeGenerator {
                 // Evaluate the object and get its keys
                 self.generate_expression(right)?;
                 self.emit(Instruction::GetKeys);
-                let keys_slot = self.locals.len() as u16;
+                let keys_slot = self.current_local_slot();
                 self.locals.push("__keys".to_string());
                 self.emit(Instruction::StoreLocal(keys_slot));
 
                 // Initialize index
-                let idx_slot = self.locals.len() as u16;
+                let idx_slot = self.current_local_slot();
                 self.locals.push("__idx".to_string());
                 let zero_idx = self.add_constant(Value::Float(0.0));
                 self.emit(Instruction::LoadConst(zero_idx));
                 self.emit(Instruction::StoreLocal(idx_slot));
 
                 // Get keys.length
-                let len_slot = self.locals.len() as u16;
+                let len_slot = self.current_local_slot();
                 self.locals.push("__len".to_string());
                 self.emit(Instruction::LoadLocal(keys_slot));
                 let len_key = self.add_constant(Value::String("length".to_string()));
@@ -438,7 +438,7 @@ impl CodeGenerator {
                     self.locals.push(var_name.clone());
                 }
                 let var_slot = if !var_name.is_empty() {
-                    (self.locals.len() - 1) as u16
+                    self.last_local_slot()
                 } else {
                     0
                 };
@@ -452,7 +452,7 @@ impl CodeGenerator {
                 }
 
                 // Store iterator in a local
-                let iter_slot = self.locals.len() as u16;
+                let iter_slot = self.current_local_slot();
                 self.locals.push("__iter".to_string());
                 self.emit(Instruction::StoreLocal(iter_slot));
 
@@ -543,7 +543,7 @@ impl CodeGenerator {
                 self.generate_expression(discriminant)?;
 
                 self.locals.push("__switch_val".to_string());
-                let disc_slot = (self.locals.len() - 1) as u16;
+                let disc_slot = self.last_local_slot();
                 self.emit(Instruction::StoreLocal(disc_slot));
 
                 let mut body_jumps: Vec<usize> = Vec::new();
@@ -1230,6 +1230,14 @@ impl CodeGenerator {
             BindingPattern::Identifier(name) => Some(name.clone()),
             _ => None,
         }
+    }
+
+    fn current_local_slot(&self) -> u16 {
+        (self.captured_var_names.len() + self.locals.len() - self.local_start_idx) as u16
+    }
+
+    fn last_local_slot(&self) -> u16 {
+        (self.captured_var_names.len() + self.locals.len() - 1 - self.local_start_idx) as u16
     }
 
     pub(crate) fn resolve_local(&self, name: &str) -> Option<u16> {
