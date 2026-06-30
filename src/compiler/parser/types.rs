@@ -47,6 +47,18 @@ impl<'a> Parser<'a> {
                     "unknown" => Ok(TypeAnnotation::Unknown),
                     "never" => Ok(TypeAnnotation::Never),
                     _ => {
+                        // Handle dotted type names like v.InferInput or A.B.C
+                        let mut full_name = name;
+                        while self.peek().token == Token::Dot {
+                            self.advance(); // consume '.'
+                            if let Token::Identifier(ref prop) = self.peek().token {
+                                let prop = prop.clone();
+                                self.advance();
+                                full_name = format!("{}.{}", full_name, prop);
+                            } else {
+                                break;
+                            }
+                        }
                         if self.peek().token == Token::Less {
                             self.advance();
                             let mut args = vec![self.parse_type_annotation()?];
@@ -72,20 +84,23 @@ impl<'a> Parser<'a> {
                                     )));
                                 }
                             }
-                            Ok(TypeAnnotation::Generic { name, args })
+                            Ok(TypeAnnotation::Generic {
+                                name: full_name,
+                                args,
+                            })
                         } else if let Token::Identifier(ref is_name) = self.peek().token {
                             if is_name == "is" {
                                 self.advance();
                                 let ty = self.parse_type_annotation()?;
                                 Ok(TypeAnnotation::TypePredicate {
-                                    param_name: name,
+                                    param_name: full_name,
                                     ty: Box::new(ty),
                                 })
                             } else {
-                                Ok(TypeAnnotation::Named(name))
+                                Ok(TypeAnnotation::Named(full_name))
                             }
                         } else {
-                            Ok(TypeAnnotation::Named(name))
+                            Ok(TypeAnnotation::Named(full_name))
                         }
                     }
                 }
