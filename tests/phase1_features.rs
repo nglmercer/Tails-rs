@@ -530,14 +530,16 @@ fn test_await_parses() {
 fn test_import_parses() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"import { foo } from "./module";"#);
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    assert!(result.unwrap_err().message().contains("Cannot find module"));
 }
 
 #[test]
 fn test_import_default_parses() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"import foo from "./module";"#);
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    assert!(result.unwrap_err().message().contains("Cannot find module"));
 }
 
 #[test]
@@ -793,7 +795,8 @@ fn test_template_literal_empty() {
 fn test_import_star_parses() {
     let mut runtime = TailsRuntime::default();
     let result = runtime.eval(r#"import * as utils from "./utils";"#);
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    assert!(result.unwrap_err().message().contains("Cannot find module"));
 }
 
 #[test]

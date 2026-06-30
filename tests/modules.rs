@@ -196,15 +196,14 @@ fn test_import_multiple_modules_same_runtime() {
 }
 
 #[test]
-fn test_missing_module_is_undefined() {
+fn test_missing_module_throws_error() {
     let mut runtime = TailsRuntime::default();
-    let result = runtime
-        .eval(
-            r#"
+    let result = runtime.eval(
+        r#"
         import foo from "./nonexistent_module.ts";
-        typeof foo
     "#,
-        )
-        .unwrap();
-    assert_eq!(result, tails::Value::String("undefined".to_string()));
+    );
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message().contains("Cannot find module"));
 }

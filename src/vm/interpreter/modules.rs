@@ -117,7 +117,7 @@ impl Interpreter {
                 self.module_registry.insert(module_name.to_string(), props);
                 return Ok(Some(module_name.to_string()));
             }
-            return Ok(None);
+                return Err(Error::RuntimeError(format!("Cannot find module '{}'", source)));
         }
 
         let module_path = match self.resolve_module_path(source) {
@@ -146,16 +146,15 @@ impl Interpreter {
                     self.module_registry.insert(module_name.to_string(), props);
                     return Ok(Some(module_name.to_string()));
                 }
-                return Ok(None);
+            return Err(Error::RuntimeError(format!("Cannot find module '{}'", source)));
             }
         };
         if self.module_registry.contains_key(&module_path) {
             return Ok(Some(module_path));
         }
-        let source_code = match std::fs::read_to_string(&module_path) {
-            Ok(s) => s,
-            Err(_) => return Ok(None),
-        };
+        let source_code = std::fs::read_to_string(&module_path).map_err(|e| {
+            Error::RuntimeError(format!("Cannot read module '{}': {}", source, e))
+        })?;
         let compiler = crate::compiler::Compiler::new(false);
         let compiled = compiler.compile(&source_code)?;
         let prev_path = self.current_module_path.take();
@@ -420,8 +419,8 @@ impl Interpreter {
     }
 
     pub(crate) fn exec_import_module(&mut self, source: &str) -> Result<Option<Value>> {
-        match self.load_and_run_module(source)? {
-            Some(module_path) => {
+        match self.load_and_run_module(source) {
+            Ok(Some(module_path)) => {
                 let exports = self
                     .module_registry
                     .get(&module_path)
@@ -429,7 +428,8 @@ impl Interpreter {
                     .unwrap_or_default();
                 Ok(Some(self.build_module_object_from_exports(&exports)))
             }
-            None => Ok(Some(Value::Undefined)),
+            Ok(None) => Ok(Some(Value::Undefined)),
+            Err(e) => Ok(Some(self.build_error_promise(e.message().to_string()))),
         }
     }
 
@@ -453,11 +453,7 @@ impl Interpreter {
                 self.globals.insert(local_name.to_string(), val);
                 Ok(Value::Undefined)
             }
-            None => {
-                self.globals
-                    .insert(local_name.to_string(), Value::Undefined);
-                Ok(Value::Undefined)
-            }
+            None => Err(Error::RuntimeError(format!("Cannot find module '{}'", source)))
         }
     }
 
@@ -477,13 +473,10 @@ impl Interpreter {
                     Value::Undefined
                 };
                 self.globals.insert(local_name.to_string(), val);
+                Ok(Value::Undefined)
             }
-            None => {
-                self.globals
-                    .insert(local_name.to_string(), Value::Undefined);
-            }
+            None => Err(Error::RuntimeError(format!("Cannot find module '{}'", source))),
         }
-        Ok(Value::Undefined)
     }
 
     pub(crate) fn exec_import_all(&mut self, source: &str, local_name: &str) -> Result<Value> {
@@ -496,15 +489,10 @@ impl Interpreter {
                     .unwrap_or_default();
                 let module_obj = self.build_module_object_from_exports(&exports);
                 self.globals.insert(local_name.to_string(), module_obj);
+                Ok(Value::Undefined)
             }
-            None => {
-                let heap_idx = self.heap.len();
-                self.heap.push(HeapValue::Object(JsObject::new()));
-                self.globals
-                    .insert(local_name.to_string(), Value::Object(heap_idx));
-            }
+            None => Err(Error::RuntimeError(format!("Cannot find module '{}'", source))),
         }
-        Ok(Value::Undefined)
     }
 
     pub(crate) fn exec_native_import(&mut self, source: &str, local_name: &str) -> Result<Value> {
@@ -521,13 +509,10 @@ impl Interpreter {
                     .cloned()
                     .unwrap_or_else(|| self.build_module_object_from_exports(&exports));
                 self.globals.insert(local_name.to_string(), val);
+                Ok(Value::Undefined)
             }
-            None => {
-                self.globals
-                    .insert(local_name.to_string(), Value::Undefined);
-            }
+            None => Err(Error::RuntimeError(format!("Cannot find module '{}'", source))),
         }
-        Ok(Value::Undefined)
     }
 
     pub(crate) fn exec_export_named(&mut self, names: &[String]) -> Result<()> {
@@ -565,9 +550,9 @@ impl Interpreter {
                         self.module_exports.insert(k.clone(), v.clone());
                     }
                 }
+                Ok(())
             }
-            None => {}
+            None => Err(Error::RuntimeError(format!("Cannot find module '{}'", source))),
         }
-        Ok(())
     }
 }
