@@ -179,33 +179,38 @@ impl Interpreter {
             return Ok(source.to_string());
         }
 
-        let resolved = if source.starts_with("./") || source.starts_with("../") {
-            parent.join(source)
-        } else {
-            std::path::PathBuf::from(source)
-        };
-        let normalized: std::path::PathBuf = resolved.components().collect();
-        if normalized.exists() && normalized.is_file() {
-            return Ok(normalized.to_string_lossy().to_string());
-        }
-        for ext in &[".ts", ".js"] {
-            let stem = normalized.with_extension("");
-            let candidate = std::path::PathBuf::from(format!("{}{}", stem.to_string_lossy(), ext));
-            if candidate.exists() {
-                return Ok(candidate.to_string_lossy().to_string());
+        let is_bare = !source.starts_with('.') && !source.starts_with('/');
+
+        // For bare specifiers (e.g. "valibot"), skip local file checks and go straight to node_modules
+        if !is_bare {
+            let resolved = if source.starts_with("./") || source.starts_with("../") {
+                parent.join(source)
+            } else {
+                std::path::PathBuf::from(source)
+            };
+            let normalized: std::path::PathBuf = resolved.components().collect();
+            if normalized.exists() && normalized.is_file() {
+                return Ok(normalized.to_string_lossy().to_string());
             }
-        }
-        if normalized.is_dir() {
-            for name in &["index.ts", "index.js"] {
-                let idx = normalized.join(name);
-                if idx.exists() {
-                    return Ok(idx.to_string_lossy().to_string());
+            for ext in &[".ts", ".js"] {
+                let stem = normalized.with_extension("");
+                let candidate = std::path::PathBuf::from(format!("{}{}", stem.to_string_lossy(), ext));
+                if candidate.exists() {
+                    return Ok(candidate.to_string_lossy().to_string());
+                }
+            }
+            if normalized.is_dir() {
+                for name in &["index.ts", "index.js"] {
+                    let idx = normalized.join(name);
+                    if idx.exists() {
+                        return Ok(idx.to_string_lossy().to_string());
+                    }
                 }
             }
         }
 
         // node_modules resolution for bare specifiers (no ./ or ../)
-        if !source.starts_with('.') && !source.starts_with('/') {
+        if is_bare {
             if let Some(resolved) = self.resolve_from_node_modules(source, parent) {
                 return Ok(resolved);
             }
