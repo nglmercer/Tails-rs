@@ -980,13 +980,22 @@ impl Interpreter {
                     } else if self.exec_property_ops(&instruction)? {
                     } else if self.exec_make_function(&instruction, module, pc)? {
                     } else if self.exec_class_ops(&instruction, &mut pc, module)? {
-                    } else if self.exec_exception(&instruction, &mut pc)? {
-                    } else if self.handle_pending_exception(&mut pc)? {
                     } else {
-                        return Err(Error::RuntimeError(format!(
-                            "Unhandled instruction: {:?}",
-                            instruction
-                        )));
+                        let saved_pc = pc;
+                        if self.exec_exception(&instruction, &mut pc)? {
+                            if pc != saved_pc {
+                                continue;
+                            }
+                        } else if self.handle_pending_exception(&mut pc)? {
+                            if pc != saved_pc {
+                                continue;
+                            }
+                        } else {
+                            return Err(Error::RuntimeError(format!(
+                                "Unhandled instruction: {:?}",
+                                instruction
+                            )));
+                        }
                     }
                 }
             }

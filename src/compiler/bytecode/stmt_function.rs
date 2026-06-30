@@ -88,7 +88,7 @@ impl CodeGenerator {
             self.emit(Instruction::StoreGlobal(name.clone()));
         } else {
             self.locals.push(name.clone());
-            let slot = (self.locals.len() - 1 - self.local_start_idx) as u16;
+            let slot = self.last_local_slot();
             self.emit(Instruction::StoreLocal(slot));
         }
         Ok(true)

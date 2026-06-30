@@ -44,9 +44,9 @@ impl CodeGenerator {
                     0
                 };
 
-                if let Some(catch_clause) = handler {
+if let Some(catch_clause) = handler {
                     self.locals.push(catch_clause.param.clone());
-                    let slot = (self.locals.len() - 1 - self.local_start_idx) as u16;
+                    let slot = self.last_local_slot();
                     self.emit(Instruction::LoadException);
                     self.emit(Instruction::StoreLocal(slot));
                     let last_idx = catch_clause.body.len().saturating_sub(1);
