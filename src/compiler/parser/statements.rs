@@ -146,11 +146,7 @@ impl<'a> Parser<'a> {
                 let key_expr = self.token_to_property_name()?;
                 let key = match key_expr {
                     Expression::Identifier(name) => name,
-                    _ => {
-                        return Err(Error::ParseError(
-                            "Expected property name".into(),
-                        ))
-                    }
+                    _ => return Err(Error::ParseError("Expected property name".into())),
                 };
                 if self.peek().token == Token::Colon {
                     self.advance();

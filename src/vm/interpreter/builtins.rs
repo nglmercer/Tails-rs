@@ -94,10 +94,7 @@ impl Interpreter {
 
         // Object.prototype with hasOwnProperty
         let mut object_proto_props = HashMap::new();
-        object_proto_props.insert(
-            "hasOwnProperty".into(),
-            Value::NativeFunction(380),
-        );
+        object_proto_props.insert("hasOwnProperty".into(), Value::NativeFunction(380));
         let object_proto_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {

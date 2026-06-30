@@ -227,20 +227,16 @@ impl Interpreter {
         // Include proto objects that are stored as Interpreter fields (not in globals)
         // so the GC doesn't sweep them
         if let Some(idx) = self.regexp_proto_idx {
-            globals_snapshot
-                .insert("__regexp_proto__".into(), Value::Object(idx));
+            globals_snapshot.insert("__regexp_proto__".into(), Value::Object(idx));
         }
         if let Some(idx) = self.date_proto_idx {
-            globals_snapshot
-                .insert("__date_proto__".into(), Value::Object(idx));
+            globals_snapshot.insert("__date_proto__".into(), Value::Object(idx));
         }
         if let Some(idx) = self.buffer_proto_idx {
-            globals_snapshot
-                .insert("__buffer_proto__".into(), Value::Object(idx));
+            globals_snapshot.insert("__buffer_proto__".into(), Value::Object(idx));
         }
         if let Some(idx) = self.generator_proto_idx {
-            globals_snapshot
-                .insert("__generator_proto__".into(), Value::Object(idx));
+            globals_snapshot.insert("__generator_proto__".into(), Value::Object(idx));
         }
         let stack_snapshot = self.stack.clone();
         let call_stack_snapshot = self.call_stack.clone();

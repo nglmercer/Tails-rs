@@ -1,5 +1,5 @@
 use super::CodeGenerator;
-use crate::compiler::parser::{BindingPattern, Expression, ForInLeft, ForInit, Statement};
+use crate::compiler::parser::{BindingPattern, ForInLeft, ForInit, Statement};
 use crate::compiler::Instruction;
 use crate::errors::Result;
 use crate::objects::Value;

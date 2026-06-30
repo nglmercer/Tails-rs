@@ -189,7 +189,9 @@ impl CodeGenerator {
                         CompoundAssignmentOp::XorAssign => self.emit(Instruction::BitXor),
                         CompoundAssignmentOp::BitAndAssign => self.emit(Instruction::BitAnd),
                         CompoundAssignmentOp::BitOrAssign => self.emit(Instruction::BitOr),
-                        CompoundAssignmentOp::NullishCoalescingAssign => self.emit(Instruction::NullishCoalescing),
+                        CompoundAssignmentOp::NullishCoalescingAssign => {
+                            self.emit(Instruction::NullishCoalescing)
+                        }
                     }
                     if let Expression::Identifier(name) = target.as_ref() {
                         self.emit(Instruction::Dup);
