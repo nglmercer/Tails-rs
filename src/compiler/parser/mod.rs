@@ -456,6 +456,7 @@ pub enum CompoundAssignmentOp {
     XorAssign,
     BitAndAssign,
     BitOrAssign,
+    NullishCoalescingAssign,
 }
 
 #[derive(Debug, Clone)]
@@ -787,6 +788,9 @@ impl<'a> Parser<'a> {
                         }
                         _ => break,
                     }
+                }
+                if self.peek().token == Token::Ellipsis {
+                    self.advance();
                 }
                 let param = match self.advance().token {
                     Token::Identifier(name) => name,

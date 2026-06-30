@@ -122,6 +122,15 @@ impl<'a> Parser<'a> {
                     op: Some(CompoundAssignmentOp::BitOrAssign),
                 }))
             }
+            Token::NullishCoalescingAssign => {
+                self.advance();
+                let value = self.parse_assignment()?;
+                Ok(self.spanned(Expression::Assignment {
+                    target: Box::new(left.inner),
+                    value: Box::new(value.inner),
+                    op: Some(CompoundAssignmentOp::NullishCoalescingAssign),
+                }))
+            }
             _ => Ok(left),
         }
     }

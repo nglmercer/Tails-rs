@@ -356,3 +356,25 @@ pub(super) fn native_object_seal(
     }
     Ok(target)
 }
+
+pub(super) fn native_object_has_own_property(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let prop = match args.first() {
+        Some(Value::String(s)) => s.clone(),
+        Some(v) => format!("{:?}", v),
+        None => return Ok(Value::Boolean(false)),
+    };
+    match this {
+        Value::Object(obj_idx) => {
+            if let crate::vm::interpreter::HeapValue::Object(obj) = &interp.heap[*obj_idx] {
+                Ok(Value::Boolean(obj.properties.contains_key(&prop)))
+            } else {
+                Ok(Value::Boolean(false))
+            }
+        }
+        _ => Ok(Value::Boolean(false)),
+    }
+}

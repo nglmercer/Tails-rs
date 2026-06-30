@@ -46,6 +46,30 @@ impl<'a> Parser<'a> {
             _ => {
                 let id = match self.advance().token {
                     Token::Identifier(name) => name,
+                    Token::Get => "get".to_string(),
+                    Token::Set => "set".to_string(),
+                    Token::Delete => "delete".to_string(),
+                    Token::New => "new".to_string(),
+                    Token::This => "this".to_string(),
+                    Token::Return => "return".to_string(),
+                    Token::If => "if".to_string(),
+                    Token::Else => "else".to_string(),
+                    Token::While => "while".to_string(),
+                    Token::For => "for".to_string(),
+                    Token::Do => "do".to_string(),
+                    Token::Function => "function".to_string(),
+                    Token::Class => "class".to_string(),
+                    Token::Switch => "switch".to_string(),
+                    Token::Case => "case".to_string(),
+                    Token::Break => "break".to_string(),
+                    Token::Continue => "continue".to_string(),
+                    Token::Typeof => "typeof".to_string(),
+                    Token::Instanceof => "instanceof".to_string(),
+                    Token::In => "in".to_string(),
+                    Token::Void => "void".to_string(),
+                    Token::Catch => "catch".to_string(),
+                    Token::Finally => "finally".to_string(),
+                    Token::Throw => "throw".to_string(),
                     token => {
                         return Err(Error::ParseError(format!(
                             "Expected identifier or pattern, got {:?}",
@@ -119,13 +143,13 @@ impl<'a> Parser<'a> {
                     });
                     break;
                 }
-                let key = match self.advance().token {
-                    Token::Identifier(name) => name,
-                    token => {
-                        return Err(Error::ParseError(format!(
-                            "Expected property name, got {:?}",
-                            token
-                        )))
+                let key_expr = self.token_to_property_name()?;
+                let key = match key_expr {
+                    Expression::Identifier(name) => name,
+                    _ => {
+                        return Err(Error::ParseError(
+                            "Expected property name".into(),
+                        ))
                     }
                 };
                 if self.peek().token == Token::Colon {

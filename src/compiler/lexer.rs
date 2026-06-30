@@ -114,6 +114,7 @@ pub enum Token {
     Question,
     QuestionDot,
     NullishCoalescing,
+    NullishCoalescingAssign,
     Arrow,
     Ellipsis,
     Eof,
@@ -280,9 +281,9 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                                 escaped = true;
                                 col += 1;
                             }
-                            Some((_, '[')) if !escaped => {
+                            Some((_, '[')) if !escaped && bracket_depth == 0 => {
                                 pattern.push('[');
-                                bracket_depth += 1;
+                                bracket_depth = 1;
                                 col += 1;
                                 escaped = false;
                             }
@@ -356,6 +357,24 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                         col += 1;
                     } else {
                         break;
+                    }
+                }
+                // Handle scientific notation: e.g. 1e10, 1.5e-3, 3.4e+38
+                if let Some(&(_, 'e' | 'E')) = chars.peek() {
+                    num.push(chars.next().unwrap().1);
+                    col += 1;
+                    if let Some(&(_, '+' | '-')) = chars.peek() {
+                        num.push(chars.next().unwrap().1);
+                        col += 1;
+                    }
+                    while let Some(&(_, c)) = chars.peek() {
+                        if c.is_ascii_digit() {
+                            num.push(c);
+                            chars.next();
+                            col += 1;
+                        } else {
+                            break;
+                        }
                     }
                 }
                 // Check for BigInt suffix 'n'
@@ -758,13 +777,25 @@ pub fn tokenize(source: &str) -> Result<Vec<SpannedToken>> {
                 } else if let Some(&(_, '?')) = chars.peek() {
                     chars.next();
                     col += 1;
-                    push(
-                        &mut tokens,
-                        Token::NullishCoalescing,
-                        tok_line,
-                        tok_col,
-                        tok_offset,
-                    );
+                    if let Some(&(_, '=')) = chars.peek() {
+                        chars.next();
+                        col += 1;
+                        push(
+                            &mut tokens,
+                            Token::NullishCoalescingAssign,
+                            tok_line,
+                            tok_col,
+                            tok_offset,
+                        );
+                    } else {
+                        push(
+                            &mut tokens,
+                            Token::NullishCoalescing,
+                            tok_line,
+                            tok_col,
+                            tok_offset,
+                        );
+                    }
                 } else {
                     push(&mut tokens, Token::Question, tok_line, tok_col, tok_offset);
                 }

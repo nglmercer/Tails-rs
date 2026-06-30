@@ -98,11 +98,8 @@ impl CodeGenerator {
                 self.continue_targets.pop();
 
                 if let Some(upd) = update {
-                    let is_assignment = matches!(upd, Expression::Assignment { .. });
                     self.generate_expression(upd)?;
-                    if !is_assignment {
-                        self.emit(Instruction::Pop);
-                    }
+                    self.emit(Instruction::Pop);
                 }
 
                 // Condition check (patched from jump_to_check)

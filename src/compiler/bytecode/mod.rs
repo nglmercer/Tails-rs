@@ -128,9 +128,8 @@ impl CodeGenerator {
         }
         match stmt {
             Statement::Expression(expr) => {
-                let is_assignment = matches!(expr, Expression::Assignment { .. });
                 self.generate_expression(expr)?;
-                if !is_last && !is_assignment {
+                if !is_last {
                     self.emit(Instruction::Pop);
                 }
                 Ok(())
@@ -151,7 +150,7 @@ impl CodeGenerator {
                                     self.emit(Instruction::StoreGlobal(id.clone()));
                                 } else {
                                     self.locals.push(id.clone());
-                                    let slot = (self.locals.len() - 1 - self.local_start_idx) as u16;
+                                    let slot = self.last_local_slot();
                                     self.emit(Instruction::StoreLocal(slot));
                                 }
                             }
@@ -236,7 +235,7 @@ impl CodeGenerator {
                     self.emit(Instruction::StoreGlobal(id.clone()));
                 } else {
                     self.locals.push(id.clone());
-                    let slot = (self.locals.len() - 1 - self.local_start_idx) as u16;
+                    let slot = self.last_local_slot();
                     self.emit(Instruction::StoreLocal(slot));
                 }
             }

@@ -593,4 +593,6 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     child_process_fns::native_child_process_exec_sync,
     child_process_fns::native_child_process_exec,
     child_process_fns::native_child_process_spawn,
+    // Object.prototype methods
+    object_fns::native_object_has_own_property,
 ];

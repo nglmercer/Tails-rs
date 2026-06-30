@@ -189,8 +189,10 @@ impl CodeGenerator {
                         CompoundAssignmentOp::XorAssign => self.emit(Instruction::BitXor),
                         CompoundAssignmentOp::BitAndAssign => self.emit(Instruction::BitAnd),
                         CompoundAssignmentOp::BitOrAssign => self.emit(Instruction::BitOr),
+                        CompoundAssignmentOp::NullishCoalescingAssign => self.emit(Instruction::NullishCoalescing),
                     }
                     if let Expression::Identifier(name) = target.as_ref() {
+                        self.emit(Instruction::Dup);
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.emit(Instruction::StoreLocal(local_idx));
                         } else {
@@ -240,6 +242,7 @@ impl CodeGenerator {
                         self.emit(Instruction::SetProperty);
                     } else if let Expression::Identifier(name) = target.as_ref() {
                         self.generate_expression(value)?;
+                        self.emit(Instruction::Dup);
                         if let Some(local_idx) = self.resolve_local(name) {
                             self.emit(Instruction::StoreLocal(local_idx));
                         } else {

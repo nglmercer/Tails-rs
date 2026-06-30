@@ -89,6 +89,25 @@ impl Interpreter {
         object_props.insert("isSealed".into(), Value::NativeFunction(148));
         object_props.insert("isFrozen".into(), Value::NativeFunction(149));
         object_props.insert("seal".into(), Value::NativeFunction(150));
+        object_props.insert("getPrototypeOf".into(), Value::NativeFunction(95));
+        object_props.insert("setPrototypeOf".into(), Value::NativeFunction(96));
+
+        // Object.prototype with hasOwnProperty
+        let mut object_proto_props = HashMap::new();
+        object_proto_props.insert(
+            "hasOwnProperty".into(),
+            Value::NativeFunction(380),
+        );
+        let object_proto_idx = self.gc.allocate(
+            &mut self.heap,
+            HeapValue::Object(JsObject {
+                properties: object_proto_props,
+                prototype: None,
+                extensible: true,
+            }),
+        );
+        object_props.insert("prototype".into(), Value::Object(object_proto_idx));
+
         let object_obj_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {
