@@ -1,4 +1,5 @@
 use super::*;
+use super::safe_library::SafeLibrary;
 use crate::errors::Result;
 use crate::objects::Value;
 use crate::runtime_env::native_fns::NATIVE_TABLE;
@@ -200,18 +201,17 @@ impl Interpreter {
 
                 // Try to load from the resolved path directly
                 if resolved_path.exists() {
-                    // Load the library and extract function pointers
-                    if let Ok(library) = unsafe { libloading::Library::new(&resolved_path) } {
-                        let mut props = HashMap::new();
+                // Load the library and extract function pointers
+                if let Ok(library) = SafeLibrary::new(&resolved_path) {
+                    let mut props = HashMap::new();
 
-                        // Try to find tails_native_init
-                        type InitFn = fn() -> *mut tails_abi::ModuleHandle;
-                        if let Ok(init_fn) =
-                            unsafe { library.get::<InitFn>(b"tails_native_init\0") }
-                        {
-                            let handle = init_fn();
-                            if !handle.is_null() {
-                                let handle = unsafe { Box::from_raw(handle) };
+                    // Try to find tails_native_init
+                    type InitFn = fn() -> *mut tails_abi::ModuleHandle;
+                    if let Ok(init_fn) = unsafe { library.get_function::<InitFn>("tails_native_init") } {
+                        let handle = init_fn();
+                        if !handle.is_null() {
+                            // Safety: handle comes from tails_native_init and is checked for null
+                            let handle = unsafe { Box::from_raw(handle) };
                                 for (func_name, func_ptr) in &handle.module.functions {
                                     // Store the raw C ABI function pointer
                                     let raw_fn = *func_ptr as usize;
@@ -260,18 +260,17 @@ impl Interpreter {
                     if let Some(lib_path) =
                         super::native_loader::find_library_in_dir(parent_dir, module_name)
                     {
-                        // Load the library and extract function pointers
-                        if let Ok(library) = unsafe { libloading::Library::new(&lib_path) } {
-                            let mut props = HashMap::new();
+                    // Load the library and extract function pointers
+                    if let Ok(library) = SafeLibrary::new(&lib_path) {
+                        let mut props = HashMap::new();
 
-                            // Try to find tails_native_init
-                            type InitFn = fn() -> *mut tails_abi::ModuleHandle;
-                            if let Ok(init_fn) =
-                                unsafe { library.get::<InitFn>(b"tails_native_init\0") }
-                            {
-                                let handle = init_fn();
-                                if !handle.is_null() {
-                                    let handle = unsafe { Box::from_raw(handle) };
+                        // Try to find tails_native_init
+                        type InitFn = fn() -> *mut tails_abi::ModuleHandle;
+                        if let Ok(init_fn) = unsafe { library.get_function::<InitFn>("tails_native_init") } {
+                            let handle = init_fn();
+                            if !handle.is_null() {
+                                // Safety: handle comes from tails_native_init and is checked for null
+                                let handle = unsafe { Box::from_raw(handle) };
                                     for (func_name, func_ptr) in &handle.module.functions {
                                         // Store the raw C ABI function pointer
                                         let raw_fn = *func_ptr as usize;
