@@ -105,7 +105,11 @@ pub fn extract_params_from_sig(sig: &syn::Signature) -> Vec<ParamInfo> {
                 let name = pat_to_name(&pat_type.pat);
                 let ts_type = rust_type_to_ts(&pat_type.ty);
                 let rust_type = (*pat_type.ty).clone();
-                params.push(ParamInfo { name, ts_type, rust_type });
+                params.push(ParamInfo {
+                    name,
+                    ts_type,
+                    rust_type,
+                });
             }
         }
     }

@@ -35,9 +35,9 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
     let content = item.content.as_ref().map(|(_, items)| items);
     let attrs = &item.attrs;
 
-    let module_name = options.name.unwrap_or_else(|| {
-        mod_name.to_string().replace('_', "-").to_lowercase()
-    });
+    let module_name = options
+        .name
+        .unwrap_or_else(|| mod_name.to_string().replace('_', "-").to_lowercase());
 
     let mut registrations = Vec::new();
     let mut function_items = Vec::new();
@@ -53,8 +53,8 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
                         continue;
                     }
 
-                    let actual_js_name = extract_js_name(&func.attrs)
-                        .unwrap_or_else(|| func_name_str.clone());
+                    let actual_js_name =
+                        extract_js_name(&func.attrs).unwrap_or_else(|| func_name_str.clone());
 
                     let ffi_name = format_ident!("__tails_ffi_{}", func.sig.ident);
                     registrations.push(quote! {
