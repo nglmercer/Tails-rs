@@ -6,16 +6,30 @@ use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant, SystemTime};
 
 fn print_usage() {
-    eprintln!("Usage: tails [OPTIONS] <script.ts>");
+    eprintln!("Usage: tails <command> [OPTIONS]");
     eprintln!();
-    eprintln!("Options:");
-    eprintln!("  --watch              Watch for file changes and re-run automatically");
-    eprintln!("  --env-file <path>    Load environment variables from a specific .env file");
-    eprintln!("  --no-env-file        Disable automatic .env file loading");
-    eprintln!("  --color              Enable colored output (default)");
-    eprintln!("  --no-color           Disable colored output");
-    eprintln!("  --timestamps         Show timestamps in console output");
-    eprintln!("  --help               Show this help message");
+    eprintln!("Commands:");
+    eprintln!("  run <script.ts>       Run a TypeScript script (default)");
+    eprintln!("  build [OPTIONS]       Build native module to dist/");
+    eprintln!("  clean                 Remove dist/ directory");
+    eprintln!();
+    eprintln!("Run options:");
+    eprintln!("  --watch               Watch for file changes and re-run automatically");
+    eprintln!("  --env-file <path>     Load environment variables from a specific .env file");
+    eprintln!("  --no-env-file         Disable automatic .env file loading");
+    eprintln!("  --color               Enable colored output (default)");
+    eprintln!("  --no-color            Disable colored output");
+    eprintln!("  --timestamps          Show timestamps in console output");
+    eprintln!();
+    eprintln!("Build options:");
+    eprintln!("  --package, -p <name>  Package to build (auto-detects cdylib if omitted)");
+    eprintln!("  --release             Build in release mode");
+    eprintln!("  --target-dir <path>   Custom target directory");
+    eprintln!();
+    eprintln!("Examples:");
+    eprintln!("  tails run script.ts");
+    eprintln!("  tails build --package my-module --release");
+    eprintln!("  tails clean");
 }
 
 fn now_timestamp() -> String {
@@ -206,13 +220,76 @@ fn main() -> Result<()> {
         std::process::exit(0);
     }
 
-    let watch_mode = args.iter().any(|a| a == "--watch" || a == "-w");
-    let no_color = args.iter().any(|a| a == "--no-color");
-    let timestamps = args.iter().any(|a| a == "--timestamps");
-    let no_env_file = args.iter().any(|a| a == "--no-env-file");
+    // Check for subcommands
+    let first_arg = args.first().map(|s| s.as_str());
+
+    match first_arg {
+        Some("build") => {
+            let build_args: Vec<String> = args[1..].to_vec();
+            let mut package = None;
+            let mut release = false;
+            let mut target_dir = None;
+
+            let mut i = 0;
+            while i < build_args.len() {
+                match build_args[i].as_str() {
+                    "--package" | "-p" => {
+                        i += 1;
+                        package = build_args.get(i).cloned();
+                    }
+                    "--release" => release = true,
+                    "--target-dir" => {
+                        i += 1;
+                        target_dir = build_args.get(i).cloned();
+                    }
+                    _ => {}
+                }
+                i += 1;
+            }
+
+            let opts = tails::cli::build::BuildOptions {
+                package,
+                release,
+                target_dir,
+            };
+            tails::cli::build::run_build(opts)?;
+            return Ok(());
+        }
+        Some("clean") => {
+            tails::cli::build::run_clean()?;
+            return Ok(());
+        }
+        Some("run") => {
+            // Fall through to run mode with remaining args
+        }
+        Some(arg) if arg.ends_with(".ts") => {
+            // Script file directly (backward compatible)
+        }
+        Some(other) => {
+            eprintln!("Unknown command: {}", other);
+            eprintln!("Run 'tails --help' for usage.");
+            std::process::exit(1);
+        }
+        None => {
+            eprintln!("No command specified. Run 'tails --help' for usage.");
+            std::process::exit(1);
+        }
+    }
+
+    // Determine args for run mode (skip "run" subcommand if present)
+    let run_args: Vec<String> = if first_arg == Some("run") {
+        args[1..].to_vec()
+    } else {
+        args
+    };
+
+    let watch_mode = run_args.iter().any(|a| a == "--watch" || a == "-w");
+    let no_color = run_args.iter().any(|a| a == "--no-color");
+    let timestamps = run_args.iter().any(|a| a == "--timestamps");
+    let no_env_file = run_args.iter().any(|a| a == "--no-env-file");
 
     // Find custom --env-file argument
-    let custom_env_file = args.windows(2).find_map(|w| {
+    let custom_env_file = run_args.windows(2).find_map(|w| {
         if w[0] == "--env-file" {
             Some(w[1].clone())
         } else {
@@ -224,7 +301,7 @@ fn main() -> Result<()> {
     tails::runtime_env::native_fns::console::set_colors(!no_color);
     tails::runtime_env::native_fns::console::set_timestamps(timestamps);
 
-    let script_arg = args
+    let script_arg = run_args
         .iter()
         .enumerate()
         .filter(|(i, a)| {
@@ -233,7 +310,7 @@ fn main() -> Result<()> {
                 return false;
             }
             // Skip the value after --env-file
-            if *i > 0 && args.get(i - 1).map(|a| a.as_str()) == Some("--env-file") {
+            if *i > 0 && run_args.get(i - 1).map(|a| a.as_str()) == Some("--env-file") {
                 return false;
             }
             !a.starts_with('-')
