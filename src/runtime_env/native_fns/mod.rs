@@ -598,4 +598,6 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     object_fns::native_object_has_own_property,
     // CommonJS require()
     require_fns::native_require,
+    // fileURLToPath (389)
+    url_fns::native_url_file_url_to_path,
 ];

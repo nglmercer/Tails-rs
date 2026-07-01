@@ -559,3 +559,34 @@ pub(super) fn native_url_to_json(
 ) -> Result<Value> {
     native_url_to_string(interp, _this, &[])
 }
+
+// --- fileURLToPath (index 389) ---
+
+pub(super) fn native_url_file_url_to_path(
+    interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let url_str = args
+        .first()
+        .map(|v| to_string_value(interp, v))
+        .unwrap_or_default();
+
+    if url_str.starts_with("file://") {
+        let path = &url_str[7..];
+        // On Unix, percent-decode the path
+        let decoded = urlencoding::decode(path)
+            .unwrap_or(std::borrow::Cow::Borrowed(path))
+            .to_string();
+        // Normalize the path (remove . and .. segments)
+        let normalized = std::path::Path::new(&decoded)
+            .components()
+            .collect::<std::path::PathBuf>();
+        Ok(Value::String(normalized.to_string_lossy().into_owned()))
+    } else {
+        Err(Error::TypeError(format!(
+            "Invalid file URL: {}",
+            url_str
+        )))
+    }
+}

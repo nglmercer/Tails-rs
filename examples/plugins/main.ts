@@ -1,9 +1,14 @@
 import { PluginManager } from "./plugin_manager";
 import { loadPluginsFromDir } from "./loader";
-const manager = new PluginManager();
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const manager = new PluginManager();
+console.log(__dirname);
 // Load all plugins from ./plugins directory
-const plugins = await loadPluginsFromDir("./examples/plugins/plugins");
+const plugins = await loadPluginsFromDir(__dirname + "/plugins");
 //console.log("plugins", plugins);
 for (const plugin of plugins) {
   manager.register(plugin);

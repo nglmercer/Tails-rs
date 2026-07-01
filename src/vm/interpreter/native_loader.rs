@@ -69,6 +69,7 @@ pub fn discover_module(name: &str, registry: &mut NativeModuleRegistry) {
         "crypto" => registry.register("crypto", create_crypto_module),
         "assert" => registry.register("assert", create_assert_module),
         "child_process" => registry.register("child_process", create_child_process_module),
+        "url" => registry.register("url", create_url_module),
         _ => {}
     }
 }
@@ -405,8 +406,17 @@ pub fn create_child_process_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("execSync".into(), Value::NativeFunction(368));
-    props.insert("exec".into(), Value::NativeFunction(369));
-    props.insert("spawn".into(), Value::NativeFunction(370));
+    props.insert("execSync".into(), Value::NativeFunction(377));
+    props.insert("exec".into(), Value::NativeFunction(378));
+    props.insert("spawn".into(), Value::NativeFunction(379));
+    props
+}
+
+pub fn create_url_module(
+    _heap: &mut Vec<HeapValue>,
+    _gc: &mut GarbageCollector,
+) -> HashMap<String, Value> {
+    let mut props = HashMap::new();
+    props.insert("fileURLToPath".into(), Value::NativeFunction(382));
     props
 }
