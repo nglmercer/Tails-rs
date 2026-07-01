@@ -1,48 +1,155 @@
-use tails_native_macros::tails_module;
+use tails_abi::{FromNativeValue, ModuleHandle, NativeFn, NativeModule, NativeValue, ToNativeValue};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
-#[tails_module(name = "my-tails-module")]
-mod my_module {
-    use tails_native_macros::{tails_class, tails_function};
+// --- Counter class ---
 
-    // --- Counter class ---
+struct Counter {
+    count: f64,
+}
 
-    pub struct Counter {
-        count: f64,
+static COUNTERS: Mutex<Option<HashMap<u32, Counter>>> = Mutex::new(None);
+static COUNTER_ID: Mutex<u32> = Mutex::new(1);
+
+fn with_counters<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut HashMap<u32, Counter>) -> R,
+{
+    let mut guard = COUNTERS.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(HashMap::new());
     }
+    f(guard.as_mut().unwrap())
+}
 
-    #[tails_class]
-    impl Counter {
-        pub fn new(initial: f64) -> Self {
-            Counter { count: initial }
+fn next_id() -> u32 {
+    let mut id = COUNTER_ID.lock().unwrap();
+    let val = *id;
+    *id += 1;
+    val
+}
+
+#[no_mangle]
+pub extern "C" fn __tails_ffi_counter_new(
+    _interp: *mut std::ffi::c_void,
+    _this: NativeValue,
+    args: *const NativeValue,
+    argc: i32,
+) -> NativeValue {
+    let args_slice = if args.is_null() || argc <= 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(args, argc as usize) }
+    };
+    let initial = if let Some(first) = args_slice.first() {
+        f64::from_native_value(*first).unwrap_or(0.0)
+    } else {
+        0.0
+    };
+    let id = next_id();
+    with_counters(|map| {
+        map.insert(id, Counter { count: initial });
+    });
+    NativeValue { tag: 5, data: id as u64 }
+}
+
+#[no_mangle]
+pub extern "C" fn __tails_ffi_counter_increment(
+    _interp: *mut std::ffi::c_void,
+    this: NativeValue,
+    _args: *const NativeValue,
+    _argc: i32,
+) -> NativeValue {
+    let id = this.data as u32;
+    with_counters(|map| {
+        if let Some(counter) = map.get_mut(&id) {
+            counter.count += 1.0;
         }
+    });
+    NativeValue { tag: 0, data: 0 }
+}
 
-        pub fn increment(&mut self) {
-            self.count += 1.0;
+#[no_mangle]
+pub extern "C" fn __tails_ffi_counter_decrement(
+    _interp: *mut std::ffi::c_void,
+    this: NativeValue,
+    _args: *const NativeValue,
+    _argc: i32,
+) -> NativeValue {
+    let id = this.data as u32;
+    with_counters(|map| {
+        if let Some(counter) = map.get_mut(&id) {
+            counter.count -= 1.0;
         }
+    });
+    NativeValue { tag: 0, data: 0 }
+}
 
-        pub fn decrement(&mut self) {
-            self.count -= 1.0;
-        }
+#[no_mangle]
+pub extern "C" fn __tails_ffi_counter_getCount(
+    _interp: *mut std::ffi::c_void,
+    this: NativeValue,
+    _args: *const NativeValue,
+    _argc: i32,
+) -> NativeValue {
+    let id = this.data as u32;
+    let count = with_counters(|map| map.get(&id).map(|c| c.count).unwrap_or(0.0));
+    ToNativeValue::to_native_value(&count).unwrap_or_else(|_| NativeValue { tag: 0, data: 0 })
+}
 
-        pub fn get_count(&self) -> f64 {
-            self.count
-        }
-    }
+// --- Simple functions ---
 
-    // --- Simple functions ---
+#[no_mangle]
+pub extern "C" fn __tails_ffi_greet(
+    _interp: *mut std::ffi::c_void,
+    _this: NativeValue,
+    args: *const NativeValue,
+    argc: i32,
+) -> NativeValue {
+    let args_slice = if args.is_null() || argc <= 0 { &[] } else { unsafe { std::slice::from_raw_parts(args, argc as usize) } };
+    let name = if let Some(first) = args_slice.first() { String::from_native_value(*first).unwrap_or_default() } else { String::new() };
+    let result = format!("Hello, {}!", name);
+    ToNativeValue::to_native_value(&result).unwrap_or_else(|_| NativeValue { tag: 0, data: 0 })
+}
 
-    #[tails_function]
-    pub fn greet(name: String) -> String {
-        format!("Hello, {}!", name)
-    }
+#[no_mangle]
+pub extern "C" fn __tails_ffi_add(
+    _interp: *mut std::ffi::c_void,
+    _this: NativeValue,
+    args: *const NativeValue,
+    argc: i32,
+) -> NativeValue {
+    let args_slice = if args.is_null() || argc <= 0 { &[] } else { unsafe { std::slice::from_raw_parts(args, argc as usize) } };
+    let a = if let Some(first) = args_slice.first() { f64::from_native_value(*first).unwrap_or(0.0) } else { 0.0 };
+    let b = if let Some(second) = args_slice.get(1) { f64::from_native_value(*second).unwrap_or(0.0) } else { 0.0 };
+    ToNativeValue::to_native_value(&(a + b)).unwrap_or_else(|_| NativeValue { tag: 0, data: 0 })
+}
 
-    #[tails_function]
-    pub fn add(a: f64, b: f64) -> f64 {
-        a + b
-    }
+#[no_mangle]
+pub extern "C" fn __tails_ffi_multiply(
+    _interp: *mut std::ffi::c_void,
+    _this: NativeValue,
+    args: *const NativeValue,
+    argc: i32,
+) -> NativeValue {
+    let args_slice = if args.is_null() || argc <= 0 { &[] } else { unsafe { std::slice::from_raw_parts(args, argc as usize) } };
+    let a = if let Some(first) = args_slice.first() { f64::from_native_value(*first).unwrap_or(0.0) } else { 0.0 };
+    let b = if let Some(second) = args_slice.get(1) { f64::from_native_value(*second).unwrap_or(0.0) } else { 0.0 };
+    ToNativeValue::to_native_value(&(a * b)).unwrap_or_else(|_| NativeValue { tag: 0, data: 0 })
+}
 
-    #[tails_function]
-    pub fn multiply(a: f64, b: f64) -> f64 {
-        a * b
-    }
+#[no_mangle]
+pub extern "C" fn tails_native_init() -> *mut ModuleHandle {
+    let module = NativeModule::new("my-tails-module");
+    let mut handle = ModuleHandle::new(module);
+
+    handle.module.register("greet", __tails_ffi_greet as NativeFn);
+    handle.module.register("add", __tails_ffi_add as NativeFn);
+    handle.module.register("multiply", __tails_ffi_multiply as NativeFn);
+    handle.module.register("Counter", __tails_ffi_counter_new as NativeFn);
+    handle.module.register("counter_increment", __tails_ffi_counter_increment as NativeFn);
+    handle.module.register("counter_decrement", __tails_ffi_counter_decrement as NativeFn);
+    handle.module.register("counter_getCount", __tails_ffi_counter_getCount as NativeFn);
+
+    Box::into_raw(Box::new(handle))
 }

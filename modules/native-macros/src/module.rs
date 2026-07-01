@@ -39,7 +39,6 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
         mod_name.to_string().replace('_', "-").to_lowercase()
     });
 
-    // Find all functions in the module and extract their FFI names
     let mut registrations = Vec::new();
     let mut function_items = Vec::new();
 
@@ -49,13 +48,11 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
                 syn::Item::Fn(func) => {
                     let func_name_str = func.sig.ident.to_string();
 
-                    // Skip macro-generated helpers (FFI wrappers, class registration, etc.)
                     if func_name_str.starts_with("__tails_") {
                         function_items.push(quote! { #func });
                         continue;
                     }
 
-                    // Check for #[tails(js_name = "...")] attribute
                     let actual_js_name = extract_js_name(&func.attrs)
                         .unwrap_or_else(|| func_name_str.clone());
 
@@ -68,16 +65,10 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
                 }
                 syn::Item::Struct(s) => {
                     let struct_name = &s.ident;
-                    let regs_name = format_ident!("__TAILS_CLASS_REGS_{}", struct_name);
+                    let class_init = format_ident!("__tails_class_init_{}", struct_name);
 
-                    // Drain class method registrations
                     registrations.push(quote! {
-                        {
-                            let mut regs = #regs_name.lock().unwrap();
-                            for (name, func) in regs.drain(..) {
-                                handle.module.register(name, func);
-                            }
-                        }
+                        #class_init(&mut handle);
                     });
 
                     function_items.push(quote! { #s });
