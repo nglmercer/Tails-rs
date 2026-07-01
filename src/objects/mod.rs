@@ -3,6 +3,7 @@ pub mod js_collections;
 pub mod js_date;
 pub mod js_promise;
 pub mod js_proxy;
+pub mod safe_typed_array;
 use std::fmt;
 
 /// Well-known symbol IDs (small numbers to distinguish from user symbols)
