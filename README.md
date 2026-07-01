@@ -28,3 +28,4 @@ cargo run --bin tails -- examples/all_features.ts
 - [Architecture](docs/architecture.md) — Source layout and design overview
 - [Testing](docs/testing.md) — Running the test suite
 - [Roadmap](docs/roadmap.md) — Completed work and planned features
+- [Unsafe Code Guide](docs/unsafe-code-guide.md) — Safe abstractions and safety invariants for unsafe code
