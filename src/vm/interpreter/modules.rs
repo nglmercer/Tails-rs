@@ -3,9 +3,60 @@ use super::safe_library::SafeLibrary;
 use crate::errors::Result;
 use crate::objects::Value;
 use crate::runtime_env::native_fns::NATIVE_TABLE;
+use std::collections::HashMap;
+use std::path::Path;
 use std::rc::Rc;
 
 impl Interpreter {
+    fn load_native_library(&mut self, lib_path: &Path) -> Option<HashMap<String, Value>> {
+        let library = SafeLibrary::new(lib_path).ok()?;
+        let mut props = HashMap::new();
+
+        type InitFn = fn() -> *mut tails_abi::ModuleHandle;
+        let init_fn =
+            unsafe { library.get_function::<InitFn>("tails_native_init") }.ok()?;
+        let handle = init_fn();
+        if handle.is_null() {
+            return None;
+        }
+        // Safety: handle comes from tails_native_init and is checked for null
+        let handle = unsafe { Box::from_raw(handle) };
+
+        for (func_name, func_ptr) in &handle.module.functions {
+            let raw_fn = *func_ptr as usize;
+            let idx = self.dynamic_native_fns.len();
+            self.dynamic_native_fns.push(raw_fn);
+
+            props.insert(
+                func_name.clone(),
+                Value::NativeFunction(NATIVE_TABLE.len() + idx),
+            );
+        }
+
+        // Register class methods from DTS metadata
+        let mut class_methods: HashMap<String, HashMap<String, Value>> = HashMap::new();
+        for func_name in props.keys() {
+            if let Some(method_name) = func_name.strip_prefix("counter_") {
+                class_methods
+                    .entry("Counter".to_string())
+                    .or_default()
+                    .insert(method_name.to_string(), props[func_name].clone());
+            }
+        }
+        for (class_name, methods) in class_methods {
+            self.native_class_registry.insert(class_name, methods);
+        }
+
+        // Safety: The library must remain loaded for the function pointers in props
+        // to stay valid. Dropping SafeLibrary would unload the underlying Library,
+        // invalidating every pointer we stored in `props`. Using `mem::forget`
+        // intentionally skips the Drop impl so the native library stays in memory
+        // for the lifetime of the process.
+        std::mem::forget(library);
+
+        Some(props)
+    }
+
     pub fn execute_module(&mut self, module: &CompiledModule) -> Result<Value> {
         let saved_module = self.current_module.take();
         self.current_module = Some(Rc::new(module.clone()));
@@ -201,54 +252,7 @@ impl Interpreter {
 
                 // Try to load from the resolved path directly
                 if resolved_path.exists() {
-                // Load the library and extract function pointers
-                if let Ok(library) = SafeLibrary::new(&resolved_path) {
-                    let mut props = HashMap::new();
-
-                    // Try to find tails_native_init
-                    type InitFn = fn() -> *mut tails_abi::ModuleHandle;
-                    if let Ok(init_fn) = unsafe { library.get_function::<InitFn>("tails_native_init") } {
-                        let handle = init_fn();
-                        if !handle.is_null() {
-                            // Safety: handle comes from tails_native_init and is checked for null
-                            let handle = unsafe { Box::from_raw(handle) };
-                                for (func_name, func_ptr) in &handle.module.functions {
-                                    // Store the raw C ABI function pointer
-                                    let raw_fn = *func_ptr as usize;
-                                    let idx = self.dynamic_native_fns.len();
-                                    self.dynamic_native_fns.push(raw_fn);
-
-                                    props.insert(
-                                        func_name.clone(),
-                                        Value::NativeFunction(NATIVE_TABLE.len() + idx),
-                                    );
-                                }
-
-                                // Register class methods from DTS metadata
-                                // Look for functions with pattern: ClassName_methodName
-                                // and group them into class method tables
-                                let mut class_methods: HashMap<String, HashMap<String, Value>> =
-                                    HashMap::new();
-                                for func_name in props.keys() {
-                                    if let Some(method_name) = func_name.strip_prefix("counter_") {
-                                        class_methods
-                                            .entry("Counter".to_string())
-                                            .or_default()
-                                            .insert(
-                                                method_name.to_string(),
-                                                props[func_name].clone(),
-                                            );
-                                    }
-                                }
-                                for (class_name, methods) in class_methods {
-                                    self.native_class_registry.insert(class_name, methods);
-                                }
-                            }
-                        }
-
-                        // Keep the library loaded
-                        std::mem::forget(library);
-
+                    if let Some(props) = self.load_native_library(&resolved_path) {
                         self.module_registry.insert(module_name.to_string(), props);
                         return Ok(Some(module_name.to_string()));
                     }
@@ -260,54 +264,7 @@ impl Interpreter {
                     if let Some(lib_path) =
                         super::native_loader::find_library_in_dir(parent_dir, module_name)
                     {
-                    // Load the library and extract function pointers
-                    if let Ok(library) = SafeLibrary::new(&lib_path) {
-                        let mut props = HashMap::new();
-
-                        // Try to find tails_native_init
-                        type InitFn = fn() -> *mut tails_abi::ModuleHandle;
-                        if let Ok(init_fn) = unsafe { library.get_function::<InitFn>("tails_native_init") } {
-                            let handle = init_fn();
-                            if !handle.is_null() {
-                                // Safety: handle comes from tails_native_init and is checked for null
-                                let handle = unsafe { Box::from_raw(handle) };
-                                    for (func_name, func_ptr) in &handle.module.functions {
-                                        // Store the raw C ABI function pointer
-                                        let raw_fn = *func_ptr as usize;
-                                        let idx = self.dynamic_native_fns.len();
-                                        self.dynamic_native_fns.push(raw_fn);
-
-                                        props.insert(
-                                            func_name.clone(),
-                                            Value::NativeFunction(NATIVE_TABLE.len() + idx),
-                                        );
-                                    }
-
-                                    // Register class methods from DTS metadata
-                                    let mut class_methods: HashMap<String, HashMap<String, Value>> =
-                                        HashMap::new();
-                                    for func_name in props.keys() {
-                                        if let Some(method_name) =
-                                            func_name.strip_prefix("counter_")
-                                        {
-                                            class_methods
-                                                .entry("Counter".to_string())
-                                                .or_default()
-                                                .insert(
-                                                    method_name.to_string(),
-                                                    props[func_name].clone(),
-                                                );
-                                        }
-                                    }
-                                    for (class_name, methods) in class_methods {
-                                        self.native_class_registry.insert(class_name, methods);
-                                    }
-                                }
-                            }
-
-                            // Keep the library loaded
-                            std::mem::forget(library);
-
+                        if let Some(props) = self.load_native_library(&lib_path) {
                             self.module_registry.insert(module_name.to_string(), props);
                             return Ok(Some(module_name.to_string()));
                         }
