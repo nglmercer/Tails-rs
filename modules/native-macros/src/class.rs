@@ -2,6 +2,22 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::Type;
 
+fn snake_to_camel(s: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize_next = false;
+    for c in s.chars() {
+        if c == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(c.to_uppercase().next().unwrap());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
     let self_type = &item_impl.self_ty;
     let methods = &item_impl.items;
@@ -14,10 +30,10 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
     let registry_name = format_ident!("__TAILS_CLASS_INSTANCES_{}", struct_name);
     let with_instances_name = format_ident!("__tails_class_with_instances_{}", struct_name);
     let next_id_name = format_ident!("__tails_class_next_id_{}", struct_name);
-    let regs_name = format_ident!("__TAILS_CLASS_REGS_{}", struct_name);
+    let init_fn_name = format_ident!("__tails_class_init_{}", struct_name);
 
     let mut ffi_functions = Vec::new();
-    let mut register_entries = Vec::new();
+    let mut register_calls = Vec::new();
 
     for item in methods {
         if let syn::ImplItem::Fn(method) = item {
@@ -123,20 +139,25 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
                 });
             }
 
-            register_entries.push(quote! {
-                (#method_name_str, #ffi_name as ::tails_abi::NativeFn)
+            let struct_name_lower = struct_name.to_string().to_lowercase();
+            let js_method_name = snake_to_camel(&method_name_str);
+            let js_name = if is_constructor {
+                struct_name.to_string()
+            } else {
+                format!("{}_{}", struct_name_lower, js_method_name)
+            };
+
+            register_calls.push(quote! {
+                handle.module.register(#js_name, #ffi_name as ::tails_abi::NativeFn);
             });
         }
     }
 
-    let init_fn_name = format_ident!("__tails_class_init_{}", struct_name);
-
     quote! {
+        #item_impl
+
         static #registry_name: ::std::sync::Mutex<Option<::std::collections::HashMap<u32, #struct_name>>> =
             ::std::sync::Mutex::new(None);
-
-        pub(crate) static #regs_name: ::std::sync::Mutex<Vec<(&'static str, ::tails_abi::NativeFn)>> =
-            ::std::sync::Mutex::new(Vec::new());
 
         fn #next_id_name() -> u32 {
             use ::std::sync::atomic::{AtomicU32, Ordering};
@@ -157,13 +178,8 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
 
         #(#ffi_functions)*
 
-        fn #init_fn_name() {
-            let mut regs = #regs_name.lock().unwrap();
-            regs.extend_from_slice(&[
-                #(#register_entries),*
-            ]);
+        fn #init_fn_name(handle: &mut ::tails_abi::ModuleHandle) {
+            #(#register_calls)*
         }
-
-        #item_impl
     }
 }

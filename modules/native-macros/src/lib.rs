@@ -5,7 +5,7 @@ mod module;
 mod types;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, ItemFn, ItemImpl, ItemMod, ItemStruct};
+use syn::{parse_macro_input, ItemFn, ItemImpl, ItemMod};
 
 use class::expand_class_struct;
 use function::expand_function;
@@ -43,7 +43,7 @@ pub fn tails_module(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn tails_class(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn tails_class(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let item_impl = parse_macro_input!(item as ItemImpl);
     expand_class_struct(item_impl).into()
 }
