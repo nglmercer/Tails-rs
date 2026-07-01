@@ -229,6 +229,7 @@ impl Interpreter {
                                 generator_heap_idx: None,
                                 source_line: self.current_source_line(*pc),
                                 source_col: self.current_source_col(*pc),
+                                exception_handlers_snapshot: self.exception_handlers.clone(),
                             });
                             for closure_var in &f_clone.closure {
                                 self.stack.push(closure_var.clone());
