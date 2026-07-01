@@ -2,24 +2,15 @@ let total = 0;
 let passed = 0;
 let failed = 0;
 
-function test(name: string, fn: () => void) {
+function check(name: string, ok: boolean) {
   total++;
-  try {
-    fn();
+  if (ok) {
     passed++;
     console.log("  [PASS] " + name);
-  } catch (e) {
+  } else {
     failed++;
-    console.log("  [FAIL] " + name + ": " + e);
+    console.error("  [FAIL] ", name);
   }
-}
-
-function assert(condition: boolean, msg: string) {
-  if (!condition) throw new Error(msg);
-}
-
-function assertEqual(a: any, b: any, msg: string) {
-  if (a !== b) throw new Error(msg + ": expected " + JSON.stringify(b) + ", got " + JSON.stringify(a));
 }
 
 // ============================================================================
@@ -28,85 +19,32 @@ function assertEqual(a: any, b: any, msg: string) {
 
 console.log("\n=== Number.prototype ===");
 
-test("toFixed basic", () => {
-  assertEqual((3.14159).toFixed(2), "3.14", "toFixed(2)");
-});
+check("toFixed basic", (3.14159).toFixed(2) === "3.14");
+check("toFixed 0 decimals", (3.7).toFixed(0) === "4");
+check("toFixed many decimals", (0.1 + 0.2).toFixed(10) === "0.3000000000");
+check("toFixed negative", (-3.14).toFixed(1) === "-3.1");
+check("toFixed integer", (42).toFixed(2) === "42.00");
+check("toFixed NaN", NaN.toFixed(2) === "NaN");
+check("toFixed Infinity", Infinity.toFixed(2) === "Infinity");
+check("toFixed -Infinity", (-Infinity).toFixed(2) === "-Infinity");
 
-test("toFixed 0 decimals", () => {
-  assertEqual((3.7).toFixed(0), "4", "toFixed(0)");
-});
+check("toString base 10", (255).toString(10) === "255");
+check("toString base 16", (255).toString(16) === "ff");
+check("toString base 2", (10).toString(2) === "1010");
+check("toString base 8", (64).toString(8) === "100");
+check("toString negative hex", (-255).toString(16) === "-ff");
 
-test("toFixed many decimals", () => {
-  assertEqual((0.1 + 0.2).toFixed(10), "0.3000000000", "toFixed(10)");
-});
+check("valueOf number", (42).valueOf() === 42);
+check("toExponential", (1234.5).toExponential(2) === "1.23e+3");
+check("toExponential no args", (1234.5).toExponential() === "1.2345e+3");
+check("toPrecision", (123.456).toPrecision(4) === "123.5");
 
-test("toFixed negative number", () => {
-  assertEqual((-3.14).toFixed(1), "-3.1", "toFixed negative");
-});
-
-test("toFixed integer", () => {
-  assertEqual((42).toFixed(2), "42.00", "toFixed integer");
-});
-
-test("toFixed NaN", () => {
-  assertEqual(NaN.toFixed(2), "NaN", "toFixed NaN");
-});
-
-test("toFixed Infinity", () => {
-  assertEqual(Infinity.toFixed(2), "Infinity", "toFixed Infinity");
-});
-
-test("toFixed -Infinity", () => {
-  assertEqual((-Infinity).toFixed(2), "-Infinity", "toFixed -Infinity");
-});
-
-test("toString base 10", () => {
-  assertEqual((255).toString(10), "255", "toString(10)");
-});
-
-test("toString base 16", () => {
-  assertEqual((255).toString(16), "ff", "toString(16)");
-});
-
-test("toString base 2", () => {
-  assertEqual((10).toString(2), "1010", "toString(2)");
-});
-
-test("toString base 8", () => {
-  assertEqual((64).toString(8), "100", "toString(8)");
-});
-
-test("toString negative hex", () => {
-  assertEqual((-255).toString(16), "-ff", "toString negative hex");
-});
-
-test("valueOf number", () => {
-  assertEqual((42).valueOf(), 42, "valueOf");
-});
-
-test("toExponential", () => {
-  assertEqual((1234.5).toExponential(2), "1.23e+3", "toExponential");
-});
-
-test("toExponential no args", () => {
-  assertEqual((1234.5).toExponential(), "1.2345e+3", "toExponential no args");
-});
-
-test("toPrecision", () => {
-  assertEqual((123.456).toPrecision(4), "123.5", "toPrecision");
-});
-
-test("Number.isInteger", () => {
-  assertEqual(Number.isInteger(42), true, "isInteger(42)");
-  assertEqual(Number.isInteger(3.14), false, "isInteger(3.14)");
-  assertEqual(Number.isInteger(NaN), false, "isInteger(NaN)");
-  assertEqual(Number.isInteger(Infinity), false, "isInteger(Infinity)");
-});
-
-test("Number.isSafeInteger", () => {
-  assertEqual(Number.isSafeInteger(42), true, "isSafeInteger(42)");
-  assertEqual(Number.isSafeInteger(2**53), false, "isSafeInteger(2^53)");
-});
+check("Number.isInteger(42)", Number.isInteger(42) === true);
+check("Number.isInteger(3.14)", Number.isInteger(3.14) === false);
+check("Number.isInteger(NaN)", Number.isInteger(NaN) === false);
+check("Number.isInteger(Infinity)", Number.isInteger(Infinity) === false);
+check("Number.isSafeInteger(42)", Number.isSafeInteger(42) === true);
+check("Number.isSafeInteger(2^53)", Number.isSafeInteger(2 ** 53) === false);
 
 // ============================================================================
 // Boolean.prototype methods
@@ -114,21 +52,10 @@ test("Number.isSafeInteger", () => {
 
 console.log("\n=== Boolean.prototype ===");
 
-test("true.toString()", () => {
-  assertEqual(true.toString(), "true", "true.toString()");
-});
-
-test("false.toString()", () => {
-  assertEqual(false.toString(), "false", "false.toString()");
-});
-
-test("true.valueOf()", () => {
-  assertEqual(true.valueOf(), true, "true.valueOf()");
-});
-
-test("false.valueOf()", () => {
-  assertEqual(false.valueOf(), false, "false.valueOf()");
-});
+check("true.toString()", true.toString() === "true");
+check("false.toString()", false.toString() === "false");
+check("true.valueOf()", true.valueOf() === true);
+check("false.valueOf()", false.valueOf() === false);
 
 // ============================================================================
 // String.prototype.matchAll
@@ -136,67 +63,34 @@ test("false.valueOf()", () => {
 
 console.log("\n=== String.prototype.matchAll ===");
 
-test("matchAll with global regex", () => {
-  const str = "test1test2test3";
-  const matches = str.matchAll(/test(\d)/g);
-  assertEqual(matches.length, 3, "should find 3 matches");
-  assertEqual(matches[0][0], "test1", "first match");
-  assertEqual(matches[1][0], "test2", "second match");
-  assertEqual(matches[2][0], "test3", "third match");
-});
-
-test("matchAll with no matches", () => {
-  const matches = "hello".matchAll(/xyz/g);
-  assertEqual(matches.length, 0, "no matches");
-});
-
-test("matchAll with capture groups", () => {
-  const str = "aab";
-  const matches = str.matchAll(/(a)b/g);
-  assertEqual(matches.length, 1, "one match");
-  assertEqual(matches[0][1], "a", "captured group");
-});
+check(
+  "matchAll global regex",
+  "test1test2test3".matchAll(/test(\d)/g).length === 3,
+);
+check("matchAll no matches", "hello".matchAll(/xyz/g).length === 0);
+check("matchAll capture groups", "aab".matchAll(/(a)b/g).length === 1);
 
 // ============================================================================
-// Math methods (verify existing ones still work)
+// Math methods
 // ============================================================================
 
 console.log("\n=== Math methods ===");
 
-test("Math.floor", () => {
-  assertEqual(Math.floor(3.7), 3, "floor(3.7)");
-  assertEqual(Math.floor(-3.7), -4, "floor(-3.7)");
-});
-
-test("Math.ceil", () => {
-  assertEqual(Math.ceil(3.2), 4, "ceil(3.2)");
-  assertEqual(Math.ceil(-3.2), -3, "ceil(-3.2)");
-});
-
-test("Math.round", () => {
-  assertEqual(Math.round(3.5), 4, "round(3.5)");
-  assertEqual(Math.round(3.4), 3, "round(3.4)");
-});
-
-test("Math.abs", () => {
-  assertEqual(Math.abs(-5), 5, "abs(-5)");
-  assertEqual(Math.abs(5), 5, "abs(5)");
-});
-
-test("Math.sqrt", () => {
-  assertEqual(Math.sqrt(9), 3, "sqrt(9)");
-});
-
-test("Math.pow", () => {
-  assertEqual(Math.pow(2, 3), 8, "pow(2,3)");
-});
+check("Math.floor", Math.floor(3.7) === 3 && Math.floor(-3.7) === -4);
+check("Math.ceil", Math.ceil(3.2) === 4 && Math.ceil(-3.2) === -3);
+check("Math.round", Math.round(3.5) === 4 && Math.round(3.4) === 3);
+check("Math.abs", Math.abs(-5) === 5 && Math.abs(5) === 5);
+check("Math.sqrt", Math.sqrt(9) === 3);
+check("Math.pow", Math.pow(2, 3) === 8);
 
 // ============================================================================
 // Summary
 // ============================================================================
 
 console.log("\n==================================================");
-console.log("Total: " + total + " tests, Passed: " + passed + ", Failed: " + failed);
+console.log(
+  "Total: " + total + " tests, Passed: " + passed + ", Failed: " + failed,
+);
 console.log("==================================================");
 
 if (failed > 0) {

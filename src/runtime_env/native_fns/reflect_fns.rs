@@ -143,6 +143,7 @@ pub(super) fn native_reflect_construct(
                 generator_heap_idx: None,
                 source_line: None,
                 source_col: None,
+                exception_handlers_snapshot: interp.exception_handlers.clone(),
             });
 
             for closure_var in &f.closure {

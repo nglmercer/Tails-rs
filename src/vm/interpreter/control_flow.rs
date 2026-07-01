@@ -107,6 +107,7 @@ impl Interpreter {
                     };
                     self.stack.truncate(frame.base_pointer);
                     self.stack.push(final_value);
+                    self.exception_handlers = frame.exception_handlers_snapshot;
                     *pc = frame.return_address;
                     Ok(ControlFlowOutcome::Continue)
                 } else {

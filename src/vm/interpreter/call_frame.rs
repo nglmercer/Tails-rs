@@ -12,6 +12,7 @@ pub(crate) struct CallFrame {
     pub(crate) generator_heap_idx: Option<usize>,
     pub(crate) source_line: Option<usize>,
     pub(crate) source_col: Option<usize>,
+    pub(crate) exception_handlers_snapshot: Vec<ExceptionHandler>,
 }
 
 #[derive(Debug, Clone)]

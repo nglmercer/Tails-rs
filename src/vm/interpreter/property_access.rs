@@ -608,8 +608,8 @@ impl Interpreter {
 
     pub(super) fn make_native_boolean_method(&self, name: &str) -> Value {
         match name {
-            "toString" | "toLocaleString" => Value::NativeFunction(390),
-            "valueOf" => Value::NativeFunction(391),
+            "toString" | "toLocaleString" => Value::NativeFunction(391),
+            "valueOf" => Value::NativeFunction(392),
             _ => Value::Undefined,
         }
     }

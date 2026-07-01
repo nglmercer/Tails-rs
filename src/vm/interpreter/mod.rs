@@ -52,7 +52,7 @@ pub struct Interpreter {
     pub(crate) gc: crate::vm::gc::GarbageCollector,
     pub(crate) call_stack: Vec<CallFrame>,
     pub(crate) current_module: Option<Rc<CompiledModule>>,
-    exception_handlers: Vec<ExceptionHandler>,
+    pub(crate) exception_handlers: Vec<ExceptionHandler>,
     pending_exception: Option<Value>,
     pub(crate) async_runtime: AsyncRuntime,
     pub(crate) _promise_stack: Vec<usize>,
@@ -133,6 +133,7 @@ impl Interpreter {
             generator_heap_idx: None,
             source_line: None,
             source_col: None,
+            exception_handlers_snapshot: self.exception_handlers.clone(),
         });
         let mut result = self.execute_from(module, 0);
 
@@ -463,6 +464,9 @@ impl Interpreter {
                                             generator_heap_idx: None,
                                             source_line: self.current_source_line(pc),
                                             source_col: self.current_source_col(pc),
+                                            exception_handlers_snapshot: self
+                                                .exception_handlers
+                                                .clone(),
                                         });
                                         for closure_var in &f.closure {
                                             self.stack.push(closure_var.clone());
@@ -586,6 +590,9 @@ impl Interpreter {
                                         generator_heap_idx: None,
                                         source_line: self.current_source_line(pc),
                                         source_col: self.current_source_col(pc),
+                                        exception_handlers_snapshot: self
+                                            .exception_handlers
+                                            .clone(),
                                     });
                                     for closure_var in &f_clone.closure {
                                         self.stack.push(closure_var.clone());
@@ -688,6 +695,9 @@ impl Interpreter {
                                                         generator_heap_idx: None,
                                                         source_line: self.current_source_line(pc),
                                                         source_col: self.current_source_col(pc),
+                                                        exception_handlers_snapshot: self
+                                                            .exception_handlers
+                                                            .clone(),
                                                     });
                                                     for arg in args {
                                                         self.stack.push(arg);
@@ -752,6 +762,9 @@ impl Interpreter {
                                             generator_heap_idx: None,
                                             source_line: self.current_source_line(pc),
                                             source_col: self.current_source_col(pc),
+                                            exception_handlers_snapshot: self
+                                                .exception_handlers
+                                                .clone(),
                                         });
                                         for closure_var in &f_clone.closure {
                                             self.stack.push(closure_var.clone());

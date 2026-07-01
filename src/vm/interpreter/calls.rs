@@ -41,6 +41,7 @@ impl Interpreter {
 
                     let saved_module = self.current_module.clone();
                     let saved_path = self.current_module_path.clone();
+                    let saved_exception_handlers = self.exception_handlers.clone();
                     if let Some(ref mod_ref) = func_module {
                         self.current_module = Some(mod_ref.clone());
                     }
@@ -74,6 +75,7 @@ impl Interpreter {
                         generator_heap_idx: None,
                         source_line: f_clone.source_line,
                         source_col: None,
+                        exception_handlers_snapshot: self.exception_handlers.clone(),
                     });
 
                     for closure_var in &f_clone.closure {
@@ -107,6 +109,7 @@ impl Interpreter {
                     self.current_module = saved_module;
                     self.current_module_path = saved_path;
                     self.module_globals = saved_mg;
+                    self.exception_handlers = saved_exception_handlers;
                     result
                 } else {
                     Err(self.err_at_location(Error::TypeError("Not a function".into())))

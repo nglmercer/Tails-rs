@@ -57,6 +57,7 @@ pub(super) fn native_generator_next(
                 generator_heap_idx: Some(idx),
                 source_line: None,
                 source_col: None,
+                exception_handlers_snapshot: interp.exception_handlers.clone(),
             });
 
             let result = interp.execute_from(&module, resume_pc);

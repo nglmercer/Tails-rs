@@ -600,7 +600,7 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     require_fns::native_require,
     // fileURLToPath (382)
     url_fns::native_url_file_url_to_path,
-    // Number.prototype methods (383-389)
+    // Number.prototype methods (383-390)
     number_fns::native_number_to_fixed,
     number_fns::native_number_to_string,
     number_fns::native_number_value_of,
@@ -609,9 +609,9 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     number_fns::native_number_is_integer,
     number_fns::native_number_is_safe_integer,
     number_fns::native_number_parse_float,
-    // Boolean.prototype methods (390-391)
+    // Boolean.prototype methods (391-392)
     number_fns::native_boolean_to_string,
     number_fns::native_boolean_value_of,
-    // String.prototype.matchAll (392)
+    // String.prototype.matchAll (393)
     string_fns::native_string_match_all,
 ];

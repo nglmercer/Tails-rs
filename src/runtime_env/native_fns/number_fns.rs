@@ -118,7 +118,10 @@ pub(super) fn native_number_to_exponential(
         Value::Integer(i) => *i as f64,
         _ => return Ok(Value::String("NaN".to_string())),
     };
-    let digits = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
+    let digits = match args.first() {
+        Some(v) => to_f64(v) as usize,
+        None => 20,
+    };
     if n.is_nan() {
         return Ok(Value::String("NaN".to_string()));
     }
@@ -133,7 +136,34 @@ pub(super) fn native_number_to_exponential(
         ));
     }
     let formatted = format!("{:.*e}", digits, n);
-    Ok(Value::String(formatted))
+    let fixed = formatted.replacen(
+        'e',
+        if formatted.contains("e+") || formatted.contains("e-") {
+            "e"
+        } else {
+            "e+"
+        },
+        1,
+    );
+    // Strip trailing zeros after decimal point (but keep at least one digit)
+    let result = if args.is_empty() {
+        if let Some(dot_pos) = fixed.find('.') {
+            if let Some(e_pos) = fixed[dot_pos..].find('e') {
+                let mut end = dot_pos + e_pos;
+                while end > dot_pos + 1 && fixed.as_bytes()[end - 1] == b'0' {
+                    end -= 1;
+                }
+                format!("{}{}", &fixed[..end], &fixed[dot_pos + e_pos..])
+            } else {
+                fixed
+            }
+        } else {
+            fixed
+        }
+    } else {
+        fixed
+    };
+    Ok(Value::String(result))
 }
 
 pub(super) fn native_number_to_precision(
@@ -163,7 +193,17 @@ pub(super) fn native_number_to_precision(
     if precision == 0 {
         return Ok(Value::String(format_number(n)));
     }
-    let formatted = format!("{:.*}", precision.saturating_sub(1), n);
+    let abs_n = n.abs();
+    let int_part = abs_n.floor();
+    let int_digits = if int_part == 0.0 {
+        0
+    } else {
+        (int_part.log10().floor() as usize) + 1
+    };
+    let decimal_places = precision.saturating_sub(int_digits);
+    let factor = 10.0_f64.powi(decimal_places as i32);
+    let rounded = (n * factor).round() / factor;
+    let formatted = format!("{:.*}", decimal_places, rounded);
     Ok(Value::String(formatted))
 }
 
