@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -249,7 +250,6 @@ fn generate_dts(lib_path: &Path, package_name: &str) -> Result<String> {
     }
 
     // Load the library to read the symbol values
-    // Use full absolute path to ensure libloading can find it
     let abs_path = lib_path
         .canonicalize()
         .with_context(|| format!("Failed to canonicalize path: {}", lib_path.display()))?;
@@ -274,16 +274,154 @@ fn generate_dts(lib_path: &Path, package_name: &str) -> Result<String> {
         dts_entries.sort();
         dts_entries.dedup();
 
+        // Parse entries and group into classes vs standalone functions
+        let mut standalone_functions: Vec<String> = Vec::new();
+        let mut classes: HashMap<String, ClassInfo> = HashMap::new();
+
+        // First pass: find constructors
+        for entry in &dts_entries {
+            if let Some((class_name, ctor_sig)) = parse_class_constructor(entry) {
+                classes
+                    .entry(class_name.clone())
+                    .or_insert_with(|| ClassInfo::new(&class_name))
+                    .constructor = Some(ctor_sig);
+            }
+        }
+
+        // Second pass: find methods and filter out class-related entries
+        let class_names: Vec<String> = classes.keys().cloned().collect();
+        for entry in &dts_entries {
+            // Skip if already captured as a constructor
+            if classes
+                .values()
+                .any(|c| c.constructor.as_deref() == Some(entry))
+            {
+                continue;
+            }
+            if let Some((class_name, method_sig)) = parse_class_method(entry, &class_names) {
+                classes
+                    .entry(class_name.clone())
+                    .or_insert_with(|| ClassInfo::new(&class_name))
+                    .methods
+                    .push(method_sig);
+            } else {
+                standalone_functions.push(entry.clone());
+            }
+        }
+
+        // Generate output
         let mut dts = format!(
             "// Auto-generated TypeScript definitions for {}\n\n",
             package_name
         );
-        for entry in &dts_entries {
-            dts.push_str(entry);
+
+        // Output classes first
+        let mut class_names: Vec<&String> = classes.keys().collect();
+        class_names.sort();
+        for class_name in class_names {
+            let class_info = &classes[class_name];
+            dts.push_str(&class_info.to_dts());
             dts.push('\n');
         }
+
+        // Output standalone functions
+        for func in &standalone_functions {
+            dts.push_str(func);
+            dts.push('\n');
+        }
+
         Ok(dts)
     }
+}
+
+struct ClassInfo {
+    name: String,
+    constructor: Option<String>,
+    methods: Vec<String>,
+}
+
+impl ClassInfo {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            constructor: None,
+            methods: Vec::new(),
+        }
+    }
+
+    fn to_dts(&self) -> String {
+        let mut output = format!("export class {} {{\n", self.name);
+
+        if let Some(ctor) = &self.constructor {
+            // Extract params from "export function ClassName(params): Type;"
+            if let Some(rest) = ctor.strip_prefix("export function ") {
+                if let Some(paren_start) = rest.find('(') {
+                    if let Some(paren_end) = rest[paren_start..].find(')') {
+                        let params = &rest[paren_start + 1..paren_start + paren_end];
+                        output.push_str(&format!("  constructor({});\n", params));
+                    }
+                }
+            }
+        }
+
+        let mut sorted_methods = self.methods.clone();
+        sorted_methods.sort();
+        for method in &sorted_methods {
+            // Convert "export function className_methodName(params): Type;" to "  methodName(params): Type;"
+            if let Some(rest) = method.strip_prefix("export function ") {
+                if let Some(underscore_pos) = rest.find('_') {
+                    let after_underscore = &rest[underscore_pos + 1..];
+                    // Remove trailing semicolon and add proper formatting
+                    let sig = after_underscore.trim_end_matches(';').trim();
+                    output.push_str(&format!("  {};\n", sig));
+                }
+            }
+        }
+
+        output.push_str("}\n");
+        output
+    }
+}
+
+fn parse_class_constructor(entry: &str) -> Option<(String, String)> {
+    // Pattern: "export function ClassName(params): ClassName;"
+    let rest = entry.strip_prefix("export function ")?;
+    let paren_pos = rest.find('(')?;
+    let name = &rest[..paren_pos];
+
+    // Check if return type matches the class name (constructor pattern)
+    if let Some(colon_pos) = rest.rfind("): ") {
+        let ret_type = &rest[colon_pos + 3..].trim_end_matches(';').trim();
+        if ret_type.to_string() == name.to_string() {
+            return Some((name.to_string(), entry.to_string()));
+        }
+    }
+    None
+}
+
+fn parse_class_method(entry: &str, class_names: &[String]) -> Option<(String, String)> {
+    // Pattern: "export function className_methodName(params): Type;"
+    let rest = entry.strip_prefix("export function ")?;
+    let paren_pos = rest.find('(')?;
+    let full_name = &rest[..paren_pos];
+
+    // Check if this matches any known class (case-insensitive prefix)
+    for class_name in class_names {
+        let prefix = class_name.to_lowercase();
+        if full_name.starts_with(&format!("{}_", prefix)) {
+            let method_part = &full_name[prefix.len() + 1..];
+            // Verify the first character is lowercase (method pattern)
+            if method_part
+                .chars()
+                .next()
+                .map(|c| c.is_lowercase())
+                .unwrap_or(false)
+            {
+                return Some((class_name.clone(), entry.to_string()));
+            }
+        }
+    }
+    None
 }
 
 fn find_all_dts_symbols(lib_path: &Path) -> Result<Vec<String>> {
