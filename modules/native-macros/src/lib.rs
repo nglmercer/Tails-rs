@@ -1,5 +1,4 @@
 mod class;
-mod dts;
 mod function;
 mod module;
 mod types;

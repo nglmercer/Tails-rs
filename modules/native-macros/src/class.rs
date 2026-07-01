@@ -91,8 +91,6 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
                 }
             }
 
-            let body = &method.block;
-
             if is_constructor {
                 ffi_functions.push(quote! {
                     #[no_mangle]
@@ -117,7 +115,7 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
                             };
                         )*
 
-                        let instance = { #body };
+                        let instance = #struct_name::#method_name(#(#param_names),*);
 
                         let id = #next_id_name();
                         #with_instances_name(|map| {
@@ -224,10 +222,9 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
     }
 
     quote! {
-        #[allow(dead_code)]
         #item_impl
 
-        #[allow(dead_code, non_snake_case, non_upper_case_globals)]
+        #[allow(non_snake_case, non_upper_case_globals)]
         static #registry_name: ::std::sync::Mutex<Option<::std::collections::HashMap<u32, #struct_name>>> =
             ::std::sync::Mutex::new(None);
 
