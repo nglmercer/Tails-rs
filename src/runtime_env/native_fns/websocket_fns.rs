@@ -1,5 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsObject};
 
 use super::helpers::to_string_value;
@@ -27,10 +28,19 @@ pub(super) fn native_websocket_constructor(
     props.insert("extensions".into(), Value::String(String::new()));
 
     // Methods
-    props.insert("send".into(), Value::NativeFunction(360));
-    props.insert("close".into(), Value::NativeFunction(361));
-    props.insert("addEventListener".into(), Value::NativeFunction(362));
-    props.insert("removeEventListener".into(), Value::NativeFunction(363));
+    props.insert("send".into(), Value::NativeFunction(c::URL_TO_JSON));
+    props.insert(
+        "close".into(),
+        Value::NativeFunction(c::HEADERS_CONSTRUCTOR),
+    );
+    props.insert(
+        "addEventListener".into(),
+        Value::NativeFunction(c::HEADERS_APPEND),
+    );
+    props.insert(
+        "removeEventListener".into(),
+        Value::NativeFunction(c::HEADERS_GET),
+    );
 
     let ws_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {

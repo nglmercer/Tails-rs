@@ -167,7 +167,8 @@ fn pretty_format(
 
                 let mut lines: Vec<String> = Vec::new();
                 for elem in &arr.elements {
-                    let val_str = pretty_format(interp, elem, depth + 1, use_colors, include_quotes);
+                    let val_str =
+                        pretty_format(interp, elem, depth + 1, use_colors, include_quotes);
                     lines.push(format!("{}{}", pad, val_str));
                 }
 
@@ -342,7 +343,10 @@ pub(super) fn native_console_log(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
     println!("{}{}{}", timestamp, indent, parts.join(" "));
     Ok(Value::Undefined)
 }
@@ -355,7 +359,10 @@ pub(super) fn native_console_warn(
     let indent = get_indent();
     let timestamp = get_timestamp();
     let use_colors = get_use_colors();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
     let msg = parts.join(" ");
     if use_colors {
         eprintln!("{}{}{}", timestamp, indent, msg.yellow());
@@ -373,7 +380,10 @@ pub(super) fn native_console_error(
     let indent = get_indent();
     let timestamp = get_timestamp();
     let use_colors = get_use_colors();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
     let msg = parts.join(" ");
     if use_colors {
         eprintln!("{}{}{}", timestamp, indent, msg.red());
@@ -391,7 +401,10 @@ pub(super) fn native_console_info(
     let indent = get_indent();
     let timestamp = get_timestamp();
     let use_colors = get_use_colors();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
     let msg = parts.join(" ");
     if use_colors {
         println!("{}{}{}", timestamp, indent, msg.blue());
@@ -608,7 +621,10 @@ pub(super) fn native_console_group(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
 
     if !parts.is_empty() {
         if get_use_colors() {
@@ -644,7 +660,10 @@ pub(super) fn native_console_group_collapsed(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let parts: Vec<String> = args.iter().map(|a| format_value_no_colors(interp, a)).collect();
+    let parts: Vec<String> = args
+        .iter()
+        .map(|a| format_value_no_colors(interp, a))
+        .collect();
 
     if !parts.is_empty() {
         if get_use_colors() {

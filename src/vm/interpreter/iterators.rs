@@ -2,6 +2,7 @@ use super::*;
 use crate::errors::{Error, Result};
 use crate::objects::js_promise::PromiseState;
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use std::collections::HashMap;
 
 impl Interpreter {
@@ -9,12 +10,21 @@ impl Interpreter {
         let mut props = HashMap::new();
         props.insert("__type".to_string(), Value::String("array".to_string()));
         props.insert("__index".to_string(), Value::Integer(0));
-        props.insert("map".to_string(), Value::NativeFunction(230));
-        props.insert("filter".to_string(), Value::NativeFunction(231));
-        props.insert("take".to_string(), Value::NativeFunction(232));
-        props.insert("drop".to_string(), Value::NativeFunction(233));
-        props.insert("forEach".to_string(), Value::NativeFunction(234));
-        props.insert("toArray".to_string(), Value::NativeFunction(235));
+        props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+        props.insert(
+            "filter".to_string(),
+            Value::NativeFunction(c::ITERATOR_FILTER),
+        );
+        props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+        props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+        props.insert(
+            "forEach".to_string(),
+            Value::NativeFunction(c::ITERATOR_FOR_EACH),
+        );
+        props.insert(
+            "toArray".to_string(),
+            Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+        );
         props
     }
 

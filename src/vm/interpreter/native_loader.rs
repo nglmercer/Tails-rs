@@ -1,4 +1,5 @@
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::gc::GarbageCollector;
 use crate::vm::interpreter::{HeapValue, JsObject};
 use std::collections::HashMap;
@@ -144,17 +145,41 @@ pub fn create_fs_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("readFileSync".into(), Value::NativeFunction(286));
-    props.insert("writeFileSync".into(), Value::NativeFunction(287));
-    props.insert("existsSync".into(), Value::NativeFunction(288));
-    props.insert("mkdirSync".into(), Value::NativeFunction(289));
-    props.insert("readdirSync".into(), Value::NativeFunction(290));
-    props.insert("statSync".into(), Value::NativeFunction(291));
-    props.insert("unlinkSync".into(), Value::NativeFunction(292));
-    props.insert("rmSync".into(), Value::NativeFunction(293));
-    props.insert("copyFileSync".into(), Value::NativeFunction(294));
-    props.insert("renameSync".into(), Value::NativeFunction(295));
-    props.insert("appendFileSync".into(), Value::NativeFunction(296));
+    props.insert(
+        "readFileSync".into(),
+        Value::NativeFunction(c::FS_READ_FILE_SYNC),
+    );
+    props.insert(
+        "writeFileSync".into(),
+        Value::NativeFunction(c::FS_WRITE_FILE_SYNC),
+    );
+    props.insert(
+        "existsSync".into(),
+        Value::NativeFunction(c::FS_EXISTS_SYNC),
+    );
+    props.insert("mkdirSync".into(), Value::NativeFunction(c::FS_MKDIR_SYNC));
+    props.insert(
+        "readdirSync".into(),
+        Value::NativeFunction(c::FS_READDIR_SYNC),
+    );
+    props.insert("statSync".into(), Value::NativeFunction(c::FS_STAT_SYNC));
+    props.insert(
+        "unlinkSync".into(),
+        Value::NativeFunction(c::FS_UNLINK_SYNC),
+    );
+    props.insert("rmSync".into(), Value::NativeFunction(c::FS_RM_SYNC));
+    props.insert(
+        "copyFileSync".into(),
+        Value::NativeFunction(c::FS_COPY_FILE_SYNC),
+    );
+    props.insert(
+        "renameSync".into(),
+        Value::NativeFunction(c::FS_RENAME_SYNC),
+    );
+    props.insert(
+        "appendFileSync".into(),
+        Value::NativeFunction(c::FS_APPEND_FILE_SYNC),
+    );
     props
 }
 
@@ -164,14 +189,14 @@ pub fn create_fs_promises_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("readdir".into(), Value::NativeFunction(333));
-    props.insert("readFile".into(), Value::NativeFunction(334));
-    props.insert("writeFile".into(), Value::NativeFunction(335));
-    props.insert("stat".into(), Value::NativeFunction(336));
-    props.insert("mkdir".into(), Value::NativeFunction(337));
-    props.insert("unlink".into(), Value::NativeFunction(338));
-    props.insert("copyFile".into(), Value::NativeFunction(339));
-    props.insert("rename".into(), Value::NativeFunction(340));
+    props.insert("readdir".into(), Value::NativeFunction(c::FS_READDIR));
+    props.insert("readFile".into(), Value::NativeFunction(c::FS_READ_FILE));
+    props.insert("writeFile".into(), Value::NativeFunction(c::FS_WRITE_FILE));
+    props.insert("stat".into(), Value::NativeFunction(c::FS_STAT));
+    props.insert("mkdir".into(), Value::NativeFunction(c::FS_MKDIR));
+    props.insert("unlink".into(), Value::NativeFunction(c::FS_UNLINK));
+    props.insert("copyFile".into(), Value::NativeFunction(c::FS_COPY_FILE));
+    props.insert("rename".into(), Value::NativeFunction(c::FS_RENAME));
     props
 }
 
@@ -181,14 +206,17 @@ pub fn create_path_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("join".into(), Value::NativeFunction(265));
-    props.insert("resolve".into(), Value::NativeFunction(266));
-    props.insert("basename".into(), Value::NativeFunction(267));
-    props.insert("dirname".into(), Value::NativeFunction(268));
-    props.insert("extname".into(), Value::NativeFunction(269));
-    props.insert("relative".into(), Value::NativeFunction(270));
-    props.insert("isAbsolute".into(), Value::NativeFunction(271));
-    props.insert("normalize".into(), Value::NativeFunction(272));
+    props.insert("join".into(), Value::NativeFunction(c::PATH_JOIN));
+    props.insert("resolve".into(), Value::NativeFunction(c::PATH_RESOLVE));
+    props.insert("basename".into(), Value::NativeFunction(c::PATH_BASENAME));
+    props.insert("dirname".into(), Value::NativeFunction(c::PATH_DIRNAME));
+    props.insert("extname".into(), Value::NativeFunction(c::PATH_EXTNAME));
+    props.insert("relative".into(), Value::NativeFunction(c::PATH_RELATIVE));
+    props.insert(
+        "isAbsolute".into(),
+        Value::NativeFunction(c::PATH_IS_ABSOLUTE),
+    );
+    props.insert("normalize".into(), Value::NativeFunction(c::PATH_NORMALIZE));
     props.insert(
         "sep".into(),
         Value::String(std::path::MAIN_SEPARATOR.to_string()),
@@ -215,9 +243,9 @@ pub fn create_process_module(
     let mut props = HashMap::new();
 
     // Scalar properties
-    props.insert("exit".into(), Value::NativeFunction(239));
-    props.insert("cwd".into(), Value::NativeFunction(240));
-    props.insert("chdir".into(), Value::NativeFunction(241));
+    props.insert("exit".into(), Value::NativeFunction(c::PROCESS_EXIT));
+    props.insert("cwd".into(), Value::NativeFunction(c::PROCESS_CWD));
+    props.insert("chdir".into(), Value::NativeFunction(c::PROCESS_CHDIR));
     props.insert(
         "platform".into(),
         Value::String(
@@ -273,7 +301,10 @@ pub fn create_process_module(
 
     // process.stdout
     let mut stdout_props = HashMap::new();
-    stdout_props.insert("write".into(), Value::NativeFunction(242));
+    stdout_props.insert(
+        "write".into(),
+        Value::NativeFunction(c::PROCESS_STDOUT_WRITE),
+    );
     let stdout_idx = gc.allocate(
         heap,
         HeapValue::Object(JsObject {
@@ -286,7 +317,10 @@ pub fn create_process_module(
 
     // process.stderr
     let mut stderr_props = HashMap::new();
-    stderr_props.insert("write".into(), Value::NativeFunction(242));
+    stderr_props.insert(
+        "write".into(),
+        Value::NativeFunction(c::PROCESS_STDOUT_WRITE),
+    );
     let stderr_idx = gc.allocate(
         heap,
         HeapValue::Object(JsObject {
@@ -297,9 +331,15 @@ pub fn create_process_module(
     );
     props.insert("stderr".into(), Value::Object(stderr_idx));
 
-    props.insert("hrtime".into(), Value::NativeFunction(243));
-    props.insert("hrtime.bigint".into(), Value::NativeFunction(244));
-    props.insert("nextTick".into(), Value::NativeFunction(245));
+    props.insert("hrtime".into(), Value::NativeFunction(c::PROCESS_HRTIME));
+    props.insert(
+        "hrtime.bigint".into(),
+        Value::NativeFunction(c::PROCESS_HRTIME_BIGINT),
+    );
+    props.insert(
+        "nextTick".into(),
+        Value::NativeFunction(c::PROCESS_NEXT_TICK),
+    );
 
     props
 }
@@ -311,21 +351,30 @@ pub fn create_buffer_module(
     let mut props = HashMap::new();
 
     // Static methods
-    props.insert("alloc".into(), Value::NativeFunction(247));
-    props.insert("from".into(), Value::NativeFunction(248));
-    props.insert("concat".into(), Value::NativeFunction(249));
-    props.insert("isBuffer".into(), Value::NativeFunction(250));
-    props.insert("byteLength".into(), Value::NativeFunction(251));
+    props.insert("alloc".into(), Value::NativeFunction(c::BUFFER_ALLOC));
+    props.insert("from".into(), Value::NativeFunction(c::BUFFER_FROM));
+    props.insert("concat".into(), Value::NativeFunction(c::BUFFER_CONCAT));
+    props.insert(
+        "isBuffer".into(),
+        Value::NativeFunction(c::BUFFER_IS_BUFFER),
+    );
+    props.insert(
+        "byteLength".into(),
+        Value::NativeFunction(c::BUFFER_BYTE_LENGTH),
+    );
 
     // Prototype methods
-    props.insert("toString".into(), Value::NativeFunction(252));
-    props.insert("write".into(), Value::NativeFunction(253));
-    props.insert("slice".into(), Value::NativeFunction(254));
-    props.insert("copy".into(), Value::NativeFunction(255));
-    props.insert("fill".into(), Value::NativeFunction(256));
-    props.insert("compare".into(), Value::NativeFunction(257));
-    props.insert("equals".into(), Value::NativeFunction(258));
-    props.insert("indexOf".into(), Value::NativeFunction(259));
+    props.insert(
+        "toString".into(),
+        Value::NativeFunction(c::BUFFER_TO_STRING),
+    );
+    props.insert("write".into(), Value::NativeFunction(c::BUFFER_WRITE));
+    props.insert("slice".into(), Value::NativeFunction(c::BUFFER_SLICE));
+    props.insert("copy".into(), Value::NativeFunction(c::BUFFER_COPY));
+    props.insert("fill".into(), Value::NativeFunction(c::BUFFER_FILL));
+    props.insert("compare".into(), Value::NativeFunction(c::BUFFER_COMPARE));
+    props.insert("equals".into(), Value::NativeFunction(c::BUFFER_EQUALS));
+    props.insert("indexOf".into(), Value::NativeFunction(c::BUFFER_INDEX_OF));
 
     // Prototype object
     let buffer_proto_idx = gc.allocate(
@@ -333,14 +382,17 @@ pub fn create_buffer_module(
         HeapValue::Object(JsObject {
             properties: {
                 let mut proto_props = HashMap::new();
-                proto_props.insert("toString".into(), Value::NativeFunction(252));
-                proto_props.insert("write".into(), Value::NativeFunction(253));
-                proto_props.insert("slice".into(), Value::NativeFunction(254));
-                proto_props.insert("copy".into(), Value::NativeFunction(255));
-                proto_props.insert("fill".into(), Value::NativeFunction(256));
-                proto_props.insert("compare".into(), Value::NativeFunction(257));
-                proto_props.insert("equals".into(), Value::NativeFunction(258));
-                proto_props.insert("indexOf".into(), Value::NativeFunction(259));
+                proto_props.insert(
+                    "toString".into(),
+                    Value::NativeFunction(c::BUFFER_TO_STRING),
+                );
+                proto_props.insert("write".into(), Value::NativeFunction(c::BUFFER_WRITE));
+                proto_props.insert("slice".into(), Value::NativeFunction(c::BUFFER_SLICE));
+                proto_props.insert("copy".into(), Value::NativeFunction(c::BUFFER_COPY));
+                proto_props.insert("fill".into(), Value::NativeFunction(c::BUFFER_FILL));
+                proto_props.insert("compare".into(), Value::NativeFunction(c::BUFFER_COMPARE));
+                proto_props.insert("equals".into(), Value::NativeFunction(c::BUFFER_EQUALS));
+                proto_props.insert("indexOf".into(), Value::NativeFunction(c::BUFFER_INDEX_OF));
                 proto_props.insert("length".into(), Value::Integer(0));
                 proto_props
             },
@@ -360,8 +412,14 @@ pub fn create_intl_module(
     let mut props = HashMap::new();
 
     let mut intl_obj_props = HashMap::new();
-    intl_obj_props.insert("DateTimeFormat".into(), Value::NativeFunction(260));
-    intl_obj_props.insert("NumberFormat".into(), Value::NativeFunction(261));
+    intl_obj_props.insert(
+        "DateTimeFormat".into(),
+        Value::NativeFunction(c::DATETIME_FORMAT_CONSTRUCTOR),
+    );
+    intl_obj_props.insert(
+        "NumberFormat".into(),
+        Value::NativeFunction(c::NUMBER_FORMAT_CONSTRUCTOR),
+    );
 
     let intl_obj_idx = gc.allocate(
         heap,
@@ -383,14 +441,20 @@ pub fn create_events_module(
     let mut props = HashMap::new();
 
     // EventEmitter constructor
-    props.insert("EventEmitter".into(), Value::NativeFunction(312));
+    props.insert(
+        "EventEmitter".into(),
+        Value::NativeFunction(c::EVENT_EMITTER_CONSTRUCTOR),
+    );
 
     // Prototype methods
     let mut proto_props = HashMap::new();
-    proto_props.insert("on".into(), Value::NativeFunction(313));
-    proto_props.insert("emit".into(), Value::NativeFunction(314));
-    proto_props.insert("off".into(), Value::NativeFunction(315));
-    proto_props.insert("listenerCount".into(), Value::NativeFunction(316));
+    proto_props.insert("on".into(), Value::NativeFunction(c::EVENT_EMITTER_ON));
+    proto_props.insert("emit".into(), Value::NativeFunction(c::EVENT_EMITTER_EMIT));
+    proto_props.insert("off".into(), Value::NativeFunction(c::EVENT_EMITTER_OFF));
+    proto_props.insert(
+        "listenerCount".into(),
+        Value::NativeFunction(c::EVENT_EMITTER_LISTENER_COUNT),
+    );
 
     let proto_idx = gc.allocate(
         heap,
@@ -411,17 +475,17 @@ pub fn create_os_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("platform".into(), Value::NativeFunction(319));
-    props.insert("arch".into(), Value::NativeFunction(320));
-    props.insert("cpus".into(), Value::NativeFunction(321));
-    props.insert("totalmem".into(), Value::NativeFunction(322));
-    props.insert("freemem".into(), Value::NativeFunction(323));
-    props.insert("uptime".into(), Value::NativeFunction(324));
-    props.insert("hostname".into(), Value::NativeFunction(325));
-    props.insert("type".into(), Value::NativeFunction(326));
-    props.insert("release".into(), Value::NativeFunction(327));
-    props.insert("homedir".into(), Value::NativeFunction(328));
-    props.insert("tmpdir".into(), Value::NativeFunction(329));
+    props.insert("platform".into(), Value::NativeFunction(c::OS_PLATFORM));
+    props.insert("arch".into(), Value::NativeFunction(c::OS_ARCH));
+    props.insert("cpus".into(), Value::NativeFunction(c::OS_CPUS));
+    props.insert("totalmem".into(), Value::NativeFunction(c::OS_TOTALMEM));
+    props.insert("freemem".into(), Value::NativeFunction(c::OS_FREEMEM));
+    props.insert("uptime".into(), Value::NativeFunction(c::OS_UPTIME));
+    props.insert("hostname".into(), Value::NativeFunction(c::OS_HOSTNAME));
+    props.insert("type".into(), Value::NativeFunction(c::OS_TYPE));
+    props.insert("release".into(), Value::NativeFunction(c::OS_RELEASE));
+    props.insert("homedir".into(), Value::NativeFunction(c::OS_HOMEDIR));
+    props.insert("tmpdir".into(), Value::NativeFunction(c::OS_TMPDIR));
     props
 }
 
@@ -430,9 +494,18 @@ pub fn create_crypto_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("randomBytes".into(), Value::NativeFunction(330));
-    props.insert("randomUUID".into(), Value::NativeFunction(331));
-    props.insert("createHash".into(), Value::NativeFunction(332));
+    props.insert(
+        "randomBytes".into(),
+        Value::NativeFunction(c::CRYPTO_RANDOM_BYTES),
+    );
+    props.insert(
+        "randomUUID".into(),
+        Value::NativeFunction(c::CRYPTO_RANDOM_UUID),
+    );
+    props.insert(
+        "createHash".into(),
+        Value::NativeFunction(c::CRYPTO_CREATE_HASH),
+    );
     props
 }
 
@@ -443,10 +516,10 @@ pub fn create_assert_module(
     let mut props = HashMap::new();
 
     let mut assert_props = HashMap::new();
-    assert_props.insert("strictEqual".into(), Value::NativeFunction(365));
-    assert_props.insert("ok".into(), Value::NativeFunction(364));
-    assert_props.insert("equal".into(), Value::NativeFunction(365));
-    assert_props.insert("deepEqual".into(), Value::NativeFunction(365));
+    assert_props.insert("strictEqual".into(), Value::NativeFunction(c::HEADERS_HAS));
+    assert_props.insert("ok".into(), Value::NativeFunction(c::HEADERS_SET));
+    assert_props.insert("equal".into(), Value::NativeFunction(c::HEADERS_HAS));
+    assert_props.insert("deepEqual".into(), Value::NativeFunction(c::HEADERS_HAS));
 
     let assert_obj_idx = gc.allocate(
         heap,
@@ -458,10 +531,10 @@ pub fn create_assert_module(
     );
 
     props.insert("default".into(), Value::Object(assert_obj_idx));
-    props.insert("strictEqual".into(), Value::NativeFunction(365));
-    props.insert("ok".into(), Value::NativeFunction(364));
-    props.insert("equal".into(), Value::NativeFunction(365));
-    props.insert("deepEqual".into(), Value::NativeFunction(365));
+    props.insert("strictEqual".into(), Value::NativeFunction(c::HEADERS_HAS));
+    props.insert("ok".into(), Value::NativeFunction(c::HEADERS_SET));
+    props.insert("equal".into(), Value::NativeFunction(c::HEADERS_HAS));
+    props.insert("deepEqual".into(), Value::NativeFunction(c::HEADERS_HAS));
     props
 }
 
@@ -470,9 +543,15 @@ pub fn create_child_process_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("execSync".into(), Value::NativeFunction(377));
-    props.insert("exec".into(), Value::NativeFunction(378));
-    props.insert("spawn".into(), Value::NativeFunction(379));
+    props.insert(
+        "execSync".into(),
+        Value::NativeFunction(c::CHILD_PROCESS_EXEC_SYNC),
+    );
+    props.insert("exec".into(), Value::NativeFunction(c::CHILD_PROCESS_EXEC));
+    props.insert(
+        "spawn".into(),
+        Value::NativeFunction(c::CHILD_PROCESS_SPAWN),
+    );
     props
 }
 
@@ -481,7 +560,10 @@ pub fn create_url_module(
     _gc: &mut GarbageCollector,
 ) -> HashMap<String, Value> {
     let mut props = HashMap::new();
-    props.insert("fileURLToPath".into(), Value::NativeFunction(382));
+    props.insert(
+        "fileURLToPath".into(),
+        Value::NativeFunction(c::URL_FILE_URL_TO_PATH),
+    );
     props
 }
 

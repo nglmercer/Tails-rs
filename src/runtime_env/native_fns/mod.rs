@@ -4,6 +4,7 @@ mod buffer_fns;
 mod child_process_fns;
 mod collection_fns;
 pub mod console;
+pub(crate) mod constants;
 mod crypto_fns;
 mod date_fns;
 mod encoding_fns;
@@ -167,6 +168,8 @@ mod symbol_fns;
 mod typed_array_fns;
 mod url_fns;
 mod websocket_fns;
+
+pub use constants::*;
 
 use crate::errors::Result;
 use crate::objects::Value;
@@ -615,3 +618,8 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     // String.prototype.matchAll (393)
     string_fns::native_string_match_all,
 ];
+
+const _: () = assert!(
+    NATIVE_TABLE.len() == NATIVE_TABLE_LEN,
+    "NATIVE_TABLE length mismatch — update NATIVE_TABLE_LEN in constants.rs"
+);

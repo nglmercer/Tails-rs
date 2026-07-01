@@ -1,5 +1,6 @@
 use crate::errors::Result;
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsObject};
 
 use super::helpers::{to_f64, to_string_value};
@@ -65,8 +66,14 @@ pub(super) fn native_datetime_format_constructor(
         formatter_props.insert("second".into(), Value::String(s));
     }
 
-    formatter_props.insert("format".into(), Value::NativeFunction(262));
-    formatter_props.insert("formatToParts".into(), Value::NativeFunction(263));
+    formatter_props.insert(
+        "format".into(),
+        Value::NativeFunction(c::DATETIME_FORMAT_FORMAT),
+    );
+    formatter_props.insert(
+        "formatToParts".into(),
+        Value::NativeFunction(c::DATETIME_FORMAT_FORMAT_TO_PARTS),
+    );
 
     let formatter_idx = interp.gc.allocate(
         &mut interp.heap,
@@ -439,7 +446,10 @@ pub(super) fn native_number_format_constructor(
         Value::Integer(maximum_fraction_digits as i64),
     );
 
-    formatter_props.insert("format".into(), Value::NativeFunction(264));
+    formatter_props.insert(
+        "format".into(),
+        Value::NativeFunction(c::NUMBER_FORMAT_FORMAT),
+    );
 
     let formatter_idx = interp.gc.allocate(
         &mut interp.heap,

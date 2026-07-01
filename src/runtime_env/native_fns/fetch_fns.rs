@@ -1,6 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::objects::js_promise::JsPromise;
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsArray, JsObject};
 
 use super::helpers::to_string_value;
@@ -61,15 +62,15 @@ pub(super) fn native_headers_constructor(
         }
     }
 
-    props.insert("append".into(), Value::NativeFunction(362));
-    props.insert("get".into(), Value::NativeFunction(363));
-    props.insert("set".into(), Value::NativeFunction(364));
-    props.insert("has".into(), Value::NativeFunction(365));
-    props.insert("delete".into(), Value::NativeFunction(366));
-    props.insert("forEach".into(), Value::NativeFunction(367));
-    props.insert("keys".into(), Value::NativeFunction(368));
-    props.insert("values".into(), Value::NativeFunction(369));
-    props.insert("entries".into(), Value::NativeFunction(370));
+    props.insert("append".into(), Value::NativeFunction(c::HEADERS_APPEND));
+    props.insert("get".into(), Value::NativeFunction(c::HEADERS_GET));
+    props.insert("set".into(), Value::NativeFunction(c::HEADERS_SET));
+    props.insert("has".into(), Value::NativeFunction(c::HEADERS_HAS));
+    props.insert("delete".into(), Value::NativeFunction(c::HEADERS_DELETE));
+    props.insert("forEach".into(), Value::NativeFunction(c::HEADERS_FOR_EACH));
+    props.insert("keys".into(), Value::NativeFunction(c::HEADERS_KEYS));
+    props.insert("values".into(), Value::NativeFunction(c::HEADERS_VALUES));
+    props.insert("entries".into(), Value::NativeFunction(c::HEADERS_ENTRIES));
 
     let idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
@@ -378,15 +379,15 @@ pub(super) fn native_request_constructor(
                 let h_idx = interp.heap.len();
                 let mut h_props = std::collections::HashMap::new();
                 h_props.insert("__headers".into(), Value::String(headers_raw));
-                h_props.insert("append".into(), Value::NativeFunction(362));
-                h_props.insert("get".into(), Value::NativeFunction(363));
-                h_props.insert("set".into(), Value::NativeFunction(364));
-                h_props.insert("has".into(), Value::NativeFunction(365));
-                h_props.insert("delete".into(), Value::NativeFunction(366));
-                h_props.insert("forEach".into(), Value::NativeFunction(367));
-                h_props.insert("keys".into(), Value::NativeFunction(368));
-                h_props.insert("values".into(), Value::NativeFunction(369));
-                h_props.insert("entries".into(), Value::NativeFunction(370));
+                h_props.insert("append".into(), Value::NativeFunction(c::HEADERS_APPEND));
+                h_props.insert("get".into(), Value::NativeFunction(c::HEADERS_GET));
+                h_props.insert("set".into(), Value::NativeFunction(c::HEADERS_SET));
+                h_props.insert("has".into(), Value::NativeFunction(c::HEADERS_HAS));
+                h_props.insert("delete".into(), Value::NativeFunction(c::HEADERS_DELETE));
+                h_props.insert("forEach".into(), Value::NativeFunction(c::HEADERS_FOR_EACH));
+                h_props.insert("keys".into(), Value::NativeFunction(c::HEADERS_KEYS));
+                h_props.insert("values".into(), Value::NativeFunction(c::HEADERS_VALUES));
+                h_props.insert("entries".into(), Value::NativeFunction(c::HEADERS_ENTRIES));
                 interp.heap.push(HeapValue::Object(JsObject {
                     properties: h_props,
                     prototype: None,
@@ -448,15 +449,15 @@ pub(super) fn native_request_constructor(
     let h_idx = interp.heap.len();
     let mut h_props = std::collections::HashMap::new();
     h_props.insert("__headers".into(), Value::String(headers_raw));
-    h_props.insert("append".into(), Value::NativeFunction(362));
-    h_props.insert("get".into(), Value::NativeFunction(363));
-    h_props.insert("set".into(), Value::NativeFunction(364));
-    h_props.insert("has".into(), Value::NativeFunction(365));
-    h_props.insert("delete".into(), Value::NativeFunction(366));
-    h_props.insert("forEach".into(), Value::NativeFunction(367));
-    h_props.insert("keys".into(), Value::NativeFunction(368));
-    h_props.insert("values".into(), Value::NativeFunction(369));
-    h_props.insert("entries".into(), Value::NativeFunction(370));
+    h_props.insert("append".into(), Value::NativeFunction(c::HEADERS_APPEND));
+    h_props.insert("get".into(), Value::NativeFunction(c::HEADERS_GET));
+    h_props.insert("set".into(), Value::NativeFunction(c::HEADERS_SET));
+    h_props.insert("has".into(), Value::NativeFunction(c::HEADERS_HAS));
+    h_props.insert("delete".into(), Value::NativeFunction(c::HEADERS_DELETE));
+    h_props.insert("forEach".into(), Value::NativeFunction(c::HEADERS_FOR_EACH));
+    h_props.insert("keys".into(), Value::NativeFunction(c::HEADERS_KEYS));
+    h_props.insert("values".into(), Value::NativeFunction(c::HEADERS_VALUES));
+    h_props.insert("entries".into(), Value::NativeFunction(c::HEADERS_ENTRIES));
     interp.heap.push(HeapValue::Object(JsObject {
         properties: h_props,
         prototype: None,
@@ -548,24 +549,27 @@ fn build_response(
     props.insert("__headers".into(), Value::String(headers_raw.to_string()));
 
     // Instance methods
-    props.insert("text".into(), Value::NativeFunction(298));
-    props.insert("json".into(), Value::NativeFunction(299));
-    props.insert("arrayBuffer".into(), Value::NativeFunction(300));
-    props.insert("clone".into(), Value::NativeFunction(376));
+    props.insert("text".into(), Value::NativeFunction(c::RESPONSE_TEXT));
+    props.insert("json".into(), Value::NativeFunction(c::RESPONSE_JSON));
+    props.insert(
+        "arrayBuffer".into(),
+        Value::NativeFunction(c::RESPONSE_ARRAY_BUFFER),
+    );
+    props.insert("clone".into(), Value::NativeFunction(c::RESPONSE_CLONE));
 
     // Create headers object
     let h_idx = interp.heap.len();
     let mut h_props = std::collections::HashMap::new();
     h_props.insert("__headers".into(), Value::String(headers_raw.to_string()));
-    h_props.insert("append".into(), Value::NativeFunction(362));
-    h_props.insert("get".into(), Value::NativeFunction(363));
-    h_props.insert("set".into(), Value::NativeFunction(364));
-    h_props.insert("has".into(), Value::NativeFunction(365));
-    h_props.insert("delete".into(), Value::NativeFunction(366));
-    h_props.insert("forEach".into(), Value::NativeFunction(367));
-    h_props.insert("keys".into(), Value::NativeFunction(368));
-    h_props.insert("values".into(), Value::NativeFunction(369));
-    h_props.insert("entries".into(), Value::NativeFunction(370));
+    h_props.insert("append".into(), Value::NativeFunction(c::HEADERS_APPEND));
+    h_props.insert("get".into(), Value::NativeFunction(c::HEADERS_GET));
+    h_props.insert("set".into(), Value::NativeFunction(c::HEADERS_SET));
+    h_props.insert("has".into(), Value::NativeFunction(c::HEADERS_HAS));
+    h_props.insert("delete".into(), Value::NativeFunction(c::HEADERS_DELETE));
+    h_props.insert("forEach".into(), Value::NativeFunction(c::HEADERS_FOR_EACH));
+    h_props.insert("keys".into(), Value::NativeFunction(c::HEADERS_KEYS));
+    h_props.insert("values".into(), Value::NativeFunction(c::HEADERS_VALUES));
+    h_props.insert("entries".into(), Value::NativeFunction(c::HEADERS_ENTRIES));
     interp.heap.push(HeapValue::Object(JsObject {
         properties: h_props,
         prototype: None,

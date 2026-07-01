@@ -1,5 +1,6 @@
 use crate::errors::Result;
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsObject};
 
 use super::helpers::to_string_value;
@@ -71,8 +72,14 @@ pub(super) fn native_crypto_create_hash(
     let mut props = std::collections::HashMap::new();
     props.insert("_algorithm".into(), Value::String(algorithm));
     props.insert("_data".into(), Value::Object(data_buf_idx));
-    props.insert("update".into(), Value::NativeFunction(317));
-    props.insert("digest".into(), Value::NativeFunction(318));
+    props.insert(
+        "update".into(),
+        Value::NativeFunction(c::CRYPTO_HASH_UPDATE),
+    );
+    props.insert(
+        "digest".into(),
+        Value::NativeFunction(c::CRYPTO_HASH_DIGEST),
+    );
 
     let hash_obj_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {

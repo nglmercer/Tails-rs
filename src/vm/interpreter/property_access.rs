@@ -2,6 +2,7 @@ use super::{HeapValue, Interpreter};
 use crate::errors::{Error, Result};
 use crate::objects::js_promise::PromiseState;
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 
 impl Interpreter {
     pub fn new_object(&mut self) -> Value {
@@ -169,7 +170,8 @@ impl Interpreter {
                         }
                         Value::Symbol(sym_id) if *sym_id == crate::objects::SYMBOL_ITERATOR => {
                             // Return a function that creates an array iterator
-                            return Ok(Value::NativeFunction(236)); // array_iterator_fn
+                            return Ok(Value::NativeFunction(c::ARRAY_ITERATOR));
+                            // array_iterator_fn
                         }
                         _ => {}
                     }
@@ -188,9 +190,9 @@ impl Interpreter {
                 if let Value::String(key_str) = key {
                     // Function.prototype methods
                     match key_str.as_str() {
-                        "call" => return Ok(Value::NativeFunction(154)),
-                        "apply" => return Ok(Value::NativeFunction(155)),
-                        "bind" => return Ok(Value::NativeFunction(156)),
+                        "call" => return Ok(Value::NativeFunction(c::FUNCTION_CALL)),
+                        "apply" => return Ok(Value::NativeFunction(c::FUNCTION_APPLY)),
+                        "bind" => return Ok(Value::NativeFunction(c::FUNCTION_BIND)),
                         _ => {}
                     }
                     if key_str == "prototype" {
@@ -210,9 +212,9 @@ impl Interpreter {
             Value::Promise(promise_idx) => {
                 if let Value::String(key_str) = key {
                     match key_str.as_str() {
-                        "then" => return Ok(Value::NativeFunction(78)),
-                        "catch" => return Ok(Value::NativeFunction(79)),
-                        "finally" => return Ok(Value::NativeFunction(80)),
+                        "then" => return Ok(Value::NativeFunction(c::PROMISE_THEN)),
+                        "catch" => return Ok(Value::NativeFunction(c::PROMISE_CATCH)),
+                        "finally" => return Ok(Value::NativeFunction(c::PROMISE_FINALLY)),
                         "state" => {
                             if let HeapValue::Promise(p) = &self.heap[*promise_idx] {
                                 return Ok(Value::String(format!("{:?}", p.state)));
@@ -240,27 +242,31 @@ impl Interpreter {
                 if let Value::String(key_str) = key {
                     // Function.prototype methods available on all native functions
                     match key_str.as_str() {
-                        "call" => return Ok(Value::NativeFunction(154)),
-                        "apply" => return Ok(Value::NativeFunction(155)),
-                        "bind" => return Ok(Value::NativeFunction(156)),
+                        "call" => return Ok(Value::NativeFunction(c::FUNCTION_CALL)),
+                        "apply" => return Ok(Value::NativeFunction(c::FUNCTION_APPLY)),
+                        "bind" => return Ok(Value::NativeFunction(c::FUNCTION_BIND)),
                         _ => {}
                     }
-                    if *idx == 77 {
+                    if *idx == c::PROMISE_CONSTRUCTOR {
                         match key_str.as_str() {
-                            "resolve" => return Ok(Value::NativeFunction(81)),
-                            "reject" => return Ok(Value::NativeFunction(82)),
-                            "all" => return Ok(Value::NativeFunction(83)),
-                            "race" => return Ok(Value::NativeFunction(84)),
-                            "allSettled" => return Ok(Value::NativeFunction(166)),
-                            "any" => return Ok(Value::NativeFunction(167)),
-                            "withResolvers" => return Ok(Value::NativeFunction(168)),
+                            "resolve" => return Ok(Value::NativeFunction(c::PROMISE_RESOLVE)),
+                            "reject" => return Ok(Value::NativeFunction(c::PROMISE_REJECT)),
+                            "all" => return Ok(Value::NativeFunction(c::PROMISE_ALL)),
+                            "race" => return Ok(Value::NativeFunction(c::PROMISE_RACE)),
+                            "allSettled" => {
+                                return Ok(Value::NativeFunction(c::PROMISE_ALL_SETTLED))
+                            }
+                            "any" => return Ok(Value::NativeFunction(c::PROMISE_ANY)),
+                            "withResolvers" => {
+                                return Ok(Value::NativeFunction(c::PROMISE_WITH_RESOLVERS))
+                            }
                             _ => {}
                         }
                     }
-                    if *idx == 151 {
+                    if *idx == c::SYMBOL_CONSTRUCTOR {
                         match key_str.as_str() {
-                            "for" => return Ok(Value::NativeFunction(152)),
-                            "keyFor" => return Ok(Value::NativeFunction(153)),
+                            "for" => return Ok(Value::NativeFunction(c::SYMBOL_FOR)),
+                            "keyFor" => return Ok(Value::NativeFunction(c::SYMBOL_KEY_FOR)),
                             "iterator" => {
                                 return Ok(Value::Symbol(crate::objects::SYMBOL_ITERATOR))
                             }
@@ -284,28 +290,28 @@ impl Interpreter {
                         }
                     }
                     // Date static methods
-                    if *idx == 170 {
+                    if *idx == c::DATE_CONSTRUCTOR {
                         match key_str.as_str() {
-                            "now" => return Ok(Value::NativeFunction(171)),
-                            "parse" => return Ok(Value::NativeFunction(172)),
-                            "UTC" => return Ok(Value::NativeFunction(173)),
+                            "now" => return Ok(Value::NativeFunction(c::DATE_NOW)),
+                            "parse" => return Ok(Value::NativeFunction(c::DATE_PARSE)),
+                            "UTC" => return Ok(Value::NativeFunction(c::DATE_UTC)),
                             _ => {}
                         }
                     }
                     // URL static methods
-                    if *idx == 273 {
+                    if *idx == c::URL_CONSTRUCTOR {
                         match key_str.as_str() {
-                            "canParse" => return Ok(Value::NativeFunction(358)),
-                            "parse" => return Ok(Value::NativeFunction(359)),
+                            "canParse" => return Ok(Value::NativeFunction(c::URL_CAN_PARSE)),
+                            "parse" => return Ok(Value::NativeFunction(c::URL_PARSE)),
                             _ => {}
                         }
                     }
                     // Response static methods
-                    if *idx == 372 {
+                    if *idx == c::RESPONSE_CONSTRUCTOR {
                         match key_str.as_str() {
-                            "json" => return Ok(Value::NativeFunction(373)),
-                            "error" => return Ok(Value::NativeFunction(374)),
-                            "redirect" => return Ok(Value::NativeFunction(375)),
+                            "json" => return Ok(Value::NativeFunction(c::RESPONSE_JSON_STATIC)),
+                            "error" => return Ok(Value::NativeFunction(c::RESPONSE_ERROR)),
+                            "redirect" => return Ok(Value::NativeFunction(c::RESPONSE_REDIRECT)),
                             _ => {}
                         }
                     }
@@ -381,15 +387,15 @@ impl Interpreter {
                                 }
                             }
                         }
-                        "get" => return Ok(Value::NativeFunction(113)),
-                        "set" => return Ok(Value::NativeFunction(114)),
-                        "has" => return Ok(Value::NativeFunction(115)),
-                        "delete" => return Ok(Value::NativeFunction(116)),
-                        "clear" => return Ok(Value::NativeFunction(117)),
-                        "forEach" => return Ok(Value::NativeFunction(119)),
-                        "keys" => return Ok(Value::NativeFunction(120)),
-                        "values" => return Ok(Value::NativeFunction(121)),
-                        "entries" => return Ok(Value::NativeFunction(122)),
+                        "get" => return Ok(Value::NativeFunction(c::MAP_GET)),
+                        "set" => return Ok(Value::NativeFunction(c::MAP_SET)),
+                        "has" => return Ok(Value::NativeFunction(c::MAP_HAS)),
+                        "delete" => return Ok(Value::NativeFunction(c::MAP_DELETE)),
+                        "clear" => return Ok(Value::NativeFunction(c::MAP_CLEAR)),
+                        "forEach" => return Ok(Value::NativeFunction(c::MAP_FOR_EACH)),
+                        "keys" => return Ok(Value::NativeFunction(c::MAP_KEYS)),
+                        "values" => return Ok(Value::NativeFunction(c::MAP_VALUES)),
+                        "entries" => return Ok(Value::NativeFunction(c::MAP_ENTRIES)),
                         _ => {}
                     }
                 }
@@ -405,14 +411,14 @@ impl Interpreter {
                                 }
                             }
                         }
-                        "add" => return Ok(Value::NativeFunction(124)),
-                        "has" => return Ok(Value::NativeFunction(125)),
-                        "delete" => return Ok(Value::NativeFunction(126)),
-                        "clear" => return Ok(Value::NativeFunction(127)),
-                        "forEach" => return Ok(Value::NativeFunction(129)),
-                        "values" => return Ok(Value::NativeFunction(130)),
-                        "keys" => return Ok(Value::NativeFunction(131)),
-                        "entries" => return Ok(Value::NativeFunction(132)),
+                        "add" => return Ok(Value::NativeFunction(c::SET_ADD)),
+                        "has" => return Ok(Value::NativeFunction(c::SET_HAS)),
+                        "delete" => return Ok(Value::NativeFunction(c::SET_DELETE)),
+                        "clear" => return Ok(Value::NativeFunction(c::SET_CLEAR)),
+                        "forEach" => return Ok(Value::NativeFunction(c::SET_FOR_EACH)),
+                        "values" => return Ok(Value::NativeFunction(c::SET_VALUES)),
+                        "keys" => return Ok(Value::NativeFunction(c::SET_KEYS)),
+                        "entries" => return Ok(Value::NativeFunction(c::SET_ENTRIES)),
                         _ => {}
                     }
                 }
@@ -420,10 +426,10 @@ impl Interpreter {
             Value::WeakMap(_weakmap_idx) => {
                 if let Value::String(key_str) = key {
                     match key_str.as_str() {
-                        "get" => return Ok(Value::NativeFunction(134)),
-                        "set" => return Ok(Value::NativeFunction(135)),
-                        "has" => return Ok(Value::NativeFunction(136)),
-                        "delete" => return Ok(Value::NativeFunction(137)),
+                        "get" => return Ok(Value::NativeFunction(c::WEAKMAP_GET)),
+                        "set" => return Ok(Value::NativeFunction(c::WEAKMAP_SET)),
+                        "has" => return Ok(Value::NativeFunction(c::WEAKMAP_HAS)),
+                        "delete" => return Ok(Value::NativeFunction(c::WEAKMAP_DELETE)),
                         _ => {}
                     }
                 }
@@ -431,9 +437,9 @@ impl Interpreter {
             Value::WeakSet(_weakset_idx) => {
                 if let Value::String(key_str) = key {
                     match key_str.as_str() {
-                        "add" => return Ok(Value::NativeFunction(139)),
-                        "has" => return Ok(Value::NativeFunction(140)),
-                        "delete" => return Ok(Value::NativeFunction(141)),
+                        "add" => return Ok(Value::NativeFunction(c::WEAKSET_ADD)),
+                        "has" => return Ok(Value::NativeFunction(c::WEAKSET_HAS)),
+                        "delete" => return Ok(Value::NativeFunction(c::WEAKSET_DELETE)),
                         _ => {}
                     }
                 }
@@ -466,10 +472,10 @@ impl Interpreter {
                                 }
                             }
                         }
-                        "get" => return Ok(Value::NativeFunction(105)),
-                        "set" => return Ok(Value::NativeFunction(106)),
-                        "subarray" => return Ok(Value::NativeFunction(110)),
-                        "slice" => return Ok(Value::NativeFunction(111)),
+                        "get" => return Ok(Value::NativeFunction(c::TYPED_ARRAY_GET)),
+                        "set" => return Ok(Value::NativeFunction(c::TYPED_ARRAY_SET)),
+                        "subarray" => return Ok(Value::NativeFunction(c::TYPED_ARRAY_SUBARRAY)),
+                        "slice" => return Ok(Value::NativeFunction(c::TYPED_ARRAY_SLICE)),
                         _ => {}
                     }
                 }
@@ -597,19 +603,19 @@ impl Interpreter {
 
     pub(super) fn make_native_number_method(&self, name: &str) -> Value {
         match name {
-            "toFixed" => Value::NativeFunction(383),
-            "toString" | "toLocaleString" => Value::NativeFunction(384),
-            "valueOf" => Value::NativeFunction(385),
-            "toExponential" => Value::NativeFunction(386),
-            "toPrecision" => Value::NativeFunction(387),
+            "toFixed" => Value::NativeFunction(c::NUMBER_TO_FIXED),
+            "toString" | "toLocaleString" => Value::NativeFunction(c::NUMBER_TO_STRING),
+            "valueOf" => Value::NativeFunction(c::NUMBER_VALUE_OF),
+            "toExponential" => Value::NativeFunction(c::NUMBER_TO_EXPONENTIAL),
+            "toPrecision" => Value::NativeFunction(c::NUMBER_TO_PRECISION),
             _ => Value::Undefined,
         }
     }
 
     pub(super) fn make_native_boolean_method(&self, name: &str) -> Value {
         match name {
-            "toString" | "toLocaleString" => Value::NativeFunction(391),
-            "valueOf" => Value::NativeFunction(392),
+            "toString" | "toLocaleString" => Value::NativeFunction(c::BOOLEAN_TO_STRING),
+            "valueOf" => Value::NativeFunction(c::BOOLEAN_VALUE_OF),
             _ => Value::Undefined,
         }
     }

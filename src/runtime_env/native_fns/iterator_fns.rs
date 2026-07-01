@@ -1,5 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsArray, JsObject};
 
 // Array[Symbol.iterator]() - creates an iterator for an array
@@ -29,12 +30,21 @@ pub(super) fn native_array_iterator(
     props.insert("__index".to_string(), Value::Integer(0));
     props.insert("__data".to_string(), Value::Array(data_idx));
     // Iterator helper methods
-    props.insert("map".to_string(), Value::NativeFunction(230));
-    props.insert("filter".to_string(), Value::NativeFunction(231));
-    props.insert("take".to_string(), Value::NativeFunction(232));
-    props.insert("drop".to_string(), Value::NativeFunction(233));
-    props.insert("forEach".to_string(), Value::NativeFunction(234));
-    props.insert("toArray".to_string(), Value::NativeFunction(235));
+    props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+    props.insert(
+        "filter".to_string(),
+        Value::NativeFunction(c::ITERATOR_FILTER),
+    );
+    props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+    props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+    props.insert(
+        "forEach".to_string(),
+        Value::NativeFunction(c::ITERATOR_FOR_EACH),
+    );
+    props.insert(
+        "toArray".to_string(),
+        Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+    );
 
     let iter_idx = interp.gc.allocate(
         &mut interp.heap,
@@ -67,12 +77,21 @@ pub(super) fn native_iterator_map(
     props.insert("__callback".to_string(), callback);
     props.insert("__done".to_string(), Value::Boolean(false));
     // Iterator helper methods for chaining
-    props.insert("map".to_string(), Value::NativeFunction(230));
-    props.insert("filter".to_string(), Value::NativeFunction(231));
-    props.insert("take".to_string(), Value::NativeFunction(232));
-    props.insert("drop".to_string(), Value::NativeFunction(233));
-    props.insert("forEach".to_string(), Value::NativeFunction(234));
-    props.insert("toArray".to_string(), Value::NativeFunction(235));
+    props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+    props.insert(
+        "filter".to_string(),
+        Value::NativeFunction(c::ITERATOR_FILTER),
+    );
+    props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+    props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+    props.insert(
+        "forEach".to_string(),
+        Value::NativeFunction(c::ITERATOR_FOR_EACH),
+    );
+    props.insert(
+        "toArray".to_string(),
+        Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+    );
 
     let iter_idx = interp.gc.allocate(
         &mut interp.heap,
@@ -104,12 +123,21 @@ pub(super) fn native_iterator_filter(
     props.insert("__callback".to_string(), callback);
     props.insert("__done".to_string(), Value::Boolean(false));
     // Iterator helper methods for chaining
-    props.insert("map".to_string(), Value::NativeFunction(230));
-    props.insert("filter".to_string(), Value::NativeFunction(231));
-    props.insert("take".to_string(), Value::NativeFunction(232));
-    props.insert("drop".to_string(), Value::NativeFunction(233));
-    props.insert("forEach".to_string(), Value::NativeFunction(234));
-    props.insert("toArray".to_string(), Value::NativeFunction(235));
+    props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+    props.insert(
+        "filter".to_string(),
+        Value::NativeFunction(c::ITERATOR_FILTER),
+    );
+    props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+    props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+    props.insert(
+        "forEach".to_string(),
+        Value::NativeFunction(c::ITERATOR_FOR_EACH),
+    );
+    props.insert(
+        "toArray".to_string(),
+        Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+    );
 
     let iter_idx = interp.gc.allocate(
         &mut interp.heap,
@@ -140,12 +168,21 @@ pub(super) fn native_iterator_take(
     props.insert("__remaining".to_string(), Value::Integer(count));
     props.insert("__done".to_string(), Value::Boolean(false));
     // Iterator helper methods for chaining
-    props.insert("map".to_string(), Value::NativeFunction(230));
-    props.insert("filter".to_string(), Value::NativeFunction(231));
-    props.insert("take".to_string(), Value::NativeFunction(232));
-    props.insert("drop".to_string(), Value::NativeFunction(233));
-    props.insert("forEach".to_string(), Value::NativeFunction(234));
-    props.insert("toArray".to_string(), Value::NativeFunction(235));
+    props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+    props.insert(
+        "filter".to_string(),
+        Value::NativeFunction(c::ITERATOR_FILTER),
+    );
+    props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+    props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+    props.insert(
+        "forEach".to_string(),
+        Value::NativeFunction(c::ITERATOR_FOR_EACH),
+    );
+    props.insert(
+        "toArray".to_string(),
+        Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+    );
 
     let iter_idx = interp.gc.allocate(
         &mut interp.heap,
@@ -176,12 +213,21 @@ pub(super) fn native_iterator_drop(
     props.insert("__remaining".to_string(), Value::Integer(count));
     props.insert("__done".to_string(), Value::Boolean(false));
     // Iterator helper methods for chaining
-    props.insert("map".to_string(), Value::NativeFunction(230));
-    props.insert("filter".to_string(), Value::NativeFunction(231));
-    props.insert("take".to_string(), Value::NativeFunction(232));
-    props.insert("drop".to_string(), Value::NativeFunction(233));
-    props.insert("forEach".to_string(), Value::NativeFunction(234));
-    props.insert("toArray".to_string(), Value::NativeFunction(235));
+    props.insert("map".to_string(), Value::NativeFunction(c::ITERATOR_MAP));
+    props.insert(
+        "filter".to_string(),
+        Value::NativeFunction(c::ITERATOR_FILTER),
+    );
+    props.insert("take".to_string(), Value::NativeFunction(c::ITERATOR_TAKE));
+    props.insert("drop".to_string(), Value::NativeFunction(c::ITERATOR_DROP));
+    props.insert(
+        "forEach".to_string(),
+        Value::NativeFunction(c::ITERATOR_FOR_EACH),
+    );
+    props.insert(
+        "toArray".to_string(),
+        Value::NativeFunction(c::ITERATOR_TO_ARRAY),
+    );
 
     let iter_idx = interp.gc.allocate(
         &mut interp.heap,

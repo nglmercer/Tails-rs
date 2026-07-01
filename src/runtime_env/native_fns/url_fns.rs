@@ -1,5 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::objects::Value;
+use crate::runtime_env::native_fns::constants as c;
 use crate::vm::interpreter::{HeapValue, Interpreter, JsObject};
 
 use super::helpers::to_string_value;
@@ -69,8 +70,11 @@ pub(super) fn native_url_constructor(
         }),
     );
     props.insert("searchParams".to_string(), Value::Object(search_params_idx));
-    props.insert("toString".to_string(), Value::NativeFunction(274));
-    props.insert("toJSON".to_string(), Value::NativeFunction(360));
+    props.insert(
+        "toString".to_string(),
+        Value::NativeFunction(c::URL_TO_STRING),
+    );
+    props.insert("toJSON".to_string(), Value::NativeFunction(c::URL_TO_JSON));
 
     // Always create a new object
     let obj_idx = interp.heap.len();
@@ -104,17 +108,38 @@ fn create_search_params(interp: &mut Interpreter, query: &str) -> usize {
         "size".into(),
         Value::Integer(query.split('&').filter(|s| !s.is_empty()).count() as i64),
     );
-    props.insert("get".into(), Value::NativeFunction(275));
-    props.insert("getAll".into(), Value::NativeFunction(276));
-    props.insert("has".into(), Value::NativeFunction(277));
-    props.insert("set".into(), Value::NativeFunction(278));
-    props.insert("append".into(), Value::NativeFunction(279));
-    props.insert("delete".into(), Value::NativeFunction(280));
-    props.insert("toString".into(), Value::NativeFunction(281));
-    props.insert("entries".into(), Value::NativeFunction(282));
-    props.insert("keys".into(), Value::NativeFunction(283));
-    props.insert("values".into(), Value::NativeFunction(284));
-    props.insert("forEach".into(), Value::NativeFunction(285));
+    props.insert("get".into(), Value::NativeFunction(c::SEARCH_PARAMS_GET));
+    props.insert(
+        "getAll".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_GET_ALL),
+    );
+    props.insert("has".into(), Value::NativeFunction(c::SEARCH_PARAMS_HAS));
+    props.insert("set".into(), Value::NativeFunction(c::SEARCH_PARAMS_SET));
+    props.insert(
+        "append".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_APPEND),
+    );
+    props.insert(
+        "delete".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_DELETE),
+    );
+    props.insert(
+        "toString".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_TO_STRING),
+    );
+    props.insert(
+        "entries".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_ENTRIES),
+    );
+    props.insert("keys".into(), Value::NativeFunction(c::SEARCH_PARAMS_KEYS));
+    props.insert(
+        "values".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_VALUES),
+    );
+    props.insert(
+        "forEach".into(),
+        Value::NativeFunction(c::SEARCH_PARAMS_FOR_EACH),
+    );
 
     let idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
