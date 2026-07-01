@@ -1,6 +1,7 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 pub mod native;
+pub mod safe_wrappers;
 
 use crate::objects::Value;
 use crate::TailsRuntime;
