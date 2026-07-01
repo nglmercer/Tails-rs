@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "modules/abi", "modules/native-macros", "modules/my-tails-module", "modules/fs", "modules/path", "modules/process", "modules/os", "modules/websocket"]
+members = [".", "modules/abi", "modules/native-macros", "modules/my-tails-module", "modules/tails-validator", "modules/fs", "modules/path", "modules/process", "modules/os", "modules/websocket"]
 
 [package]
 name = "tails-rs"
@@ -81,6 +81,10 @@ criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
 name = "runtime"
+harness = false
+
+[[bench]]
+name = "safe_wrappers"
 harness = false
 
 [[test]]
