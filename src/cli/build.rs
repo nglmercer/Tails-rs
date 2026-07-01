@@ -54,7 +54,26 @@ pub fn run_build(opts: BuildOptions) -> Result<()> {
         .context("Failed to read Cargo.toml")?;
 
     let package_name = if let Some(ref pkg) = opts.package {
-        pkg.clone()
+        // If it looks like a path, resolve the package name from Cargo.toml
+        if pkg.contains('/') || pkg.contains('\\') || pkg.ends_with(".toml") {
+            let pkg_path = if pkg.ends_with(".toml") {
+                Path::new(pkg).parent().unwrap_or(Path::new("."))
+            } else {
+                Path::new(pkg)
+            };
+            let pkg_dir = workspace_root.join(pkg_path);
+            let pkg_toml = pkg_dir.join("Cargo.toml");
+            if pkg_toml.exists() {
+                let toml_content = fs::read_to_string(&pkg_toml)
+                    .with_context(|| format!("Failed to read {}", pkg_toml.display()))?;
+                extract_package_name(&toml_content)
+                    .with_context(|| format!("No [package] name in {}", pkg_toml.display()))?
+            } else {
+                anyhow::bail!("No Cargo.toml found at {}", pkg_dir.display());
+            }
+        } else {
+            pkg.clone()
+        }
     } else {
         // Auto-detect: find the first cdylib crate in workspace
         find_cdylib_package(&cargo_toml, workspace_root)?
@@ -295,4 +314,27 @@ fn find_all_dts_symbols(lib_path: &Path) -> Result<Vec<String>> {
 
     symbols.sort();
     Ok(symbols)
+}
+
+fn extract_package_name(toml_content: &str) -> Option<String> {
+    let mut in_package = false;
+    for line in toml_content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[package]" {
+            in_package = true;
+            continue;
+        }
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            in_package = false;
+            continue;
+        }
+        if in_package && trimmed.starts_with("name") {
+            if let Some(eq_pos) = trimmed.find('=') {
+                let value = trimmed[eq_pos + 1..].trim();
+                let name = value.trim_matches('"').trim_matches('\'');
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
 }
