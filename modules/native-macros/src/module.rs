@@ -82,10 +82,7 @@ pub fn expand_module(item: ItemMod, options: ModuleOptions) -> TokenStream {
 
     let safe_module_name = module_name.replace('-', "_");
     let unique_init_name = format_ident!("tails_native_init_{}", safe_module_name);
-    let meta_name = format_ident!(
-        "__TAILS_MODULE_META_{}",
-        safe_module_name.to_uppercase()
-    );
+    let meta_name = format_ident!("__TAILS_MODULE_META_{}", safe_module_name.to_uppercase());
 
     let meta_fn = quote! {
         #[used]

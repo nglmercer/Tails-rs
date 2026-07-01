@@ -556,6 +556,7 @@ impl Interpreter {
             "repeat" => 65,
             "padStart" => 66,
             "padEnd" => 67,
+            "matchAll" => 393,
             _ => return Ok(Value::Undefined),
         };
         Ok(Value::NativeFunction(idx))
@@ -568,7 +569,8 @@ impl Interpreter {
     ) -> Result<Value> {
         if let Value::String(key_str) = key {
             match key_str.as_str() {
-                "toString" | "toFixed" | "valueOf" => {
+                "toString" | "toFixed" | "valueOf" | "toExponential" | "toPrecision"
+                | "toLocaleString" => {
                     return Ok(self.make_native_number_method(key_str));
                 }
                 _ => {}
@@ -593,12 +595,23 @@ impl Interpreter {
         Ok(Value::Undefined)
     }
 
-    pub(super) fn make_native_number_method(&self, _name: &str) -> Value {
-        Value::Undefined
+    pub(super) fn make_native_number_method(&self, name: &str) -> Value {
+        match name {
+            "toFixed" => Value::NativeFunction(383),
+            "toString" | "toLocaleString" => Value::NativeFunction(384),
+            "valueOf" => Value::NativeFunction(385),
+            "toExponential" => Value::NativeFunction(386),
+            "toPrecision" => Value::NativeFunction(387),
+            _ => Value::Undefined,
+        }
     }
 
-    pub(super) fn make_native_boolean_method(&self, _name: &str) -> Value {
-        Value::Undefined
+    pub(super) fn make_native_boolean_method(&self, name: &str) -> Value {
+        match name {
+            "toString" | "toLocaleString" => Value::NativeFunction(390),
+            "valueOf" => Value::NativeFunction(391),
+            _ => Value::Undefined,
+        }
     }
 
     pub(crate) fn delete_property(&mut self, object: &Value, key: &Value) -> Value {

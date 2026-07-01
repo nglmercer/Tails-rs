@@ -350,6 +350,8 @@ impl Interpreter {
         number_props.insert("isNaN".into(), Value::NativeFunction(12));
         number_props.insert("parseFloat".into(), Value::NativeFunction(11));
         number_props.insert("parseInt".into(), Value::NativeFunction(10));
+        number_props.insert("isInteger".into(), Value::NativeFunction(388));
+        number_props.insert("isSafeInteger".into(), Value::NativeFunction(389));
         let number_obj_idx = self.gc.allocate(
             &mut self.heap,
             HeapValue::Object(JsObject {

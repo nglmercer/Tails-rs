@@ -320,6 +320,7 @@ pub enum Expression {
     NullLiteral,
     UndefinedLiteral,
     NaNLiteral,
+    InfinityLiteral,
     Identifier(String),
     BinaryOp {
         op: BinaryOperator,

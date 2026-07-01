@@ -56,6 +56,11 @@ impl CodeGenerator {
                 self.emit(Instruction::LoadConst(idx));
                 Ok(())
             }
+            Expression::InfinityLiteral => {
+                let idx = self.add_constant(Value::Float(f64::INFINITY));
+                self.emit(Instruction::LoadConst(idx));
+                Ok(())
+            }
             Expression::Identifier(name) => {
                 if name == "this" {
                     self.emit(Instruction::LoadThis);

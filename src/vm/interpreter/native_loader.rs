@@ -69,12 +69,8 @@ impl NativeModuleRegistry {
             type InitFn = fn() -> *mut tails_abi::ModuleHandle;
 
             // Try module-specific init first, then fallback to generic
-            let module_stem = lib_path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
-            let base_name = module_stem
-                .strip_prefix("lib")
-                .unwrap_or(module_stem);
+            let module_stem = lib_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            let base_name = module_stem.strip_prefix("lib").unwrap_or(module_stem);
 
             let init_result = {
                 let init_name = format!("tails_native_init_{}\0", base_name.replace('-', "_"));

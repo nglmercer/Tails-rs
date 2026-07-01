@@ -2,6 +2,8 @@ use crate::errors::{Error, Result};
 use crate::objects::Value;
 use crate::vm::interpreter::Interpreter;
 
+use super::helpers::to_f64;
+
 pub(super) fn native_bigint_constructor(
     _interp: &mut Interpreter,
     _this: &Value,
@@ -20,5 +22,221 @@ pub(super) fn native_bigint_constructor(
         }
         Value::Boolean(b) => Ok(Value::BigInt(if b { 1 } else { 0 })),
         _ => Err(Error::TypeError("Cannot convert value to BigInt".into())),
+    }
+}
+
+pub(super) fn native_number_to_fixed(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let n = match this {
+        Value::Float(f) => *f,
+        Value::Integer(i) => *i as f64,
+        _ => return Ok(Value::String("NaN".to_string())),
+    };
+    let digits = args.first().map(|v| to_f64(v) as u32).unwrap_or(0);
+    if n.is_nan() {
+        return Ok(Value::String("NaN".to_string()));
+    }
+    if n.is_infinite() {
+        return Ok(Value::String(
+            if n.is_sign_positive() {
+                "Infinity"
+            } else {
+                "-Infinity"
+            }
+            .to_string(),
+        ));
+    }
+    let formatted = format!("{:.*}", digits as usize, n);
+    Ok(Value::String(formatted))
+}
+
+pub(super) fn native_number_to_string(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let radix = args.first().map(|v| to_f64(v) as u32).unwrap_or(10);
+    match this {
+        Value::Float(f) => {
+            if *f == 0.0 && f.is_sign_negative() {
+                return Ok(Value::String("-0".to_string()));
+            }
+            if radix == 10 {
+                Ok(Value::String(format_number(*f)))
+            } else {
+                Ok(Value::String(format_int(*f as i64, radix)))
+            }
+        }
+        Value::Integer(i) => {
+            if radix == 10 {
+                Ok(Value::String(i.to_string()))
+            } else {
+                Ok(Value::String(format_int(*i, radix)))
+            }
+        }
+        _ => Ok(Value::String("NaN".to_string())),
+    }
+}
+
+pub(super) fn native_number_value_of(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
+    Ok(this.clone())
+}
+
+pub(super) fn native_boolean_to_string(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
+    match this {
+        Value::Boolean(b) => Ok(Value::String(b.to_string())),
+        _ => Ok(Value::String("true".to_string())),
+    }
+}
+
+pub(super) fn native_boolean_value_of(
+    _interp: &mut Interpreter,
+    this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
+    Ok(this.clone())
+}
+
+pub(super) fn native_number_to_exponential(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let n = match this {
+        Value::Float(f) => *f,
+        Value::Integer(i) => *i as f64,
+        _ => return Ok(Value::String("NaN".to_string())),
+    };
+    let digits = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
+    if n.is_nan() {
+        return Ok(Value::String("NaN".to_string()));
+    }
+    if n.is_infinite() {
+        return Ok(Value::String(
+            if n.is_sign_positive() {
+                "Infinity"
+            } else {
+                "-Infinity"
+            }
+            .to_string(),
+        ));
+    }
+    let formatted = format!("{:.*e}", digits, n);
+    Ok(Value::String(formatted))
+}
+
+pub(super) fn native_number_to_precision(
+    _interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let n = match this {
+        Value::Float(f) => *f,
+        Value::Integer(i) => *i as f64,
+        _ => return Ok(Value::String("NaN".to_string())),
+    };
+    let precision = args.first().map(|v| to_f64(v) as usize).unwrap_or(0);
+    if n.is_nan() {
+        return Ok(Value::String("NaN".to_string()));
+    }
+    if n.is_infinite() {
+        return Ok(Value::String(
+            if n.is_sign_positive() {
+                "Infinity"
+            } else {
+                "-Infinity"
+            }
+            .to_string(),
+        ));
+    }
+    if precision == 0 {
+        return Ok(Value::String(format_number(n)));
+    }
+    let formatted = format!("{:.*}", precision.saturating_sub(1), n);
+    Ok(Value::String(formatted))
+}
+
+pub(super) fn native_number_is_integer(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let n = to_f64(args.first().unwrap_or(&Value::Undefined));
+    Ok(Value::Boolean(n.fract() == 0.0 && n.is_finite()))
+}
+
+pub(super) fn native_number_is_safe_integer(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let n = to_f64(args.first().unwrap_or(&Value::Undefined));
+    let max_safe = (2_i64.pow(53) - 1) as f64;
+    Ok(Value::Boolean(
+        n.fract() == 0.0 && n.is_finite() && n.abs() <= max_safe,
+    ))
+}
+
+pub(super) fn native_number_parse_float(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    let s = match args.first().unwrap_or(&Value::Undefined) {
+        Value::String(s) => s.clone(),
+        other => format!("{}", to_f64(other)),
+    };
+    match s.trim().parse::<f64>() {
+        Ok(n) => Ok(Value::Float(n)),
+        Err(_) => Ok(Value::Float(f64::NAN)),
+    }
+}
+
+fn format_number(n: f64) -> String {
+    if n == 0.0 && n.is_sign_negative() {
+        return "-0".to_string();
+    }
+    let s = format!("{}", n);
+    if s.contains('.') || s.contains('e') || s.contains('E') {
+        return s;
+    }
+    s
+}
+
+fn format_int(n: i64, radix: u32) -> String {
+    if radix == 10 {
+        return n.to_string();
+    }
+    if !(2..=36).contains(&radix) {
+        return "NaN".to_string();
+    }
+    if n == 0 {
+        return "0".to_string();
+    }
+    let negative = n < 0;
+    let mut num = n.unsigned_abs();
+    let mut digits = Vec::new();
+    let chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+    while num > 0 {
+        digits.push(chars.chars().nth((num % radix as u64) as usize).unwrap());
+        num /= radix as u64;
+    }
+    digits.reverse();
+    let result: String = digits.iter().collect();
+    if negative {
+        format!("-{}", result)
+    } else {
+        result
     }
 }

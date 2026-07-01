@@ -858,6 +858,7 @@ impl<'a> Parser<'a> {
                     "null" => Ok(self.spanned(Expression::NullLiteral)),
                     "undefined" => Ok(self.spanned(Expression::UndefinedLiteral)),
                     "NaN" => Ok(self.spanned(Expression::NaNLiteral)),
+                    "Infinity" => Ok(self.spanned(Expression::InfinityLiteral)),
                     _ => {
                         if self.peek().token == Token::Arrow {
                             self.advance();

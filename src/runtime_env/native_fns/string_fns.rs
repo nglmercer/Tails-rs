@@ -270,3 +270,72 @@ pub(super) fn native_string_pad_end(
     let padding: String = std::iter::repeat_n(pad_char, pad_count).collect();
     Ok(Value::String(format!("{}{}", s, padding)))
 }
+
+pub(super) fn native_string_match_all(
+    interp: &mut Interpreter,
+    this: &Value,
+    args: &[Value],
+) -> Result<Value> {
+    use crate::vm::interpreter::{HeapValue, JsArray};
+
+    let s = get_string(this).unwrap_or_default();
+    let pattern = args.first().cloned().unwrap_or(Value::Undefined);
+
+    let (regex_str, flags) = match &pattern {
+        Value::RegExp(idx) => {
+            if let HeapValue::RegExp(re) = &interp.heap[*idx] {
+                (re.source.clone(), re.flags.clone())
+            } else {
+                let empty = interp.gc.allocate(
+                    &mut interp.heap,
+                    HeapValue::Array(JsArray { elements: vec![] }),
+                );
+                return Ok(Value::Array(empty));
+            }
+        }
+        Value::String(p) => (p.clone(), String::new()),
+        _ => {
+            let empty = interp.gc.allocate(
+                &mut interp.heap,
+                HeapValue::Array(JsArray { elements: vec![] }),
+            );
+            return Ok(Value::Array(empty));
+        }
+    };
+
+    let full_pattern = if flags.contains('g') {
+        regex_str
+    } else {
+        format!("{}g", regex_str)
+    };
+
+    let re = match fancy_regex::Regex::new(&full_pattern) {
+        Ok(r) => r,
+        Err(_) => {
+            let empty = interp.gc.allocate(
+                &mut interp.heap,
+                HeapValue::Array(JsArray { elements: vec![] }),
+            );
+            return Ok(Value::Array(empty));
+        }
+    };
+
+    let mut results = Vec::new();
+
+    for m in re.find_iter(&s).flatten() {
+        let match_str = m.as_str().to_string();
+        let arr_idx = interp.gc.allocate(
+            &mut interp.heap,
+            HeapValue::Array(JsArray {
+                elements: vec![Value::String(match_str)],
+            }),
+        );
+        results.push(Value::Array(arr_idx));
+    }
+
+    let result_arr = interp.gc.allocate(
+        &mut interp.heap,
+        HeapValue::Array(JsArray { elements: results }),
+    );
+    Ok(Value::Array(result_arr))
+}

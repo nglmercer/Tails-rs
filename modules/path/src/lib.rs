@@ -8,7 +8,11 @@ use tails_native_macros::{tails_function, tails_module};
 // ============================================================================
 
 pub const SEP: char = std::path::MAIN_SEPARATOR;
-pub const DELIMITER: char = if cfg!(target_os = "windows") { ';' } else { ':' };
+pub const DELIMITER: char = if cfg!(target_os = "windows") {
+    ';'
+} else {
+    ':'
+};
 
 pub fn join(parts: &[String]) -> String {
     let mut result = PathBuf::new();
@@ -238,12 +242,14 @@ mod path_native {
             "base": p.file_name().map(|s| s.to_string_lossy().to_string()),
             "ext": ext,
             "name": name,
-        }).to_string()
+        })
+        .to_string()
     }
 
     #[tails_function]
     pub fn format(parts: String) -> String {
-        let obj: serde_json::Value = serde_json::from_str(&parts).unwrap_or(serde_json::Value::Null);
+        let obj: serde_json::Value =
+            serde_json::from_str(&parts).unwrap_or(serde_json::Value::Null);
         let dir = obj.get("dir").and_then(|v| v.as_str()).unwrap_or("");
         let base = obj.get("base").and_then(|v| v.as_str()).unwrap_or("");
         let root = obj.get("root").and_then(|v| v.as_str()).unwrap_or("");
@@ -260,8 +266,8 @@ mod path_native {
 
     #[tails_function]
     pub fn contains(haystack: String, needle: String) -> bool {
-        Path::new(&haystack).components().any(|c| {
-            matches!(c, Component::Normal(s) if s.to_string_lossy() == needle)
-        })
+        Path::new(&haystack)
+            .components()
+            .any(|c| matches!(c, Component::Normal(s) if s.to_string_lossy() == needle))
     }
 }

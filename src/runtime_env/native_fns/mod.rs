@@ -598,6 +598,20 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     object_fns::native_object_has_own_property,
     // CommonJS require()
     require_fns::native_require,
-    // fileURLToPath (389)
+    // fileURLToPath (382)
     url_fns::native_url_file_url_to_path,
+    // Number.prototype methods (383-389)
+    number_fns::native_number_to_fixed,
+    number_fns::native_number_to_string,
+    number_fns::native_number_value_of,
+    number_fns::native_number_to_exponential,
+    number_fns::native_number_to_precision,
+    number_fns::native_number_is_integer,
+    number_fns::native_number_is_safe_integer,
+    number_fns::native_number_parse_float,
+    // Boolean.prototype methods (390-391)
+    number_fns::native_boolean_to_string,
+    number_fns::native_boolean_value_of,
+    // String.prototype.matchAll (392)
+    string_fns::native_string_match_all,
 ];

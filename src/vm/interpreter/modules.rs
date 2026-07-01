@@ -1,5 +1,5 @@
-use super::*;
 use super::safe_library::SafeLibrary;
+use super::*;
 use crate::errors::Result;
 use crate::objects::Value;
 use crate::runtime_env::native_fns::NATIVE_TABLE;
@@ -15,20 +15,16 @@ impl Interpreter {
         type InitFn = fn() -> *mut tails_abi::ModuleHandle;
 
         // Try module-specific init first, then fallback to generic
-        let module_stem = lib_path.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
-        let base_name = module_stem
-            .strip_prefix("lib")
-            .unwrap_or(module_stem);
+        let module_stem = lib_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        let base_name = module_stem.strip_prefix("lib").unwrap_or(module_stem);
 
         let init_fn = unsafe {
             let init_name = format!("tails_native_init_{}\0", base_name.replace('-', "_"));
-            if let Ok(f) = library.get_function::<InitFn>(&init_name.trim_end_matches('\0')) {
+            if let Ok(f) = library.get_function::<InitFn>(init_name.trim_end_matches('\0')) {
                 Some(f)
             } else {
                 let init_name2 = format!("tails_native_init_{}\0", base_name);
-                if let Ok(f) = library.get_function::<InitFn>(&init_name2.trim_end_matches('\0')) {
+                if let Ok(f) = library.get_function::<InitFn>(init_name2.trim_end_matches('\0')) {
                     Some(f)
                 } else {
                     library.get_function::<InitFn>("tails_native_init").ok()

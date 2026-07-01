@@ -274,7 +274,8 @@ mod os_native {
                         parts[0].parse::<f64>().unwrap_or(0.0),
                         parts[1].parse::<f64>().unwrap_or(0.0),
                         parts[2].parse::<f64>().unwrap_or(0.0)
-                    ]).to_string();
+                    ])
+                    .to_string();
                 }
             }
         }

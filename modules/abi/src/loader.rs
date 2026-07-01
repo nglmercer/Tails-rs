@@ -28,14 +28,10 @@ impl NativeLibrary {
         let init_result = unsafe {
             // First try to find any tails_native_init_* symbol via nm-like approach
             // We'll try common module names
-            let module_stem = path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
+            let module_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
             // Strip lib prefix and convert underscores to hyphens for module name
-            let base_name = module_stem
-                .strip_prefix("lib")
-                .unwrap_or(module_stem);
+            let base_name = module_stem.strip_prefix("lib").unwrap_or(module_stem);
 
             // Try tails_native_init_<base_name> (with underscores)
             let init_name = format!("tails_native_init_{}\0", base_name.replace('-', "_"));
@@ -53,8 +49,8 @@ impl NativeLibrary {
             }
         };
 
-        let init_fn = init_result
-            .ok_or_else(|| format!("No init function found in '{}'", path.display()))?;
+        let init_fn =
+            init_result.ok_or_else(|| format!("No init function found in '{}'", path.display()))?;
 
         let handle = init_fn();
         if handle.is_null() {
