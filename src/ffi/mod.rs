@@ -6,6 +6,7 @@ pub mod safe_wrappers;
 
 use crate::objects::Value;
 use crate::TailsRuntime;
+use safe_wrappers::SafeCStr;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
@@ -40,6 +41,7 @@ pub extern "C" fn tails_runtime_new() -> *mut TailsRuntime {
 #[no_mangle]
 pub extern "C" fn tails_runtime_free(runtime: *mut TailsRuntime) {
     if !runtime.is_null() {
+        // Safety: runtime is checked for null and comes from Box::into_raw
         unsafe {
             let _ = Box::from_raw(runtime);
         }
@@ -55,18 +57,19 @@ pub extern "C" fn tails_eval(runtime: *mut TailsRuntime, source: *const c_char) 
         };
     }
 
+    // Safety: Both pointers are checked for null
     let runtime = unsafe { &mut *runtime };
-    let source = unsafe { CStr::from_ptr(source) };
+    let source = unsafe { SafeCStr::new(source) };
 
     match source.to_str() {
-        Ok(source_str) => match runtime.eval(source_str) {
+        Some(source_str) => match runtime.eval(source_str) {
             Ok(value) => value_to_tails_value(value),
             Err(_) => TailsValue {
                 tag: TailsValueType::Undefined as u32,
                 data: 0,
             },
         },
-        Err(_) => TailsValue {
+        None => TailsValue {
             tag: TailsValueType::Undefined as u32,
             data: 0,
         },
@@ -82,18 +85,19 @@ pub extern "C" fn tails_get_global(runtime: *mut TailsRuntime, name: *const c_ch
         };
     }
 
+    // Safety: Both pointers are checked for null
     let runtime = unsafe { &*runtime };
-    let name = unsafe { CStr::from_ptr(name) };
+    let name = unsafe { SafeCStr::new(name) };
 
     match name.to_str() {
-        Ok(name_str) => match runtime.get_global(name_str) {
+        Some(name_str) => match runtime.get_global(name_str) {
             Some(value) => value_to_tails_value(value),
             None => TailsValue {
                 tag: TailsValueType::Undefined as u32,
                 data: 0,
             },
         },
-        Err(_) => TailsValue {
+        None => TailsValue {
             tag: TailsValueType::Undefined as u32,
             data: 0,
         },
