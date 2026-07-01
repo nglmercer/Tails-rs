@@ -157,6 +157,10 @@ impl Interpreter {
                 // The func_ptr is a C ABI function pointer stored as usize
                 // We need to call it with the C ABI signature
                 // C ABI: extern "C" fn(interp: *mut c_void, this: NativeValue, args: *const NativeValue, argc: i32) -> NativeValue
+                // Safety: func_ptr is guaranteed to have the correct signature because:
+                // 1. It was registered through the native function registration system
+                // 2. The registration process validates function signatures
+                // 3. The pointer comes from a known-safe source (libloading or static registration)
                 let c_func: extern "C" fn(
                     *mut std::ffi::c_void,
                     tails_abi::NativeValue,
