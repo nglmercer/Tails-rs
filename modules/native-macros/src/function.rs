@@ -61,10 +61,14 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
         .enumerate()
         .map(|(_i, p)| {
             let name = format_ident!("arg_{}", p.name);
-            let ts_type = &p.ts_type;
+            let rust_type = &p.rust_type;
             quote! {
-                let #name = <#ts_type as ::tails_abi::FromNativeValue>::from_native_value(#name)
-                    .map_err(|e| format!("{}: {}", stringify!(#func_name), e))?;
+                let #name = if let Some(arg) = args_slice.get(#_i) {
+                    <#rust_type as ::tails_abi::FromNativeValue>::from_native_value(*arg)
+                        .unwrap_or_default()
+                } else {
+                    Default::default()
+                };
             }
         })
         .collect();
@@ -78,16 +82,20 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
         #func_name(#(#param_names),*)
     };
 
-    let ret_conversion = match ret_ts.as_str() {
-        "void" => quote! {
-            #body_call;
-            ::tails_abi::NativeValue { tag: 0, data: 0 }
-        },
-        _ => quote! {
-            let result = #body_call;
-            ::tails_abi::ToNativeValue::to_native_value(&result)
-                .map_err(|e| format!("{}: {}", stringify!(#func_name), e))?
-        },
+    let (ret_stmts, ret_expr) = match ret_ts.as_str() {
+        "void" => (
+            vec![quote! { #body_call; }],
+            quote! { ::tails_abi::NativeValue { tag: 0, data: 0 } },
+        ),
+        _ => (
+            vec![quote! {
+                let result = #body_call;
+            }],
+            quote! {
+                ::tails_abi::ToNativeValue::to_native_value(&result)
+                    .map_err(|e| format!("{}: {}", stringify!(#func_name), e))?
+            },
+        ),
     };
 
     let param_dts: Vec<String> = params
@@ -126,7 +134,8 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
             #(#param_conversions)*
 
             match (|| -> Result<::tails_abi::NativeValue, String> {
-                Ok(#ret_conversion)
+                #(#ret_stmts)*
+                Ok(#ret_expr)
             })() {
                 Ok(v) => v,
                 Err(e) => {

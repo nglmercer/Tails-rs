@@ -1025,6 +1025,7 @@ name = "my-tails-module"
 version = "0.1.0"
 dependencies = [
  "tails-abi",
+ "tails-native-macros",
 ]
 
 [[package]]

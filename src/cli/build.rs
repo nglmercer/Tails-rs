@@ -217,8 +217,6 @@ fn find_cdylib_package(cargo_toml: &str, workspace_root: &Path) -> Result<String
 }
 
 fn generate_dts(lib_path: &Path, package_name: &str) -> Result<String> {
-    use std::os::raw::c_char;
-
     // First, find all __TAILS_DTS_* symbols using nm
     let dts_symbols = find_all_dts_symbols(lib_path)?;
 
@@ -245,14 +243,10 @@ fn generate_dts(lib_path: &Path, package_name: &str) -> Result<String> {
 
         for symbol_name in &dts_symbols {
             let c_name = format!("{}\0", symbol_name);
-            if let Ok(func) = lib.get::<*const c_char>(c_name.as_bytes()) {
-                let c_str = *func;
-                if !c_str.is_null() {
-                    if let Ok(rust_str) = std::ffi::CStr::from_ptr(c_str).to_str() {
-                        if !rust_str.is_empty() {
-                            dts_entries.push(rust_str.to_string());
-                        }
-                    }
+            if let Ok(func) = lib.get::<*const &str>(c_name.as_bytes()) {
+                let s: &str = &**func;
+                if !s.is_empty() {
+                    dts_entries.push(s.to_string());
                 }
             }
         }

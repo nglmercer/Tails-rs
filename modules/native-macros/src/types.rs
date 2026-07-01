@@ -93,6 +93,7 @@ fn path_type_to_ts(tp: &TypePath) -> String {
 pub struct ParamInfo {
     pub name: String,
     pub ts_type: String,
+    pub rust_type: syn::Type,
 }
 
 pub fn extract_params_from_sig(sig: &syn::Signature) -> Vec<ParamInfo> {
@@ -103,7 +104,8 @@ pub fn extract_params_from_sig(sig: &syn::Signature) -> Vec<ParamInfo> {
             FnArg::Typed(pat_type) => {
                 let name = pat_to_name(&pat_type.pat);
                 let ts_type = rust_type_to_ts(&pat_type.ty);
-                params.push(ParamInfo { name, ts_type });
+                let rust_type = (*pat_type.ty).clone();
+                params.push(ParamInfo { name, ts_type, rust_type });
             }
         }
     }
