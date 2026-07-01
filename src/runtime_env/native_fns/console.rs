@@ -88,7 +88,13 @@ fn collect_object_properties<'a>(
     all_props
 }
 
-fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool) -> String {
+fn pretty_format(
+    interp: &Interpreter,
+    v: &Value,
+    depth: usize,
+    use_colors: bool,
+    include_quotes: bool,
+) -> String {
     if depth >= MAX_DEPTH {
         return match v {
             Value::Object(_) => "[Object]".to_string(),
@@ -139,7 +145,7 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
                         "[Getter]".to_string()
                     }
                 } else {
-                    pretty_format(interp, val, depth + 1, use_colors)
+                    pretty_format(interp, val, depth + 1, use_colors, include_quotes)
                 };
                 if use_colors {
                     lines.push(format!("{}{}: {}", pad, key.bold(), val_str));
@@ -161,7 +167,7 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
 
                 let mut lines: Vec<String> = Vec::new();
                 for elem in &arr.elements {
-                    let val_str = pretty_format(interp, elem, depth + 1, use_colors);
+                    let val_str = pretty_format(interp, elem, depth + 1, use_colors, include_quotes);
                     lines.push(format!("{}{}", pad, val_str));
                 }
 
@@ -197,9 +203,15 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
         }
         Value::String(s) => {
             if use_colors {
-                format!("\"{}\"", s.green())
-            } else {
+                if include_quotes {
+                    format!("\"{}\"", s.green())
+                } else {
+                    s.green().to_string()
+                }
+            } else if include_quotes {
                 format!("\"{}\"", s)
+            } else {
+                s.clone()
             }
         }
         Value::Integer(n) => {
@@ -252,8 +264,8 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
                 let closing_pad = INDENT.repeat(depth);
                 let mut lines: Vec<String> = Vec::new();
                 for (k, val) in &map.entries {
-                    let k_str = pretty_format(interp, k, depth + 1, use_colors);
-                    let v_str = pretty_format(interp, val, depth + 1, use_colors);
+                    let k_str = pretty_format(interp, k, depth + 1, use_colors, include_quotes);
+                    let v_str = pretty_format(interp, val, depth + 1, use_colors, include_quotes);
                     lines.push(format!("{}{} => {}", pad, k_str, v_str));
                 }
                 format!(
@@ -275,7 +287,7 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
                 let closing_pad = INDENT.repeat(depth);
                 let mut lines: Vec<String> = Vec::new();
                 for val in &set.values {
-                    let val_str = pretty_format(interp, val, depth + 1, use_colors);
+                    let val_str = pretty_format(interp, val, depth + 1, use_colors, include_quotes);
                     lines.push(format!("{}{}", pad, val_str));
                 }
                 format!(
@@ -316,7 +328,7 @@ fn pretty_format(interp: &Interpreter, v: &Value, depth: usize, use_colors: bool
 
 fn colorize_value(interp: &Interpreter, v: &Value) -> String {
     let use_colors = get_use_colors();
-    pretty_format(interp, v, 0, use_colors)
+    pretty_format(interp, v, 0, use_colors, false)
 }
 
 pub(super) fn native_console_log(
@@ -338,14 +350,8 @@ pub(super) fn native_console_warn(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let use_colors = get_use_colors();
     let parts: Vec<String> = args.iter().map(|a| colorize_value(interp, a)).collect();
-    let msg = parts.join(" ");
-    if use_colors {
-        eprintln!("{}{}{}", timestamp, indent, msg.yellow());
-    } else {
-        eprintln!("{}{}{}", timestamp, indent, msg);
-    }
+    eprintln!("{}{}{}", timestamp, indent, parts.join(" "));
     Ok(Value::Undefined)
 }
 
@@ -356,14 +362,8 @@ pub(super) fn native_console_error(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let use_colors = get_use_colors();
     let parts: Vec<String> = args.iter().map(|a| colorize_value(interp, a)).collect();
-    let msg = parts.join(" ");
-    if use_colors {
-        eprintln!("{}{}{}", timestamp, indent, msg.red());
-    } else {
-        eprintln!("{}{}{}", timestamp, indent, msg);
-    }
+    eprintln!("{}{}{}", timestamp, indent, parts.join(" "));
     Ok(Value::Undefined)
 }
 
@@ -374,14 +374,8 @@ pub(super) fn native_console_info(
 ) -> Result<Value> {
     let indent = get_indent();
     let timestamp = get_timestamp();
-    let use_colors = get_use_colors();
     let parts: Vec<String> = args.iter().map(|a| colorize_value(interp, a)).collect();
-    let msg = parts.join(" ");
-    if use_colors {
-        println!("{}{}{}", timestamp, indent, msg.blue());
-    } else {
-        println!("{}{}{}", timestamp, indent, msg);
-    }
+    println!("{}{}{}", timestamp, indent, parts.join(" "));
     Ok(Value::Undefined)
 }
 
@@ -579,7 +573,7 @@ pub(super) fn native_console_dir(
     let indent = get_indent();
     let timestamp = get_timestamp();
     let use_colors = get_use_colors();
-    let formatted = pretty_format(interp, &args[0], 0, use_colors);
+    let formatted = pretty_format(interp, &args[0], 0, use_colors, true);
     println!("{}{}{}", timestamp, indent, formatted);
 
     Ok(Value::Undefined)
@@ -724,7 +718,6 @@ pub(super) fn native_console_assert(
     if !condition {
         let indent = get_indent();
         let timestamp = get_timestamp();
-        let use_colors = get_use_colors();
         let parts: Vec<String> = if args.len() > 1 {
             args[1..]
                 .iter()
@@ -733,12 +726,7 @@ pub(super) fn native_console_assert(
         } else {
             vec!["Assertion failed".to_string()]
         };
-        let msg = parts.join(" ");
-        if use_colors {
-            eprintln!("{}{}{}", timestamp, indent, msg.red());
-        } else {
-            eprintln!("{}{}{}", timestamp, indent, msg);
-        }
+        eprintln!("{}{}{}", timestamp, indent, parts.join(" "));
     }
 
     Ok(Value::Undefined)

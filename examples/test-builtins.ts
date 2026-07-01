@@ -6,7 +6,7 @@ function check(name: string, ok: boolean) {
   total++;
   if (ok) {
     passed++;
-    console.log("  [PASS] " + name);
+    console.info("  [PASS] ", name);
   } else {
     failed++;
     console.error("  [FAIL] ", name);
