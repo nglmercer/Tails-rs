@@ -36,8 +36,7 @@ impl SafeLibrary {
     pub unsafe fn get_function<T>(&self, name: &str) -> Result<Symbol<'_, T>, String> {
         let library = self.library.as_ref().ok_or("Library not loaded")?;
 
-        let c_name =
-            CString::new(name).map_err(|e| format!("Invalid symbol name: {}", e))?;
+        let c_name = CString::new(name).map_err(|e| format!("Invalid symbol name: {}", e))?;
 
         match library.get::<T>(c_name.as_bytes_with_nul()) {
             Ok(symbol) => Ok(symbol),
@@ -85,7 +84,7 @@ impl<T: 'static> SafeFunction<T> {
 
     /// Get a reference to the function pointer
     pub fn as_ptr(&self) -> &T {
-        &*self.func
+        &self.func
     }
 }
 

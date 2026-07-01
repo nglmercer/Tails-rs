@@ -392,7 +392,7 @@ fn parse_class_constructor(entry: &str) -> Option<(String, String)> {
     // Check if return type matches the class name (constructor pattern)
     if let Some(colon_pos) = rest.rfind("): ") {
         let ret_type = &rest[colon_pos + 3..].trim_end_matches(';').trim();
-        if ret_type.to_string() == name.to_string() {
+        if *ret_type == name {
             return Some((name.to_string(), entry.to_string()));
         }
     }

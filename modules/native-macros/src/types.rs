@@ -8,7 +8,7 @@ pub fn rust_type_to_ts(ty: &Type) -> String {
             if tuple.elems.is_empty() {
                 "void".to_string()
             } else {
-                let elems: Vec<String> = tuple.elems.iter().map(|e| rust_type_to_ts(e)).collect();
+                let elems: Vec<String> = tuple.elems.iter().map(rust_type_to_ts).collect();
                 format!("[{}]", elems.join(", "))
             }
         }
@@ -127,6 +127,6 @@ fn pat_to_name(pat: &Pat) -> String {
 pub fn get_ret_type(sig: &syn::Signature) -> String {
     match &sig.output {
         syn::ReturnType::Default => "void".to_string(),
-        syn::ReturnType::Type(_, ty) => rust_type_to_ts(&ty),
+        syn::ReturnType::Type(_, ty) => rust_type_to_ts(ty),
     }
 }

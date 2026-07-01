@@ -49,8 +49,7 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
 
     let _param_decls: Vec<TokenStream> = params
         .iter()
-        .enumerate()
-        .map(|(_i, p)| {
+        .map(|p| {
             let name = format_ident!("arg_{}", p.name);
             quote! { #name: ::tails_abi::NativeValue }
         })
@@ -116,6 +115,7 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
     };
 
     let ffi_fn = quote! {
+        #[allow(clippy::needless_question_mark)]
         #[no_mangle]
         pub extern "C" fn #wrapper_name(
             _interp: *mut ::std::ffi::c_void,

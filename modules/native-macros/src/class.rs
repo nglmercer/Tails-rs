@@ -196,21 +196,12 @@ pub fn expand_class_struct(item_impl: syn::ItemImpl) -> TokenStream {
             };
             let dts_name =
                 format!("__TAILS_DTS_{}_{}", struct_name, method_name_str).to_uppercase();
-            let dts_sig = if is_constructor {
-                format!(
-                    "export function {}({}): {};",
-                    js_name,
-                    param_dts.join(", "),
-                    ret_ts
-                )
-            } else {
-                format!(
-                    "export function {}({}): {};",
-                    js_name,
-                    param_dts.join(", "),
-                    ret_ts
-                )
-            };
+            let dts_sig = format!(
+                "export function {}({}): {};",
+                js_name,
+                param_dts.join(", "),
+                ret_ts
+            );
             let dts_ident = format_ident!("{}", dts_name);
             dts_entries.push(quote! {
                 #[used]
