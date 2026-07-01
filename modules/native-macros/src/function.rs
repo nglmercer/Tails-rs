@@ -112,9 +112,7 @@ pub fn expand_function(item: ItemFn, options: FnOptions) -> TokenStream {
 
     let original_fn = quote! {
         #(#attrs)*
-        #vis #sig {
-            #block
-        }
+        #vis #sig #block
     };
 
     let ffi_fn = quote! {

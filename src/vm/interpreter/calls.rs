@@ -194,6 +194,35 @@ impl Interpreter {
                         Value::Boolean(b) => tails_abi::boolean(*b),
                         Value::Null => tails_abi::null(),
                         Value::Undefined => tails_abi::undefined(),
+                        Value::NativeObject(obj_id) => tails_abi::NativeValue {
+                            tag: 5,
+                            data: obj_id.0 as u64,
+                        },
+                        Value::Array(arr_idx) => {
+                            if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
+                                let json_val = arr
+                                    .elements
+                                    .iter()
+                                    .map(|v| self.value_to_json(v))
+                                    .collect::<Vec<_>>();
+                                let sv = simd_json::OwnedValue::Array(Box::new(json_val));
+                                tails_abi::store_handle(sv)
+                            } else {
+                                tails_abi::null()
+                            }
+                        }
+                        Value::Object(obj_idx) => {
+                            if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
+                                let mut json_obj = simd_json::value::owned::Object::new();
+                                for (k, v) in &obj.properties {
+                                    json_obj.insert(k.clone(), self.value_to_json(v));
+                                }
+                                let sv = simd_json::OwnedValue::Object(Box::new(json_obj));
+                                tails_abi::store_handle(sv)
+                            } else {
+                                tails_abi::null()
+                            }
+                        }
                         _ => tails_abi::undefined(),
                     })
                     .collect();
@@ -281,5 +310,40 @@ impl Interpreter {
             }
         }
         None
+    }
+
+    fn value_to_json(&self, value: &Value) -> simd_json::OwnedValue {
+        match value {
+            Value::String(s) => simd_json::OwnedValue::String(s.clone()),
+            Value::Integer(n) => simd_json::OwnedValue::Static(simd_json::StaticNode::I64(*n)),
+            Value::Float(n) => simd_json::OwnedValue::Static(simd_json::StaticNode::F64(*n)),
+            Value::Boolean(b) => simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(*b)),
+            Value::Null => simd_json::OwnedValue::Static(simd_json::StaticNode::Null),
+            Value::Undefined => simd_json::OwnedValue::Static(simd_json::StaticNode::Null),
+            Value::NativeObject(obj_id) => {
+                tails_abi::get_handle(obj_id.0 as u64).unwrap_or(simd_json::OwnedValue::Static(simd_json::StaticNode::Null))
+            }
+            Value::Array(arr_idx) => {
+                if let HeapValue::Array(arr) = &self.heap[*arr_idx] {
+                    simd_json::OwnedValue::Array(
+                        Box::new(arr.elements.iter().map(|v| self.value_to_json(v)).collect()),
+                    )
+                } else {
+                    simd_json::OwnedValue::Static(simd_json::StaticNode::Null)
+                }
+            }
+            Value::Object(obj_idx) => {
+                if let HeapValue::Object(obj) = &self.heap[*obj_idx] {
+                    let mut json_obj = simd_json::value::owned::Object::new();
+                    for (k, v) in &obj.properties {
+                        json_obj.insert(k.clone(), self.value_to_json(v));
+                    }
+                    simd_json::OwnedValue::Object(Box::new(json_obj))
+                } else {
+                    simd_json::OwnedValue::Static(simd_json::StaticNode::Null)
+                }
+            }
+            _ => simd_json::OwnedValue::Static(simd_json::StaticNode::Null),
+        }
     }
 }

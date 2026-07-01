@@ -5,7 +5,10 @@ pub mod traits;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+
+use once_cell::sync::Lazy;
 
 pub use loader::{extract_module_name, load_native_module, resolve_native_path, NativeLibrary};
 pub use module::{NativeModuleExport, TailsModule};
@@ -16,6 +19,12 @@ pub use traits::{FromNativeValue, ToNativeValue};
 pub struct NativeValue {
     pub tag: u32,
     pub data: u64,
+}
+
+impl Default for NativeValue {
+    fn default() -> Self {
+        undefined()
+    }
 }
 
 #[repr(C)]
@@ -156,6 +165,45 @@ pub fn free_string(val: NativeValue) {
             let _ = CString::from_raw(val.data as *mut c_char);
         }
     }
+}
+
+// ============================================================================
+// Handle Registry — zero-copy passing of complex values (objects/arrays)
+// ============================================================================
+
+static HANDLE_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+pub static HANDLE_REGISTRY: Lazy<Mutex<HashMap<u64, simd_json::OwnedValue>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+pub fn store_handle(value: simd_json::OwnedValue) -> NativeValue {
+    let id = HANDLE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    HANDLE_REGISTRY.lock().unwrap().insert(id, value);
+    NativeValue {
+        tag: TAG_OBJECT,
+        data: id,
+    }
+}
+
+pub fn get_handle(id: u64) -> Option<simd_json::OwnedValue> {
+    HANDLE_REGISTRY.lock().unwrap().get(&id).cloned()
+}
+
+pub fn take_handle(id: u64) -> Option<simd_json::OwnedValue> {
+    HANDLE_REGISTRY.lock().unwrap().remove(&id)
+}
+
+pub fn peek_handle(id: u64) -> Option<std::sync::MutexGuard<'static, HashMap<u64, simd_json::OwnedValue>>> {
+    let guard = HANDLE_REGISTRY.lock().unwrap();
+    if guard.contains_key(&id) {
+        Some(guard)
+    } else {
+        None
+    }
+}
+
+pub fn free_handle(id: u64) {
+    HANDLE_REGISTRY.lock().unwrap().remove(&id);
 }
 
 pub fn object_new() -> NativeValue {
