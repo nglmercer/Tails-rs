@@ -1,4 +1,5 @@
 use crate::objects::Value;
+use super::safe_typed_array::TypedArrayRef;
 
 #[derive(Debug, Clone)]
 pub enum TypedArrayType {
@@ -128,6 +129,7 @@ impl TypedArray {
             return None;
         }
 
+        // Safety: byte_index is checked to be within bounds
         unsafe {
             let ptr = self.buffer.as_ptr().add(byte_index) as *const T;
             Some(ptr.read_unaligned())
@@ -143,6 +145,7 @@ impl TypedArray {
             self.byte_length = self.buffer.len();
         }
 
+        // Safety: buffer is resized to accommodate the new element
         unsafe {
             let ptr = self.buffer.as_mut_ptr().add(byte_index) as *mut T;
             ptr.write_unaligned(value);
