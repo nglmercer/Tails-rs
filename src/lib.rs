@@ -1,4 +1,5 @@
 pub mod compiler;
+pub mod dotenv;
 pub mod errors;
 pub mod ffi;
 pub mod objects;

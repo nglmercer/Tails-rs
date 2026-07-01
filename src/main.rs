@@ -9,11 +9,13 @@ fn print_usage() {
     eprintln!("Usage: tails [OPTIONS] <script.ts>");
     eprintln!();
     eprintln!("Options:");
-    eprintln!("  --watch         Watch for file changes and re-run automatically");
-    eprintln!("  --color         Enable colored output (default)");
-    eprintln!("  --no-color      Disable colored output");
-    eprintln!("  --timestamps    Show timestamps in console output");
-    eprintln!("  --help          Show this help message");
+    eprintln!("  --watch              Watch for file changes and re-run automatically");
+    eprintln!("  --env-file <path>    Load environment variables from a specific .env file");
+    eprintln!("  --no-env-file        Disable automatic .env file loading");
+    eprintln!("  --color              Enable colored output (default)");
+    eprintln!("  --no-color           Disable colored output");
+    eprintln!("  --timestamps         Show timestamps in console output");
+    eprintln!("  --help               Show this help message");
 }
 
 fn now_timestamp() -> String {
@@ -207,6 +209,16 @@ fn main() -> Result<()> {
     let watch_mode = args.iter().any(|a| a == "--watch" || a == "-w");
     let no_color = args.iter().any(|a| a == "--no-color");
     let timestamps = args.iter().any(|a| a == "--timestamps");
+    let no_env_file = args.iter().any(|a| a == "--no-env-file");
+
+    // Find custom --env-file argument
+    let custom_env_file = args.windows(2).find_map(|w| {
+        if w[0] == "--env-file" {
+            Some(w[1].clone())
+        } else {
+            None
+        }
+    });
 
     // Set color and timestamp preferences
     tails::runtime_env::native_fns::console::set_colors(!no_color);
@@ -214,13 +226,56 @@ fn main() -> Result<()> {
 
     let script_arg = args
         .iter()
-        .find(|a| !a.starts_with('-'))
+        .enumerate()
+        .filter(|(i, a)| {
+            // Skip flags that take a value
+            if **a == "--env-file" {
+                return false;
+            }
+            // Skip the value after --env-file
+            if *i > 0 && args.get(i - 1).map(|a| a.as_str()) == Some("--env-file") {
+                return false;
+            }
+            !a.starts_with('-')
+        })
+        .map(|(_, a)| a)
+        .next()
         .context("No script file specified. Run 'tails --help' for usage.")?;
 
     let script_path = PathBuf::from(script_arg);
     if !script_path.exists() {
         eprintln!("Error: File '{}' not found", script_arg);
         std::process::exit(1);
+    }
+
+    // Load .env files before running the script
+    if !no_env_file {
+        if let Some(ref custom_path) = custom_env_file {
+            // Load a specific .env file
+            let path = PathBuf::from(custom_path);
+            if path.exists() {
+                let count = tails::dotenv::load_env_files(std::slice::from_ref(&path));
+                eprintln!(
+                    "[tails] Loaded {} env variables from {}",
+                    count,
+                    path.display()
+                );
+            } else {
+                eprintln!("[tails] Warning: env file '{}' not found", custom_path);
+            }
+        } else {
+            // Auto-load .env from script's directory
+            let script_dir = script_path.parent().unwrap_or_else(|| Path::new("."));
+            let node_env = std::env::var("NODE_ENV").ok();
+            let env_files = tails::dotenv::find_env_files(script_dir, node_env.as_deref());
+            if !env_files.is_empty() {
+                let count = tails::dotenv::load_env_files(&env_files);
+                for f in &env_files {
+                    eprintln!("[tails] Loaded env from {}", f.display());
+                }
+                eprintln!("[tails] {} env variables loaded", count);
+            }
+        }
     }
 
     if watch_mode {
