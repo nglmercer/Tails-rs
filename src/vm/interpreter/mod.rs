@@ -1,5 +1,6 @@
 mod builtins;
 mod call_frame;
+pub mod safe_function;
 pub mod safe_library;
 mod calls;
 mod class_ops;
