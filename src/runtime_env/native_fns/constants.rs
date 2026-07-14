@@ -591,8 +591,9 @@ pub const ASSERT_NOT_DEEP_STRICT_EQUAL: usize = 545;
 pub const ASSERT_NOT_DEEP_EQUAL: usize = 546;
 pub const ASSERT_NOT_MATCH: usize = 547;
 pub const HTTP_SERVER_SET_TIMEOUT: usize = 548;
+pub const HTTP_REQ_NOOP: usize = 549;
 
-// queueMicrotask (548)
+// queueMicrotask (425)
 pub const QUEUE_MICROTASK: usize = 425;
 
 #[cfg(test)]

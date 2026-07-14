@@ -109,6 +109,24 @@ pub(super) fn native_http_req_on(
 }
 
 // ============================================================
+// req.unpipe() / req.resume() — no-ops.
+//
+// Express's finalhandler calls req.unpipe() + req.resume() while flushing
+// a fallback error response. This Tails runtime fully consumes the request
+// body up-front (there is no back-pressured socket stream on the JS side),
+// so these methods are safe no-ops. They are provided so that server-side
+// request objects have the stream-shaped surface that Node expects.
+// ============================================================
+#[allow(dead_code)]
+pub(super) fn native_http_req_noop(
+    _interp: &mut Interpreter,
+    _this: &Value,
+    _args: &[Value],
+) -> Result<Value> {
+    Ok(Value::Undefined)
+}
+
+// ============================================================
 // res.writeHead(status) / res.write(chunk) / res.end([body])
 // ============================================================
 pub(super) fn native_http_res_write_head(
@@ -123,6 +141,10 @@ pub(super) fn native_http_res_write_head(
                 .insert("statusCode".into(), Value::Integer(status));
             obj.properties
                 .insert("__status".into(), Value::Integer(status));
+            // Mark headers as sent so Express/finalhandler can detect a
+            // partially-written response and avoid double-sending.
+            obj.properties
+                .insert("headersSent".into(), Value::Boolean(true));
         }
         // Store response headers when provided as the second argument.
         if let Some(Value::Object(hdr_idx)) = args.get(1) {
@@ -162,6 +184,10 @@ pub(super) fn native_http_res_write(
                 "__body".into(),
                 Value::from_string(prev.to_string() + &chunk),
             );
+            // Writing a chunk flushes headers in Node; mirror that so
+            // finalhandler sees headersSent on the first write().
+            obj.properties
+                .insert("headersSent".into(), Value::Boolean(true));
         }
     }
     Ok(Value::Undefined)
@@ -196,6 +222,10 @@ pub(super) fn native_http_res_end(
         if let HeapValue::Object(obj) = &mut interp.heap[*obj_idx] {
             obj.properties
                 .insert("__ended".into(), Value::Boolean(true));
+            // res.end() flushes the response; expose headersSent so Express's
+            // finalhandler knows not to send a fallback error response on top.
+            obj.properties
+                .insert("headersSent".into(), Value::Boolean(true));
         }
     }
     Ok(Value::Undefined)
@@ -455,6 +485,12 @@ fn handle_one_request(
         "__body" => Value::from_string(req.body),
         "headers" => Value::Object(hdr_idx),
         "on" => Value::NativeFunction(c::HTTP_REQ_ON),
+        // Stream-shaped surface that Express/finalhandler/onFinished expect on a
+        // Node IncomingMessage. Tails consumes the body up-front (no back-
+        // pressured socket on the JS side), so unpipe/resume are no-ops.
+        "httpVersionMajor" => Value::Integer(1),
+        "unpipe" => Value::NativeFunction(c::HTTP_REQ_NOOP),
+        "resume" => Value::NativeFunction(c::HTTP_REQ_NOOP),
     };
     let req_idx = interp.heap.len();
     interp.heap.push(HeapValue::Object(JsObject {
@@ -470,6 +506,7 @@ fn handle_one_request(
         "__status" => Value::Integer(200),
         "__body" => Value::string(""),
         "__ended" => Value::Boolean(false),
+        "headersSent" => Value::Boolean(false),
         "__headers" => Value::Object({
             let h = interp.heap.len();
             interp.heap.push(HeapValue::Object(JsObject::new()));

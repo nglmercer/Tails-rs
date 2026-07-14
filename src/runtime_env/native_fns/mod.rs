@@ -109,6 +109,7 @@ mod http_fns {
         native_http_res_remove_header,
         native_http_res_write,
         native_http_res_end,
+        native_http_req_noop,
     );
 }
 #[cfg(feature = "net")]
@@ -926,6 +927,8 @@ pub static NATIVE_TABLE: &[NativeFn] = &[
     assert_fns::native_assert_not_match,
     // HTTP server no-op (547)
     http_fns::native_http_server_set_timeout,
+    // HTTP req no-op helpers (548) — req.unpipe() / req.resume() for finalhandler
+    http_fns::native_http_req_noop,
 ];
 
 #[cfg(test)]
